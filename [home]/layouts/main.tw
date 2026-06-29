@@ -4,6 +4,18 @@ tw@responsive true
 <head>
 {head}
 {styles}
+<style>
+  .hero { padding: 16px; }
+  .hero h1 { font-size: 24px; }
+  .hero p { font-size: 14px; line-height: 1.6; }
+
+  @media (min-width: 768px) {
+    .hero { padding: 48px; }
+    .hero h1 { font-size: 40px; }
+    .hero p { font-size: 18px; }
+  }
+</style>
+
 </head>
 <body>
 {slot}
