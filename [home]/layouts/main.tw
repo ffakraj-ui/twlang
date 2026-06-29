@@ -1,9 +1,11 @@
 tw@responsive true
+
 <!DOCTYPE html>
 <html>
 <head>
 {head}
 {styles}
+
 <style>
   .hero { padding: 16px; }
   .hero h1 { font-size: 24px; }
@@ -18,7 +20,14 @@ tw@responsive true
 
 </head>
 <body>
+
+load @./components/Header.tw
+
 {slot}
+
+load @./components/Footer.tw
+
 {scripts}
+
 </body>
 </html>
