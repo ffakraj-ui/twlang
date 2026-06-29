@@ -1,0 +1,6 @@
+load @./style/footer.tss
+
+footer {
+    class "site-footer"
+    p "© 2026 My Awesome Site"
+}
