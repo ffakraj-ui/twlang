@@ -1,0 +1,7 @@
+.site-footer {
+  padding 16
+  background #111111
+}
+.site-footer p {
+  color #00FF00
+}
