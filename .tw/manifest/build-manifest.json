@@ -1,0 +1,52 @@
+{
+  "pages": {
+    "/workspace/[home]/pages/index.tw": {
+      "dependencies": [
+        "/workspace/[home]/components/Footer.tw",
+        "/workspace/[home]/components/Header.tw",
+        "/workspace/[home]/layouts/main.tw",
+        "/workspace/[home]/pages/index.tw",
+        "/workspace/[home]/style.tss",
+        "/workspace/[home]/style/footer.tss",
+        "/workspace/tw.config"
+      ],
+      "fingerprints": {
+        "/workspace/[home]/components/Footer.tw": {
+          "mtime_ns": 1782730697794914707,
+          "size": 93
+        },
+        "/workspace/[home]/components/Header.tw": {
+          "mtime_ns": 1782730697794914707,
+          "size": 146
+        },
+        "/workspace/[home]/layouts/main.tw": {
+          "mtime_ns": 1782730697794914707,
+          "size": 435
+        },
+        "/workspace/[home]/pages/index.tw": {
+          "mtime_ns": 1782730697794914707,
+          "size": 155
+        },
+        "/workspace/[home]/style.tss": {
+          "mtime_ns": 1782730697794914707,
+          "size": 56
+        },
+        "/workspace/[home]/style/footer.tss": {
+          "mtime_ns": 1782730697794914707,
+          "size": 86
+        },
+        "/workspace/tw.config": {
+          "mtime_ns": 1782730697794914707,
+          "size": 39
+        }
+      },
+      "outputs": [
+        "/workspace/dist/index.html"
+      ],
+      "path": "/workspace/[home]/pages/index.tw",
+      "signature": "42af4d2f0b85db8639bec468171caf8bdde54a87",
+      "type": "static"
+    }
+  },
+  "version": 1
+}

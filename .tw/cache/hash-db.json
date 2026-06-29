@@ -1,0 +1,14 @@
+{
+  "/workspace/[home]/pages/index.tw": {
+    "dependencies": [
+      "/workspace/[home]/components/Footer.tw",
+      "/workspace/[home]/components/Header.tw",
+      "/workspace/[home]/layouts/main.tw",
+      "/workspace/[home]/pages/index.tw",
+      "/workspace/[home]/style.tss",
+      "/workspace/[home]/style/footer.tss",
+      "/workspace/tw.config"
+    ],
+    "signature": "42af4d2f0b85db8639bec468171caf8bdde54a87"
+  }
+}

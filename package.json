@@ -1,0 +1,15 @@
+{
+  "name": "workspace",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tw dev",
+    "build": "tw build",
+    "export": "tw export",
+    "preview": "tw preview",
+    "clean": "tw clean",
+    "doctor": "tw doctor",
+    "info": "tw info",
+    "deploy": "tw deploy"
+  }
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "route": "/",
+    "type": "page",
+    "render": "static",
+    "revalidate": null,
+    "source": "[home]/pages/index.tw",
+    "title": "Meri Website"
+  }
+]

@@ -1,0 +1,4 @@
+{
+  "buildCommand": "tw build",
+  "outputDirectory": "dist"
+}

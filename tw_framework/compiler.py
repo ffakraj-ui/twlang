@@ -166,13 +166,45 @@ class Token:
     col: int
 
 
+@dataclass
+class Diagnostic:
+    severity: str
+    code: str
+    message: str
+    file_path: str
+    line: int = 0
+    col: int = 0
+    end_line: int = 0
+    end_col: int = 0
+    suggestion: str = None
+    notes: list = None
+
+
 class CompilerError(Exception):
-    def __init__(self, message, token=None, file_path=None, suggestion=None):
+    def __init__(self, message, token=None, file_path=None, suggestion=None, code="TW1000", notes=None):
         super().__init__(message)
         self.message = message
         self.token = token
         self.file_path = file_path
         self.suggestion = suggestion
+        self.code = code
+        self.notes = list(notes or [])
+
+    def to_diagnostic(self, fallback_file_path=None):
+        line = getattr(self.token, "line", 0) or 0
+        col = getattr(self.token, "col", 0) or 0
+        return Diagnostic(
+            severity="error",
+            code=self.code or "TW1000",
+            message=self.message,
+            file_path=self.file_path or fallback_file_path or "",
+            line=line,
+            col=col,
+            end_line=line,
+            end_col=col,
+            suggestion=self.suggestion,
+            notes=list(self.notes or []),
+        )
 
 
 class DiagnosticEmitter:
@@ -182,27 +214,52 @@ class DiagnosticEmitter:
         self.lines = source.splitlines()
 
     def format(self, err):
-        path = err.file_path or self.file_path
-        if not err.token:
-            return f"❌ Error: {path}\n{err.message}"
+        if isinstance(err, CompilerError):
+            diagnostic = err.to_diagnostic(self.file_path)
+        else:
+            diagnostic = Diagnostic(
+                severity="error",
+                code="TW0000",
+                message=str(err),
+                file_path=self.file_path,
+            )
+        path = diagnostic.file_path or self.file_path
+        if path == self.file_path:
+            lines = self.lines
+        else:
+            try:
+                lines = read_text_file(path).splitlines()
+            except Exception:
+                lines = self.lines
 
-        line_no = err.token.line
-        col_no = err.token.col
+        if not diagnostic.line:
+            out = [f"❌ {diagnostic.severity.upper()} [{diagnostic.code}] {path}", diagnostic.message]
+            if diagnostic.suggestion:
+                out.append(f"Hint: {diagnostic.suggestion}")
+            for note in diagnostic.notes or []:
+                out.append(f"Note: {note}")
+            return "\n".join(out)
+
+        line_no = diagnostic.line
+        col_no = diagnostic.col
         line_text = ""
-        if 1 <= line_no <= len(self.lines):
-            line_text = self.lines[line_no - 1]
-        pointer = " " * max(col_no - 1, 0) + "^"
+        if 1 <= line_no <= len(lines):
+            line_text = lines[line_no - 1]
+        gutter = f"{line_no:>4} | "
+        pointer = " " * (len(gutter) + max(col_no - 1, 0)) + "^"
 
         out = [
-            f"❌ Error: {path}",
+            f"❌ {diagnostic.severity.upper()} [{diagnostic.code}] {path}",
             f"Line {line_no}, Column {col_no}",
-            err.message,
+            diagnostic.message,
         ]
         if line_text:
-            out.append(line_text)
+            out.append(f"{gutter}{line_text}")
             out.append(pointer)
-        if err.suggestion:
-            out.append(f"Hint: {err.suggestion}")
+        if diagnostic.suggestion:
+            out.append(f"Hint: {diagnostic.suggestion}")
+        for note in diagnostic.notes or []:
+            out.append(f"Note: {note}")
         return "\n".join(out)
 
 
@@ -300,6 +357,22 @@ def save_build_manifest(manifest):
         json.dump(manifest, f, indent=2, sort_keys=True)
 
 
+def save_dependency_graph(dependency_map):
+    os.makedirs(os.path.dirname(DEPENDENCY_GRAPH_FILE), exist_ok=True)
+    reverse = {}
+    for page_key, dependencies in sorted(dependency_map.items()):
+        for dependency in dependencies:
+            dep_key = normalize_path(dependency)
+            reverse.setdefault(dep_key, []).append(page_key)
+    payload = {
+        "version": 1,
+        "forward": {page: sorted(normalize_path(dep) for dep in deps) for page, deps in sorted(dependency_map.items())},
+        "reverse": {dep: sorted(set(pages)) for dep, pages in sorted(reverse.items())},
+    }
+    with open(DEPENDENCY_GRAPH_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, sort_keys=True)
+
+
 def file_fingerprint(path):
     if not os.path.exists(path):
         return None
@@ -320,6 +393,29 @@ def compute_dependency_signature(paths):
         else:
             digest.update(f"|{fp['size']}|{fp['mtime_ns']}".encode("utf-8"))
     return digest.hexdigest()
+
+
+def collect_dependency_fingerprints(paths):
+    fingerprints = {}
+    for path in sorted(normalize_path(p) for p in paths):
+        fingerprints[path] = file_fingerprint(path)
+    return fingerprints
+
+
+def describe_dependency_delta(previous_fingerprints, current_fingerprints):
+    previous_fingerprints = previous_fingerprints or {}
+    current_fingerprints = current_fingerprints or {}
+    for path in sorted(set(previous_fingerprints) | set(current_fingerprints)):
+        before = previous_fingerprints.get(path)
+        after = current_fingerprints.get(path)
+        if before != after:
+            rel = safe_relpath(path, PROJECT_ROOT)
+            if before is None:
+                return f"dependency added: {rel}"
+            if after is None:
+                return f"dependency removed: {rel}"
+            return f"dependency changed: {rel}"
+    return "dependency changed"
 
 
 def page_cache_key(page_info):
@@ -2788,7 +2884,9 @@ def should_rebuild_page(page_info, dependencies, manifest, options):
 
     signature = compute_dependency_signature(dependencies)
     if entry.get("signature") != signature:
-        return True, "dependency changed"
+        current_fingerprints = collect_dependency_fingerprints(dependencies)
+        reason = describe_dependency_delta(entry.get("fingerprints"), current_fingerprints)
+        return True, reason
 
     outputs = entry.get("outputs", [])
     if not outputs or any(not os.path.exists(path) for path in outputs):
@@ -2810,6 +2908,7 @@ def update_page_manifest_entry(manifest, page_info, dependencies, outputs):
         "path": normalize_path(page_info["path"]),
         "dependencies": sorted(normalize_path(dep) for dep in dependencies),
         "signature": compute_dependency_signature(dependencies),
+        "fingerprints": collect_dependency_fingerprints(dependencies),
         "outputs": sorted(normalize_path(out) for out in outputs),
     }
 

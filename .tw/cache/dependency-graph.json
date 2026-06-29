@@ -1,0 +1,37 @@
+{
+  "forward": {
+    "/workspace/[home]/pages/index.tw": [
+      "/workspace/[home]/components/Footer.tw",
+      "/workspace/[home]/components/Header.tw",
+      "/workspace/[home]/layouts/main.tw",
+      "/workspace/[home]/pages/index.tw",
+      "/workspace/[home]/style.tss",
+      "/workspace/[home]/style/footer.tss",
+      "/workspace/tw.config"
+    ]
+  },
+  "reverse": {
+    "/workspace/[home]/components/Footer.tw": [
+      "/workspace/[home]/pages/index.tw"
+    ],
+    "/workspace/[home]/components/Header.tw": [
+      "/workspace/[home]/pages/index.tw"
+    ],
+    "/workspace/[home]/layouts/main.tw": [
+      "/workspace/[home]/pages/index.tw"
+    ],
+    "/workspace/[home]/pages/index.tw": [
+      "/workspace/[home]/pages/index.tw"
+    ],
+    "/workspace/[home]/style.tss": [
+      "/workspace/[home]/pages/index.tw"
+    ],
+    "/workspace/[home]/style/footer.tss": [
+      "/workspace/[home]/pages/index.tw"
+    ],
+    "/workspace/tw.config": [
+      "/workspace/[home]/pages/index.tw"
+    ]
+  },
+  "version": 1
+}

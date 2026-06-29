@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from . import compiler
+from .plugin_runtime import ExtensionManager
 
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -32,7 +33,7 @@ DEFAULT_DEV_PORT = 3000
 DEFAULT_PREVIEW_PORT = 4173
 HIDDEN_FRAMEWORK_DIR = ".tw"
 WATCH_EXTENSIONS = {
-    ".tw", ".tss", ".ts", ".json", ".md",
+    ".tw", ".tss", ".ts", ".json", ".md", ".py",
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico",
     ".env", ".txt",
 }
@@ -498,6 +499,7 @@ class TWProject:
         configure_compiler_paths(self.project_root)
         self.env = load_project_env(self.project_root, "development")
         self.config = compiler.load_config()
+        self.extensions = ExtensionManager(self.project_root, self.config, self.env).refresh()
 
     @property
     def source_root(self) -> str:
@@ -533,6 +535,7 @@ class TWProject:
         invalidate_compiler_caches()
         self.env = load_project_env(self.project_root, "development")
         self.config = compiler.load_config()
+        self.extensions.refresh(self.config, self.env)
 
     def discover_pages(self) -> List[dict]:
         self.invalidate()
@@ -739,6 +742,15 @@ class TWProject:
         context.update(match.params)
         context["_tw_route"] = match.route_path
         context["request"] = {"path": match.route_path, "params": match.params, "env": dict(os.environ)}
+        hook_state = self.extensions.emit(
+            "beforeRoute",
+            match=match,
+            page_info=page_info,
+            page_ast=page_ast,
+            context=context,
+            dev_mode=dev_mode,
+        )
+        context = hook_state.get("context", context)
 
         if page_ast.rewrite_to:
             rewritten_path = compiler.interpolate(page_ast.rewrite_to, context)
@@ -760,7 +772,17 @@ class TWProject:
 
         if dev_mode:
             rendered = inject_dev_client(rendered)
-        return {"html": rendered, "status": status, "headers": headers}
+        response = {"html": rendered, "status": status, "headers": headers}
+        hook_state = self.extensions.emit(
+            "afterRoute",
+            match=match,
+            page_info=page_info,
+            page_ast=page_ast,
+            context=context,
+            response=response,
+            dev_mode=dev_mode,
+        )
+        return hook_state.get("response", response)
 
     def compile_match_to_html(self, match: RouteMatch, dev_mode: bool = False) -> str:
         return self.compile_match_response(match, dev_mode=dev_mode)["html"]
@@ -1433,9 +1455,10 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
 
     configure_compiler_paths(project_root)
     invalidate_compiler_caches()
-    load_project_env(project_root, "production")
+    env = load_project_env(project_root, "production")
     ensure_project_metadata(project_root)
     ensure_deploy_support_files(project_root)
+    extensions = ExtensionManager(project_root, compiler.load_config(), env).refresh()
     previous_minify = getattr(compiler, "MINIFY_OUTPUT", False)
     try:
         with compiler_output_context(output_dir):
@@ -1463,10 +1486,23 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
             built = 0
 
             options = compiler.BuildOptions(force=force, workers=workers)
+            shared_dependencies = extensions.dependency_paths()
+            if extensions.errors:
+                for message in extensions.errors:
+                    print(f"  ❌ Extension error: {message}")
+                errors += len(extensions.errors)
+            extensions.emit(
+                "beforeBuild",
+                output_dir=output_dir,
+                force=force,
+                workers=workers,
+                minify=minify,
+            )
 
             for page_info in pages:
                 try:
-                    dependencies = compiler.collect_page_dependencies(page_info["path"])
+                    dependencies = compiler.collect_page_dependencies(page_info["path"]) + shared_dependencies
+                    dependencies = sorted(set(dependencies))
                     dependency_map[compiler.page_cache_key(page_info)] = dependencies
                     needs_build, reason = compiler.should_rebuild_page(page_info, dependencies, manifest, options)
                     if needs_build:
@@ -1514,8 +1550,19 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
             sync_runtime_chunks_to_output()
             write_hidden_cache_files(dependency_map)
             compiler.save_build_manifest(manifest)
+            compiler.save_dependency_graph(dependency_map)
             write_route_artifacts(output_dir)
             precompress_output(output_dir)
+            extensions.emit(
+                "afterBuild",
+                output_dir=output_dir,
+                summary={
+                    "built": built,
+                    "skipped": skipped,
+                    "removed": removed,
+                    "errors": errors,
+                },
+            )
 
         return BuildSummary(
             built=built,
