@@ -140,6 +140,8 @@ def invalidate_compiler_caches():
         compiler._COMPONENT_PATH_CACHE.clear()
     compiler._LAYOUT_CACHE.clear()
     compiler._COMPONENT_DEP_GRAPH_CACHE.clear()
+    if hasattr(compiler, "_COMPONENT_STYLESHEET_PATHS"):
+        compiler._COMPONENT_STYLESHEET_PATHS.clear()
     compiler.INLINE_SCRIPTS.clear()
     # Reset script placeholder growth (prevents long-lived dev sessions from leaking memory)
     if hasattr(compiler, "_SCRIPT_COUNTER"):
