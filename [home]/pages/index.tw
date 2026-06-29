@@ -1,0 +1,10 @@
+TITLE "Meri Website"
+layout "main"
+
+BODY {
+  section {
+    class "tw-container"
+    h1 "Hello"
+    p "Ye site GitHub + Vercel se deploy ho rahi hai"
+  }
+}
