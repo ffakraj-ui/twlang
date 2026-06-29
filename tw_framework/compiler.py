@@ -123,9 +123,9 @@ NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")
 INTERPOLATION_RE = re.compile(r"\{([^{}]+)\}")
 SCRIPT_PLACEHOLDER_RE = re.compile(r"^__TWSCRIPT(\d+)__$")
 TAG_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
-DYNAMIC_FILE_RE = re.compile(r"^\\[(\\w+)\\]\\.tw$")
-CATCH_ALL_FILE_RE = re.compile(r"^\\[\\.\\.\\.(\\w+)\\]\\.tw$")
-OPTIONAL_CATCH_ALL_FILE_RE = re.compile(r"^\\[\\[\\.\\.\\.(\\w+)\\]\\]\\.tw$")
+DYNAMIC_FILE_RE = re.compile(r"^\[(\w+)\]\.tw$")
+CATCH_ALL_FILE_RE = re.compile(r"^\[\.\.\.(\w+)\]\.tw$")
+OPTIONAL_CATCH_ALL_FILE_RE = re.compile(r"^\[\[\.\.\.(\w+)\]\]\.tw$")
 
 INLINE_SCRIPTS = {}
 _SCRIPT_COUNTER = 0
@@ -136,17 +136,20 @@ _COMPONENT_PATH_CACHE = {}
 _LAYOUT_CACHE = {}
 _LAYOUT_META_CACHE = {}
 _COMPONENT_DEP_GRAPH_CACHE = {}
+_COMPONENT_STYLESHEET_PATHS = {}
 _CHUNK_LOCK = threading.Lock()
 _SCRIPT_LOCK = threading.Lock()
 
 # Layout-level directives (layouts are treated as raw HTML templates, so we scan & strip these lines)
 LAYOUT_RESPONSIVE_RE = re.compile(
-    r"(?m)^\\s*tw@responsive\\s*(?:=\\s*)?(true|false|\"true\"|\"false\"|'true'|'false')\\s*$"
+    r"(?m)^\s*tw@responsive\s*(?:=\s*)?(true|false|\"true\"|\"false\"|'true'|'false')\s*$"
 )
 
 IMPORT_RE = re.compile(r'\bimport\s+"([^"]+)"')
 LAYOUT_RE = re.compile(r'\blayout\s+(?:"([^"]+)"|([^\s{}]+))')
-LOAD_RE = re.compile(r'\bload\s+"([^"]+)"')
+LOAD_RE = re.compile(r'\bload\s+(?:"([^"]+)"|(@[^\s{}"\']+))')
+COMPONENT_LOAD_RE = re.compile(r'(?m)^[ \t]*load\s+(?:"([^"]+)"|(@[^\s{}"\']+))[ \t]*$')
+LAYOUT_LOAD_RE = re.compile(r'(?m)^[ \t]*load\s+(?:"([^"]+)"|(@[^\s{}"\']+))[ \t]*$')
 
 
 @dataclass
@@ -625,6 +628,17 @@ def tokenize(code, allow_inline_scripts=False):
             read_string(ch)
             continue
 
+        # Unquoted path-style token: `@./relative/path.ext` (used by `load @path`).
+        # Read greedily so dots/slashes inside the path don't get split into
+        # separate ONE_CHAR_OPS tokens.
+        if ch == "@":
+            at_start_line, at_start_col = line, col
+            at_chars = []
+            while i < n and code[i] not in ' \t\r\n{}"\'':
+                at_chars.append(advance_one())
+            tokens.append(Token("WORD", "".join(at_chars), at_start_line, at_start_col))
+            continue
+
         # Operators / punctuation as standalone tokens (helps expression parsing)
         if i + 1 < n and (code[i:i + 2] in TWO_CHAR_OPS):
             tokens.append(Token("WORD", code[i:i + 2], line, col))
@@ -727,10 +741,10 @@ def extract_directives_from_source(raw, base_dir):
         name = quoted or bare
         if name:
             layouts.append(name)
-    stylesheets = [
-        normalize_path(os.path.join(base_dir, rel_path))
-        for rel_path in LOAD_RE.findall(raw)
-    ]
+    stylesheets = []
+    for quoted, atpath in LOAD_RE.findall(raw):
+        rel_path = quoted or atpath.lstrip("@")
+        stylesheets.append(normalize_path(os.path.join(base_dir, rel_path)))
     return {
         "imports": imports,
         "layouts": layouts,
@@ -795,6 +809,18 @@ def collect_page_dependencies(tw_path):
     for layout_name in directives["layouts"]:
         layout_path = normalize_path(os.path.join(LAYOUTS_DIR, f"{layout_name}.tw"))
         deps.add(layout_path)
+        if os.path.exists(layout_path):
+            layout_raw = read_text_file(layout_path)
+            for quoted, atpath in LAYOUT_LOAD_RE.findall(layout_raw):
+                rel = quoted or atpath.lstrip("@")
+                loaded_path = normalize_path(os.path.join(HOME_DIR, rel))
+                deps.add(loaded_path)
+                if loaded_path.endswith(".tw") and os.path.exists(loaded_path):
+                    # one level deep: if that component itself loads a stylesheet, track it too
+                    inner_raw = read_text_file(loaded_path)
+                    for q2, a2 in COMPONENT_LOAD_RE.findall(inner_raw):
+                        rel2 = q2 or a2.lstrip("@")
+                        deps.add(normalize_path(os.path.join(HOME_DIR, rel2)))
 
     for component_name in directives["imports"]:
         deps.update(collect_component_dependencies(component_name))
@@ -1120,6 +1146,23 @@ def looks_like_child_start(tokens, i):
     return False
 
 
+def extract_component_load_directive(raw, base_dir):
+    """Scans a component/.tw source for a top-level `load "x.tss"` / `load @x.tss`
+    line, strips it out (so the main element parser never sees it), and returns
+    the parsed stylesheet (or None if nothing was loaded)."""
+    m = COMPONENT_LOAD_RE.search(raw)
+    if not m:
+        return raw, None
+    quoted, atpath = m.group(1), m.group(2)
+    rel_path = quoted or atpath.lstrip("@")
+    full_path = os.path.normpath(os.path.join(base_dir, rel_path))
+    if not os.path.exists(full_path):
+        raise CompilerError(f"load: file not found -> {full_path}", suggestion=f"Expected: `{full_path}`")
+    sheet = build_tss_ast_from_text(read_text_file(full_path))
+    raw = COMPONENT_LOAD_RE.sub("", raw, count=1)
+    return raw, sheet
+
+
 def load_component_ast(name):
     if name in _COMPONENT_AST_CACHE:
         return copy.deepcopy(_COMPONENT_AST_CACHE[name])
@@ -1128,6 +1171,9 @@ def load_component_ast(name):
     if not os.path.exists(path):
         raise FileNotFoundError(f"Component not found: {path}")
     raw = read_text_file(path)
+    raw, comp_sheet = extract_component_load_directive(raw, HOME_DIR)
+    if comp_sheet is not None:
+        _COMPONENT_STYLESHEET_PATHS[normalize_path(path)] = comp_sheet
     tokens = tokenize_tw(raw)
     nodes, _ = build_elements(tokens, 0, path, raw)
     _COMPONENT_AST_CACHE[name] = nodes
@@ -1150,8 +1196,43 @@ def load_layout(name):
         raw = LAYOUT_RESPONSIVE_RE.sub("", raw, count=1).lstrip("\n")
     _LAYOUT_META_CACHE[name] = meta
 
+    raw = resolve_layout_loads(raw, HOME_DIR)
+
     _LAYOUT_CACHE[name] = raw
     return raw
+
+
+def resolve_layout_loads(raw, base_dir):
+    """Lets a layout file pull in a component (header/footer etc.) or a
+    stylesheet via `load "path"` / `load @path`, so it shows on every page
+    that uses this layout — without the layout needing real TW parsing.
+    Paths are resolved relative to `[home]/`, same as `./components/...`
+    inside a component's own `load`."""
+
+    def repl(m):
+        quoted, atpath = m.group(1), m.group(2)
+        rel_path = quoted or atpath.lstrip("@")
+        full_path = os.path.normpath(os.path.join(base_dir, rel_path))
+        if not os.path.exists(full_path):
+            raise CompilerError(
+                f"load: file not found in layout -> {full_path}",
+                suggestion=f"Expected: `{full_path}`",
+            )
+
+        if full_path.endswith(".tw"):
+            comp_raw = read_text_file(full_path)
+            comp_raw, comp_sheet = extract_component_load_directive(comp_raw, HOME_DIR)
+            comp_tokens = tokenize_tw(comp_raw)
+            comp_nodes, _ = build_elements(comp_tokens, 0, full_path, comp_raw)
+            html, _needs_router = render_elements_html(comp_nodes, {})
+            if comp_sheet is not None:
+                html = f"<style>\n{render_css(comp_sheet, {})}</style>\n{html}"
+            return html
+
+        sheet = build_tss_ast_from_text(read_text_file(full_path))
+        return f"<style>\n{render_css(sheet, {})}</style>"
+
+    return LAYOUT_LOAD_RE.sub(repl, raw)
 
 
 def get_layout_meta(name):
@@ -1708,9 +1789,15 @@ def build_tw_ast(tokens, base_dir, file_path, source):
 
         if token.type == "WORD" and token.value == "load":
             i += 1
-            if not peek(tokens, i) or peek(tokens, i).type != "STRING":
+            path_token = peek(tokens, i)
+            is_valid = path_token and (
+                path_token.type == "STRING"
+                or (path_token.type == "WORD" and path_token.value.startswith("@"))
+            )
+            if not is_valid:
                 raise CompilerError("Expected stylesheet path after `load`", token=peek(tokens, i - 1))
-            page.loaded_sheets.append(load_external_stylesheet(peek(tokens, i).value, base_dir))
+            raw_path = path_token.value.lstrip("@") if path_token.type == "WORD" else path_token.value
+            page.loaded_sheets.append(load_external_stylesheet(raw_path, base_dir))
             i += 1
             continue
 
@@ -1741,7 +1828,25 @@ def build_tw_ast(tokens, base_dir, file_path, source):
 
         raise CompilerError(f"Unexpected top-level token: `{token.value}`", token=token)
 
+    _attach_component_stylesheets(page, source)
     return page
+
+
+def _attach_component_stylesheets(page, source):
+    """Components can `load` their own .tss file. If this page (directly or
+    via nested component imports) ends up using such a component, pull that
+    stylesheet in automatically -- same place page-level `load` results land."""
+    seen_paths = set()
+    for comp_name in IMPORT_RE.findall(source):
+        try:
+            dep_paths = collect_component_dependencies(comp_name)
+        except CompilerError:
+            continue
+        for dep_path in dep_paths:
+            if dep_path in _COMPONENT_STYLESHEET_PATHS and dep_path not in seen_paths:
+                seen_paths.add(dep_path)
+                page.loaded_sheets.append(_COMPONENT_STYLESHEET_PATHS[dep_path])
+
 
 
 def build_tss_ast_from_text(text):
