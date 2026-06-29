@@ -214,7 +214,9 @@ class DiagnosticEmitter:
         self.lines = source.splitlines()
 
     def format(self, err):
-        if isinstance(err, CompilerError):
+        if isinstance(err, Diagnostic):
+            diagnostic = err
+        elif isinstance(err, CompilerError):
             diagnostic = err.to_diagnostic(self.file_path)
         else:
             diagnostic = Diagnostic(
@@ -261,6 +263,18 @@ class DiagnosticEmitter:
         for note in diagnostic.notes or []:
             out.append(f"Note: {note}")
         return "\n".join(out)
+
+
+def print_diagnostic(diagnostic):
+    path = diagnostic.file_path or ""
+    source = ""
+    if path and os.path.exists(path):
+        try:
+            source = read_text_file(path)
+        except Exception:
+            source = ""
+    emitter = DiagnosticEmitter(path, source)
+    print(emitter.format(diagnostic))
 
 
 def read_text_file(path):
@@ -1116,6 +1130,219 @@ def evaluate_expression(expr, context):
         if value is not None:
             return value
         return None
+
+
+PLACEHOLDER_MOUSTACHE_RE = re.compile(r"\{\{([^{}]+)\}\}")
+RESERVED_EXPR_NAMES = {"true", "false", "null", "none"}
+
+
+def extract_placeholder_expressions(text):
+    if text is None or "{" not in str(text):
+        return []
+    expressions = []
+    for match in PLACEHOLDER_MOUSTACHE_RE.finditer(str(text)):
+        expr = match.group(1).strip()
+        if expr:
+            expressions.append(expr)
+    for match in INTERPOLATION_RE.finditer(str(text)):
+        expr = match.group(1).strip()
+        if expr:
+            expressions.append(expr)
+    return expressions
+
+
+class ExpressionNameCollector(ast.NodeVisitor):
+    def __init__(self):
+        self.names = []
+
+    def visit_Name(self, node):
+        self.names.append(node.id)
+
+
+def collect_expression_names(expr):
+    expr = str(expr or "").strip()
+    if not expr:
+        return []
+    try:
+        transformed = _transform_logic_operators(expr)
+        tree = ast.parse(transformed, mode="eval")
+    except Exception:
+        return []
+    collector = ExpressionNameCollector()
+    collector.visit(tree)
+    names = []
+    seen = set()
+    for name in collector.names:
+        if name in RESERVED_EXPR_NAMES or name in seen:
+            continue
+        seen.add(name)
+        names.append(name)
+    return names
+
+
+def build_diagnostic(severity, code, message, file_path, token=None, suggestion=None, notes=None):
+    line = getattr(token, "line", 0) or 0
+    col = getattr(token, "col", 0) or 0
+    return Diagnostic(
+        severity=severity,
+        code=code,
+        message=message,
+        file_path=file_path or "",
+        line=line,
+        col=col,
+        end_line=line,
+        end_col=col,
+        suggestion=suggestion,
+        notes=list(notes or []),
+    )
+
+
+def collect_known_scope_names(context):
+    names = set(context.keys() if isinstance(context, dict) else [])
+    names.update({"config", "site", "env", "request", "props", "children"})
+    return names
+
+
+def analyze_expression_symbols(expr, scope_names, diagnostics, token=None, file_path=None, label="expression"):
+    for name in collect_expression_names(expr):
+        if name.startswith("_tw_") or name in scope_names:
+            continue
+        diagnostics.append(build_diagnostic(
+            "warning",
+            "TW2001",
+            f"Undefined symbol `{name}` in {label}.",
+            file_path=file_path or getattr(token, "file_path", "") or "",
+            token=token,
+            suggestion="Symbol define karo, JSON load/let/import use karo, ya placeholder ko literal text rakhna ho to braces hata do.",
+            notes=[f"Expression: {expr}"],
+        ))
+
+
+def analyze_interpolated_text(text, scope_names, diagnostics, token=None, file_path=None, label="template"):
+    for expr in extract_placeholder_expressions(text):
+        analyze_expression_symbols(expr, scope_names, diagnostics, token=token, file_path=file_path, label=label)
+
+
+def _append_unique_diagnostic(diagnostics, diagnostic, seen_keys):
+    key = (
+        diagnostic.severity,
+        diagnostic.code,
+        diagnostic.file_path,
+        diagnostic.line,
+        diagnostic.col,
+        diagnostic.message,
+    )
+    if key in seen_keys:
+        return
+    seen_keys.add(key)
+    diagnostics.append(diagnostic)
+
+
+def analyze_nodes_semantics(nodes, scope_names, diagnostics, file_path, component_stack=None, seen_keys=None):
+    current_scope = set(scope_names)
+    component_stack = list(component_stack or [])
+    seen_keys = seen_keys if seen_keys is not None else set()
+
+    for node in nodes or []:
+        token = getattr(node, "token", None)
+        node_file_path = getattr(node, "file_path", None) or file_path
+
+        if isinstance(node, LetNode):
+            analyze_interpolated_text(node.value, current_scope, diagnostics, token=token, file_path=node_file_path, label=f"`let {node.name}` value")
+            current_scope.add(node.name)
+            continue
+
+        if isinstance(node, ForNode):
+            analyze_expression_symbols(node.list_expr, current_scope, diagnostics, token=token, file_path=node_file_path, label=f"`for {node.var_name} in ...`")
+            child_scope = set(current_scope)
+            child_scope.add(node.var_name)
+            analyze_nodes_semantics(node.children, child_scope, diagnostics, node_file_path, component_stack=component_stack, seen_keys=seen_keys)
+            continue
+
+        if isinstance(node, IfNode):
+            analyze_expression_symbols(node.condition, current_scope, diagnostics, token=token, file_path=node_file_path, label="`if` condition")
+            analyze_nodes_semantics(node.children, current_scope, diagnostics, node_file_path, component_stack=component_stack, seen_keys=seen_keys)
+            analyze_nodes_semantics(node.else_children, current_scope, diagnostics, node_file_path, component_stack=component_stack, seen_keys=seen_keys)
+            continue
+
+        if isinstance(node, ComponentNode):
+            prop_names = set()
+            for key, raw_value in node.props:
+                prop_names.add(key)
+                analyze_interpolated_text(raw_value, current_scope, diagnostics, token=token, file_path=node_file_path, label=f"component prop `{node.name}.{key}`")
+            analyze_nodes_semantics(node.children, current_scope, diagnostics, node_file_path, component_stack=component_stack, seen_keys=seen_keys)
+            if node.name not in component_stack:
+                try:
+                    component_nodes = load_component_ast(node.name)
+                    component_path = resolve_component_path(node.name)
+                    component_scope = set(current_scope)
+                    component_scope.update(prop_names)
+                    component_scope.update({"props", "children"})
+                    analyze_nodes_semantics(
+                        component_nodes,
+                        component_scope,
+                        diagnostics,
+                        component_path,
+                        component_stack=component_stack + [node.name],
+                        seen_keys=seen_keys,
+                    )
+                except Exception:
+                    pass
+            continue
+
+        if isinstance(node, ElementNode):
+            analyze_interpolated_text(node.text, current_scope, diagnostics, token=token, file_path=node_file_path, label=f"`{node.tag}` text")
+            seen_attrs = set()
+            for attr_name, raw_value in node.attrs:
+                if attr_name in seen_attrs:
+                    _append_unique_diagnostic(
+                        diagnostics,
+                        build_diagnostic(
+                            "warning",
+                            "TW2002",
+                            f"Duplicate attribute `{attr_name}` on `<{node.tag}>`.",
+                            file_path=node_file_path,
+                            token=token,
+                            suggestion="Duplicate attribute remove karo taaki final HTML predictable rahe.",
+                        ),
+                        seen_keys,
+                    )
+                seen_attrs.add(attr_name)
+                analyze_interpolated_text(raw_value, current_scope, diagnostics, token=token, file_path=node_file_path, label=f"`{node.tag}` attribute `{attr_name}`")
+            for css_name, raw_value in node.inline_style:
+                analyze_interpolated_text(raw_value, current_scope, diagnostics, token=token, file_path=node_file_path, label=f"`{node.tag}` style `{css_name}`")
+            for event_name, raw_handler in node.events:
+                analyze_interpolated_text(raw_handler, current_scope, diagnostics, token=token, file_path=node_file_path, label=f"`{node.tag}` event `{event_name}`")
+            for router_key, raw_value in (node.router or {}).items():
+                analyze_interpolated_text(raw_value, current_scope, diagnostics, token=token, file_path=node_file_path, label=f"`{node.tag}` router `{router_key}`")
+            analyze_nodes_semantics(node.children, current_scope, diagnostics, node_file_path, component_stack=component_stack, seen_keys=seen_keys)
+
+
+def analyze_page_semantics(page_ast, context, tw_path, page_info=None):
+    diagnostics = []
+    seen_keys = set()
+    scope_names = collect_known_scope_names(context)
+    if page_info and page_info.get("type") == "dynamic":
+        scope_names.add(page_info.get("param", ""))
+        if page_info.get("route_kind") != "single":
+            scope_names.add(page_info.get("param", "") + "Segments")
+
+    analyze_interpolated_text(page_ast.title, scope_names, diagnostics, file_path=tw_path, label="page title")
+    analyze_interpolated_text(page_ast.redirect_to, scope_names, diagnostics, file_path=tw_path, label="page redirect")
+    analyze_interpolated_text(page_ast.rewrite_to, scope_names, diagnostics, file_path=tw_path, label="page rewrite")
+    analyze_interpolated_text(page_ast.head.icon, scope_names, diagnostics, file_path=tw_path, label="head icon")
+    for meta in page_ast.head.metas:
+        for key, raw_value in meta.items():
+            analyze_interpolated_text(raw_value, scope_names, diagnostics, file_path=tw_path, label=f"head meta `{key}`")
+    for key, raw_value in page_ast.head.seo.items():
+        analyze_interpolated_text(raw_value, scope_names, diagnostics, file_path=tw_path, label=f"head seo `{key}`")
+
+    analyze_nodes_semantics(page_ast.body, scope_names, diagnostics, tw_path, seen_keys=seen_keys)
+    deduped = []
+    dedupe_keys = set()
+    for diagnostic in diagnostics:
+        _append_unique_diagnostic(deduped, diagnostic, dedupe_keys)
+    return deduped
 
 
 def eval_condition(expr, context):

@@ -1484,6 +1484,7 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
             skipped = 0
             errors = 0
             built = 0
+            warnings = 0
 
             options = compiler.BuildOptions(force=force, workers=workers)
             shared_dependencies = extensions.dependency_paths()
@@ -1501,6 +1502,25 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
 
             for page_info in pages:
                 try:
+                    page_ast = compiler.load_page_ast_from_file(page_info["path"])
+                    analysis_context = compiler.create_base_context(page_ast, page_info["path"])
+                    analysis_context["_tw_route"] = "/"
+                    analysis_context["request"] = {"path": "/", "params": {}, "env": dict(os.environ)}
+                    if page_info["type"] == "dynamic":
+                        items = compiler.load_dynamic_items(page_info["path"])
+                        sample_item = next((item for item in items if isinstance(item, dict)), None)
+                        if sample_item:
+                            analysis_context.update(sample_item)
+                        param_name = page_info.get("param")
+                        if param_name:
+                            analysis_context[param_name] = ""
+                            if page_info.get("route_kind") != "single":
+                                analysis_context[param_name + "Segments"] = []
+                    diagnostics = compiler.analyze_page_semantics(page_ast, analysis_context, page_info["path"], page_info=page_info)
+                    for diagnostic in diagnostics:
+                        if diagnostic.severity == "warning":
+                            warnings += 1
+                            compiler.print_diagnostic(diagnostic)
                     dependencies = compiler.collect_page_dependencies(page_info["path"]) + shared_dependencies
                     dependencies = sorted(set(dependencies))
                     dependency_map[compiler.page_cache_key(page_info)] = dependencies
@@ -1561,8 +1581,11 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
                     "skipped": skipped,
                     "removed": removed,
                     "errors": errors,
+                    "warnings": warnings,
                 },
             )
+            if warnings:
+                print(f"  ⚠️  Semantic warnings: {warnings}")
 
         return BuildSummary(
             built=built,
