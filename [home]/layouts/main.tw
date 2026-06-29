@@ -1,0 +1,12 @@
+tw@responsive true
+<!DOCTYPE html>
+<html>
+<head>
+{head}
+{styles}
+</head>
+<body>
+{slot}
+{scripts}
+</body>
+</html>
