@@ -358,6 +358,7 @@ class PageNode:
         self.head = HeadNode()
         self.body = []
         self.loaded_sheets = []
+        self.loaded_json = []
         self.let_vars = {}
         # Optional responsive helpers (enabled via `tw@responsive true|false`)
         self.responsive = False
@@ -742,13 +743,19 @@ def extract_directives_from_source(raw, base_dir):
         if name:
             layouts.append(name)
     stylesheets = []
+    json_files = []
     for quoted, atpath in LOAD_RE.findall(raw):
         rel_path = quoted or atpath.lstrip("@")
-        stylesheets.append(normalize_path(os.path.join(base_dir, rel_path)))
+        full_path = normalize_path(os.path.join(base_dir, rel_path))
+        if rel_path.lower().endswith(".json"):
+            json_files.append(full_path)
+        else:
+            stylesheets.append(full_path)
     return {
         "imports": imports,
         "layouts": layouts,
         "stylesheets": stylesheets,
+        "json_files": json_files,
     }
 
 
@@ -797,14 +804,17 @@ def collect_page_dependencies(tw_path):
     directives = extract_directives_from_source(raw, base_dir)
 
     deps = {tw_path, normalize_path(CONFIG_FILE)}
-    sibling_json = tw_path[:-3] + ".json"
-    if os.path.exists(sibling_json):
-        deps.add(normalize_path(sibling_json))
+    sibling_json = normalize_path(tw_path[:-3] + ".json")
+    file_name = os.path.basename(tw_path)
+    if classify_dynamic_route_file(file_name) and os.path.exists(sibling_json):
+        deps.add(sibling_json)
     if os.path.exists(STYLE_FILE):
         deps.add(normalize_path(STYLE_FILE))
 
     for stylesheet_path in directives["stylesheets"]:
         deps.add(stylesheet_path)
+    for json_path in directives.get("json_files", []):
+        deps.add(json_path)
 
     for layout_name in directives["layouts"]:
         layout_path = normalize_path(os.path.join(LAYOUTS_DIR, f"{layout_name}.tw"))
@@ -1022,7 +1032,7 @@ def interpolate(text, context):
 
     def repl(match):
         value = evaluate_expression(match.group(1), context)
-        return "" if value is None else str(value)
+        return match.group(0) if value is None else str(value)
 
     # Support moustache-style placeholders: `{{brandName}}`
     # (common habit from other template engines)
@@ -1795,9 +1805,16 @@ def build_tw_ast(tokens, base_dir, file_path, source):
                 or (path_token.type == "WORD" and path_token.value.startswith("@"))
             )
             if not is_valid:
-                raise CompilerError("Expected stylesheet path after `load`", token=peek(tokens, i - 1))
+                raise CompilerError("Expected path after `load`", token=peek(tokens, i - 1))
             raw_path = path_token.value.lstrip("@") if path_token.type == "WORD" else path_token.value
-            page.loaded_sheets.append(load_external_stylesheet(raw_path, base_dir))
+            if str(raw_path).lower().endswith(".json"):
+                try:
+                    key = infer_json_context_key(raw_path)
+                except ValueError as e:
+                    raise CompilerError(str(e), token=path_token)
+                page.loaded_json.append({"key": key, "path": raw_path})
+            else:
+                page.loaded_sheets.append(load_external_stylesheet(raw_path, base_dir))
             i += 1
             continue
 
@@ -2041,8 +2058,6 @@ def render_head_extras(head, context):
         return value
 
     lines = []
-    if responsive:
-        lines.append('  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">')
     if head.icon:
         lines.append(f'  <link rel="icon" href="{html_escape(absolute_url(head.icon))}">')
 
@@ -2055,15 +2070,6 @@ def render_head_extras(head, context):
         lines.append(f"  <meta {' '.join(attrs)}>")
 
     seo = head.seo
-    if site_url and current_route and "canonical" not in seo:
-        seo = dict(seo)
-        seo["canonical"] = site_url + (current_route if current_route.startswith("/") else f"/{current_route}")
-    if "og_url" not in seo and "canonical" in seo:
-        seo = dict(seo)
-        seo["og_url"] = seo["canonical"]
-    lines.append(f'  <meta name="tw:render" content="{html_escape(context.get("_tw_render_mode", "static"))}">')
-    if context.get("_tw_revalidate") is not None:
-        lines.append(f'  <meta name="tw:revalidate" content="{html_escape(context.get("_tw_revalidate"))}">')
     mappings = {
         "description": ("meta", 'name="description"'),
         "keywords": ("meta", 'name="keywords"'),
@@ -2344,8 +2350,6 @@ def build_default_document(title, head_extras, style_blocks, body_html, runtime_
     return f"""<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>{html_escape(title)}</title>
 {head_extras}{style_blocks}</head>
 <body>
 {body_html}{runtime_scripts}</body>
@@ -2357,10 +2361,7 @@ def build_redirect_document(title, target):
     return f"""<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>{html_escape(title or "Redirecting")}</title>
   <meta http-equiv="refresh" content="0;url={safe_target}">
-  <link rel="canonical" href="{safe_target}">
 </head>
 <body>
   <p>Redirecting to <a href="{safe_target}">{safe_target}</a>...</p>
@@ -2369,24 +2370,30 @@ def build_redirect_document(title, target):
 </html>"""
 
 
-def apply_layout_template(layout_template, title, head_extras, style_blocks, body_html, runtime_scripts_html):
-    head_block = f'  <meta charset="UTF-8">\n  <title>{html_escape(title)}</title>\n{head_extras}'
+_LAYOUT_VAR_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*(?:\[[0-9]+\])*)\}")
+
+
+def interpolate_layout_template(text, context):
+    if text is None or "{" not in str(text):
+        return text
+
+    def repl(match):
+        expr = match.group(1)
+        value = evaluate_expression(expr, context)
+        return match.group(0) if value is None else str(value)
+
+    return _LAYOUT_VAR_RE.sub(repl, str(text))
+
+
+def apply_layout_template(layout_template, title, head_extras, style_blocks, body_html, runtime_scripts_html, context):
     runtime_scripts = runtime_scripts_html or ""
     rendered = layout_template
     rendered = rendered.replace("{slot}", body_html)
     rendered = rendered.replace("{title}", html_escape(title))
-    rendered = rendered.replace("{head}", head_block.rstrip())
+    rendered = rendered.replace("{head}", (head_extras or "").rstrip())
     rendered = rendered.replace("{styles}", style_blocks.rstrip())
     rendered = rendered.replace("{scripts}", runtime_scripts)
-
-    if "{head}" not in layout_template and "</head>" in rendered:
-        rendered = rendered.replace("</head>", f"{head_block}{style_blocks}</head>", 1)
-    if "{styles}" not in layout_template and "</head>" in rendered and style_blocks.strip():
-        rendered = rendered.replace("</head>", f"{style_blocks}</head>", 1)
-    if "{scripts}" not in layout_template and "</body>" in rendered and runtime_scripts:
-        rendered = rendered.replace("</body>", f"{runtime_scripts}\n</body>", 1)
-
-    return rendered
+    return interpolate_layout_template(rendered, context)
 
 
 def render_html(page, context, css_href):
@@ -2450,9 +2457,9 @@ def render_html(page, context, css_href):
         # - any additional layouts are treated as inner wrappers (fragments) around `{slot}`
         wrapped_body = body_html
         for inner_name in reversed(page.layouts[1:]):
-            wrapped_body = apply_layout_fragment(load_layout(inner_name), wrapped_body)
+            wrapped_body = apply_layout_fragment(load_layout(inner_name), wrapped_body, context)
         layout_template = load_layout(page.layouts[0])
-        return apply_layout_template(layout_template, title, head_extras, style_blocks, wrapped_body, runtime_scripts_html)
+        return apply_layout_template(layout_template, title, head_extras, style_blocks, wrapped_body, runtime_scripts_html, context)
 
     return build_default_document(title, head_extras, style_blocks, body_html, runtime_scripts_html)
 
@@ -2476,7 +2483,7 @@ def parse_layout_chain(raw_value):
     return parts
 
 
-def apply_layout_fragment(layout_template, body_html):
+def apply_layout_fragment(layout_template, body_html, context):
     """
     Apply an inner (fragment) layout around body_html.
     Inner layouts should ideally NOT include <html>/<head>/<body>; they are wrappers around `{slot}`.
@@ -2487,7 +2494,26 @@ def apply_layout_fragment(layout_template, body_html):
     rendered = rendered.replace("{styles}", "")
     rendered = rendered.replace("{scripts}", "")
     rendered = rendered.replace("{title}", "")
-    return rendered
+    return interpolate_layout_template(rendered, context)
+
+
+_LOAD_JSON_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def load_external_json(rel_path, base_dir):
+    full_path = os.path.normpath(os.path.join(base_dir, rel_path))
+    if not os.path.exists(full_path):
+        raise FileNotFoundError(f"load: json not found -> {full_path}")
+    with open(full_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def infer_json_context_key(rel_path):
+    base = os.path.basename(rel_path)
+    stem = base[:-5] if base.lower().endswith(".json") else os.path.splitext(base)[0]
+    if not _LOAD_JSON_KEY_RE.match(stem):
+        raise ValueError(f"Invalid JSON context key inferred from filename: {stem}")
+    return stem
 
 
 def load_page_data(tw_path):
@@ -2651,9 +2677,18 @@ def create_base_context(page_ast, tw_path):
     context = {}
     for key, value in page_ast.let_vars.items():
         context[key] = value
-    page_data = load_page_data(tw_path)
-    if isinstance(page_data, dict):
-        context.update(page_data)
+    for entry in getattr(page_ast, "loaded_json", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        key = entry.get("key")
+        rel_path = entry.get("path")
+        if not key or not rel_path:
+            continue
+        try:
+            payload = load_external_json(rel_path, os.path.dirname(tw_path))
+        except FileNotFoundError as e:
+            raise CompilerError(str(e), file_path=tw_path)
+        context[key] = payload
     config = load_config()
     context["config"] = config
     context["site"] = config
