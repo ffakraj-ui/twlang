@@ -1,0 +1,730 @@
+page {
+    title "TW Language | Language, Compiler, Framework"
+    layout "main"
+    render static
+}
+
+load "@./style/home-showcase.tss"
+
+head {
+    seo {
+        description "TW Language ka modern home page jo language syntax, compiler pipeline, CLI workflow, framework system, aur project structure ko responsive way mein represent karta hai."
+        og_title "TW Language | Language, Compiler, Framework"
+        og_description "Explore TW syntax, compiler layers, runtime system, CLI workflow, and production-ready framework capabilities."
+    }
+}
+
+BODY {
+    main {
+        class "home-shell"
+
+        section {
+            id "overview"
+            class "hero-section"
+
+            div {
+                class "container hero-grid"
+
+                div {
+                    class "hero-copy"
+
+                    span "TW ecosystem" {
+                        class "eyebrow"
+                    }
+
+                    h1 "One language surface for syntax, structure, compiler flow, and production output."
+                    p "TW Language ek custom language plus framework stack hai jo `.tw`, `.tss`, aur `.twm` ko ek clean developer workflow mein jodta hai. Yeh homepage usi system ko modern, responsive aur visually strong tareeke se represent karta hai."
+
+                    div {
+                        class "button-row"
+
+                        a "See syntax" {
+                            href "/#syntax"
+                            class "btn btn-primary"
+                        }
+
+                        a "View pipeline" {
+                            href "/#pipeline"
+                            class "btn btn-secondary"
+                        }
+
+                        a "Open CLI flow" {
+                            href "/#cli"
+                            class "btn btn-ghost"
+                        }
+                    }
+
+                    div {
+                        class "hero-inline-stats"
+
+                        article {
+                            class "mini-stat"
+                            strong "Compiler-aware"
+                            span "Language + framework + output"
+                        }
+
+                        article {
+                            class "mini-stat"
+                            strong "Production UX"
+                            span "Fast, clean, deploy-ready"
+                        }
+                    }
+
+                    div {
+                        class "pill-row"
+
+                        span ".tw pages + components" {
+                            class "pill"
+                        }
+
+                        span ".tss styling layer" {
+                            class "pill"
+                        }
+
+                        span ".twm runtime modules" {
+                            class "pill"
+                        }
+                    }
+                }
+
+                div {
+                    class "hero-surface"
+
+                    div {
+                        class "hero-backdrop"
+
+                        div {
+                            class "hero-orb hero-orb-one"
+                        }
+
+                        div {
+                            class "hero-orb hero-orb-two"
+                        }
+
+                        div {
+                            class "hero-grid-lines"
+                        }
+                    }
+
+                    div {
+                        class "surface-bar"
+
+                        span "TW Language v0.2.3" {
+                            class "surface-title"
+                        }
+
+                        span "Responsive by design" {
+                            class "surface-kicker"
+                        }
+                    }
+
+                    div {
+                        class "surface-grid"
+
+                        article {
+                            class "surface-card surface-card-primary"
+
+                            span "Language layer" {
+                                class "card-label"
+                            }
+
+                            h2 ".tw + .tss + .twm"
+                            p "Templates, stylesheets, and script modules ek consistent authoring model ke andar."
+                        }
+
+                        article {
+                            class "surface-card"
+
+                            span "Compiler depth" {
+                                class "card-label"
+                            }
+
+                            h3 "Lexer to renderer"
+                            p "Tokenization, parsing, semantic checks, IR lowering, and final HTML/CSS rendering."
+                        }
+
+                        article {
+                            class "surface-card"
+
+                            span "Framework system" {
+                                class "card-label"
+                            }
+
+                            h3 "Routing, API, middleware"
+                            p "Static pages se lekar runtime metadata aur deploy workflows tak."
+                        }
+
+                        article {
+                            class "surface-card"
+
+                            span "Output quality" {
+                                class "card-label"
+                            }
+
+                            h3 "SEO and deploy ready"
+                            p "Sitemap, robots, RSS, gzip, brotli, route manifests, aur hosting adapters."
+                        }
+                    }
+
+                    div {
+                        class "surface-status-row"
+
+                        div {
+                            class "status-pill"
+                            span "Compiler"
+                            strong "active"
+                        }
+
+                        div {
+                            class "status-pill"
+                            span "Framework"
+                            strong "ready"
+                        }
+
+                        div {
+                            class "status-pill"
+                            span "Deploy"
+                            strong "stable"
+                        }
+                    }
+
+                    div {
+                        class "surface-console"
+
+                        div {
+                            class "console-top"
+
+                            strong "Runtime activity"
+
+                            span "live" {
+                                class "console-live"
+                            }
+                        }
+
+                        div {
+                            class "console-list"
+
+                            article {
+                                class "console-row"
+
+                                div {
+                                    class "console-meta"
+                                    strong "Parser graph"
+                                    span "AST sync"
+                                }
+
+                                div {
+                                    class "meter"
+
+                                    span {
+                                        class "meter-fill meter-fill-primary"
+                                    }
+                                }
+                            }
+
+                            article {
+                                class "console-row"
+
+                                div {
+                                    class "console-meta"
+                                    strong "Render output"
+                                    span "HTML + CSS"
+                                }
+
+                                div {
+                                    class "meter"
+
+                                    span {
+                                        class "meter-fill meter-fill-accent"
+                                    }
+                                }
+                            }
+
+                            article {
+                                class "console-row"
+
+                                div {
+                                    class "console-meta"
+                                    strong "Deploy adapter"
+                                    span "Static ready"
+                                }
+
+                                div {
+                                    class "meter"
+
+                                    span {
+                                        class "meter-fill meter-fill-success"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        section {
+            class "signal-section"
+
+            div {
+                class "container signal-grid"
+
+                article {
+                    class "signal-card"
+                    strong "3"
+                    span "Core authoring files: `.tw`, `.tss`, `.twm`"
+                }
+
+                article {
+                    class "signal-card"
+                    strong "9+"
+                    span "Major compiler layers visible in the repo"
+                }
+
+                article {
+                    class "signal-card"
+                    strong "10+"
+                    span "CLI and build workflows for dev, check, build, preview"
+                }
+
+                article {
+                    class "signal-card"
+                    strong "Multi-mode"
+                    span "Static, server, edge, metadata, and deploy oriented rendering"
+                }
+            }
+        }
+
+        section {
+            id "syntax"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head"
+
+                    span "Syntax surface" {
+                        class "eyebrow"
+                    }
+
+                    h2 "Readable syntax that keeps structure obvious." {
+                        class "section-title"
+                    }
+
+                    p "Homepage ka core idea yeh hai ki TW sirf ek landing brand nahi, balki ek real language system lage. Isliye yahan syntax, styling grammar aur runtime module shape ko visually alag blocks mein dikhaya gaya hai." {
+                        class "section-copy"
+                    }
+                }
+
+                div {
+                    class "syntax-grid"
+
+                    article {
+                        class "code-card"
+
+                        div {
+                            class "code-head"
+
+                            span ".tw" {
+                                class "code-tag"
+                            }
+
+                            strong "Page + component structure"
+                        }
+
+                        pre {
+                            class "code-frame"
+
+                            code {
+                                text "
+page {
+  title TWLanguage
+  layout main
+  render static
+}
+
+BODY {
+  section {
+    class hero-section
+    h1 Build with TW
+  }
+}
+"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "code-card"
+
+                        div {
+                            class "code-head"
+
+                            span ".tss" {
+                                class "code-tag"
+                            }
+
+                            strong "Style system"
+                        }
+
+                        pre {
+                            class "code-frame"
+
+                            code {
+                                text "
+.hero-section {
+  display grid
+  gap 24
+  padding 96 0
+  background var(--surface-color)
+}
+"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "code-card"
+
+                        div {
+                            class "code-head"
+
+                            span ".twm" {
+                                class "code-tag"
+                            }
+
+                            strong "Runtime modules"
+                        }
+
+                        pre {
+                            class "code-frame"
+
+                            code {
+                                text "
+export function initHome() {
+  console.log(TW runtime ready)
+}
+"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        section {
+            id "pipeline"
+            class "section section-muted"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head"
+
+                    span "Compiler pipeline" {
+                        class "eyebrow"
+                    }
+
+                    h2 "Source se production output tak ek visible system." {
+                        class "section-title"
+                    }
+
+                    p "README aur framework files se jo core pipeline dikh raha hai usko homepage par explicit banaya gaya hai, taaki project immediately serious compiler work jaisa lage." {
+                        class "section-copy"
+                    }
+                }
+
+                div {
+                    class "pipeline-grid"
+
+                    article {
+                        class "pipeline-step"
+
+                        span "01" {
+                            class "step-index"
+                        }
+
+                        h3 "Author"
+                        p "`.tw`, `.tss`, `.twm` files se page, style aur module author karo."
+                    }
+
+                    article {
+                        class "pipeline-step"
+
+                        span "02" {
+                            class "step-index"
+                        }
+
+                        h3 "Lex + parse"
+                        p "Lexer aur parser source ko tokens aur syntax trees mein convert karte hain."
+                    }
+
+                    article {
+                        class "pipeline-step"
+
+                        span "03" {
+                            class "step-index"
+                        }
+
+                        h3 "AST + semantics"
+                        p "AST nodes aur semantic validation structure ko reliable banate hain."
+                    }
+
+                    article {
+                        class "pipeline-step"
+
+                        span "04" {
+                            class "step-index"
+                        }
+
+                        h3 "Lower + interpret"
+                        p "IR lowering, runtime values aur interpreter compiler path ko shape dete hain."
+                    }
+
+                    article {
+                        class "pipeline-step"
+
+                        span "05" {
+                            class "step-index"
+                        }
+
+                        h3 "Render"
+                        p "HTML, CSS, scripts, route metadata aur manifests final output mein generate hote hain."
+                    }
+
+                    article {
+                        class "pipeline-step"
+
+                        span "06" {
+                            class "step-index"
+                        }
+
+                        h3 "Ship"
+                        p "Preview, deploy, static export, hosting adapters aur production optimizations ready rehte hain."
+                    }
+                }
+            }
+        }
+
+        section {
+            id "system"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head"
+
+                    span "Framework system" {
+                        class "eyebrow"
+                    }
+
+                    h2 "Framework, language, structure, aur deploy story sab ek hi place par." {
+                        class "section-title"
+                    }
+
+                    p "Implemented features aur repo structure ke basis par homepage ab sirf marketing copy nahi, balki actual framework capabilities ko highlight karta hai." {
+                        class "section-copy"
+                    }
+                }
+
+                div {
+                    class "feature-grid"
+
+                    article {
+                        class "feature-card"
+
+                        span "Routing" {
+                            class "card-label"
+                        }
+
+                        h3 "Nested routes and layouts"
+                        p "Catch-all routes, route groups, redirects, rewrites, custom error pages, aur multi-layer layouts."
+                    }
+
+                    article {
+                        class "feature-card"
+
+                        span "Runtime" {
+                            class "card-label"
+                        }
+
+                        h3 "Theme, cache, env"
+                        p "Theme modes, cache directives, env exposure, rate limiting primitives aur runtime helpers."
+                    }
+
+                    article {
+                        class "feature-card"
+
+                        span "Platform" {
+                            class "card-label"
+                        }
+
+                        h3 "API and middleware"
+                        p "File-based API routes, method blocks, response directives, middleware matching, auth, cookies, rewrites."
+                    }
+
+                    article {
+                        class "feature-card"
+
+                        span "Output" {
+                            class "card-label"
+                        }
+
+                        h3 "SEO and performance"
+                        p "Sitemap, robots, RSS, canonical metadata, minified assets, fingerprints, gzip aur optional brotli."
+                    }
+
+                    article {
+                        class "feature-card"
+
+                        span "Delivery" {
+                            class "card-label"
+                        }
+
+                        h3 "Deploy adapters"
+                        p "Netlify, Vercel, Cloudflare Pages, GitHub Pages workflow, aur Docker based shipping paths."
+                    }
+
+                    article {
+                        class "feature-card"
+
+                        span "DX" {
+                            class "card-label"
+                        }
+
+                        h3 "Diagnostics and tooling"
+                        p "AST/IR inspection, diagnostics flags, component recursion guards, nested component resolution, and clearer errors."
+                    }
+                }
+            }
+        }
+
+        section {
+            id "cli"
+            class "section section-muted"
+
+            div {
+                class "container split-layout"
+
+                div {
+                    class "stack-panel"
+
+                    span "Project structure" {
+                        class "eyebrow"
+                    }
+
+                    h2 "Folder structure ko bhi homepage pe product signal banaya gaya hai." {
+                        class "section-title"
+                    }
+
+                    p "Yahan `[home]`, `components`, `layouts`, `pages`, aur `style` ko visible rakha gaya hai so that visitors samajh saken ki project kitna organized hai." {
+                        class "section-copy"
+                    }
+
+                    pre {
+                        class "code-frame"
+
+                        code {
+                            text "
+project/
+├── [home]
+│   ├── components
+│   ├── layouts
+│   ├── pages
+│   └── style
+├── docs/spec
+├── tw_framework
+├── tw.config
+└── package.json
+"
+                        }
+                    }
+                }
+
+                div {
+                    class "stack-panel"
+
+                    span "CLI workflow" {
+                        class "eyebrow"
+                    }
+
+                    h2 "Developer flow fast aur direct feel hona chahiye." {
+                        class "section-title"
+                    }
+
+                    div {
+                        class "command-list"
+
+                        article {
+                            class "command-card"
+                            strong "Install"
+                            code "pip install tw-framework"
+                            p "Framework CLI ko bootstrap karo aur local workflow ready karo."
+                        }
+
+                        article {
+                            class "command-card"
+                            strong "Inspect"
+                            code "tw ast file.tw"
+                            p "AST, IR, tokens, diagnostics se compiler internals inspect karo."
+                        }
+
+                        article {
+                            class "command-card"
+                            strong "Develop"
+                            code "tw dev"
+                            p "Dev server ke through fast iteration aur preview."
+                        }
+
+                        article {
+                            class "command-card"
+                            strong "Ship"
+                            code "tw build && tw preview"
+                            p "Production output, route metadata, aur deploy-ready artifacts generate karo."
+                        }
+                    }
+                }
+            }
+        }
+
+        section {
+            class "section section-compact"
+
+            div {
+                class "container"
+
+                div {
+                    class "cta-panel"
+
+                    div {
+                        span "TW representation" {
+                            class "eyebrow"
+                        }
+
+                        h2 "Ab homepage framework ko represent karta hai, sirf placeholder site ko nahi."
+                        p "Responsive layout, stronger hierarchy, syntax blocks, compiler narrative, system cards aur CLI flow ke saath yeh front page project ki actual identity ko match karta hai."
+                    }
+
+                    div {
+                        class "button-row"
+
+                        a "Back to top" {
+                            href "/#overview"
+                            class "btn btn-primary"
+                        }
+
+                        a "Review system" {
+                            href "/#system"
+                            class "btn btn-secondary"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

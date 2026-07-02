@@ -1,0 +1,29 @@
+fn makeResponse(source) {
+  const validCodes = [200, 201, 204, 400, 401, 403, 404, 409, 422, 500];
+  const code = Number(source.code || 200);
+
+  if (!validCodes.includes(code)) {
+    return { status: 400, json: { error: "Unsupported code", supported: validCodes } };
+  }
+
+  if (code === 204) {
+    return { status: 204, text: "" };
+  }
+
+  return {
+    status: code,
+    json: {
+      ok: code >= 200 && code < 300,
+      status: code,
+      message: source.message || `Response with status ${code}`
+    }
+  };
+}
+
+fn get(request) {
+  return makeResponse(request.query || {});
+}
+
+fn post(request) {
+  return makeResponse(request.body || {});
+}

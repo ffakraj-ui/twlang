@@ -1,0 +1,193 @@
+fn seedUsers() {
+  return [
+    { id: 1, name: "Aarav", email: "aarav@example.com", role: "admin", active: true },
+    { id: 2, name: "Sara", email: "sara@example.com", role: "tester", active: true },
+    { id: 3, name: "Kabir", email: "kabir@example.com", role: "user", active: false }
+  ];
+}
+
+fn dataFile(request) {
+  const path = require("path");
+  return path.join(request.project_root, "[home]", "api", "_data", "users.json");
+}
+
+fn ensureUsers(request) {
+  const fs = require("fs");
+  const path = require("path");
+  const file = dataFile(request);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  if (!fs.existsSync(file)) {
+    fs.writeFileSync(file, JSON.stringify(seedUsers(), null, 2), "utf8");
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+    return Array.isArray(parsed) ? parsed : seedUsers();
+  } catch (error) {
+    return seedUsers();
+  }
+}
+
+fn saveUsers(request, users) {
+  const fs = require("fs");
+  fs.writeFileSync(dataFile(request), JSON.stringify(users, null, 2), "utf8");
+}
+
+fn nextId(users) {
+  let maxId = 0;
+  for (const user of users) {
+    const value = Number(user && user.id ? user.id : 0);
+    if (Number.isFinite(value) && value > maxId) {
+      maxId = value;
+    }
+  }
+  return maxId + 1;
+}
+
+fn findUser(users, userId) {
+  for (const user of users) {
+    if (Number(user.id) === Number(userId)) {
+      return user;
+    }
+  }
+  return null;
+}
+
+fn nowIso() {
+  return new Date().toISOString();
+}
+
+fn get(request) {
+  const users = ensureUsers(request);
+  const query = request.query || {};
+  const userId = query.id;
+  const role = String(query.role || "").trim().toLowerCase();
+  const active = String(query.active || "").trim().toLowerCase();
+
+  if (userId) {
+    const user = findUser(users, userId);
+    if (!user) {
+      return { status: 404, json: { error: "User not found", id: userId } };
+    }
+    return { status: 200, json: { ok: true, data: user } };
+  }
+
+  let filtered = users.slice();
+  if (role) {
+    filtered = filtered.filter((user) => String(user.role || "").toLowerCase() === role);
+  }
+  if (active === "true" || active === "false") {
+    const activeValue = active === "true";
+    filtered = filtered.filter((user) => Boolean(user.active) === activeValue);
+  }
+
+  return {
+    status: 200,
+    json: {
+      ok: true,
+      total: filtered.length,
+      data: filtered,
+      filters: {
+        role: role || null,
+        active: active === "true" || active === "false" ? active : null
+      }
+    }
+  };
+}
+
+fn post(request) {
+  const payload = request.body || {};
+  const name = String(payload.name || "").trim();
+  const email = String(payload.email || "").trim();
+  const role = String(payload.role || "user").trim() || "user";
+
+  if (!name || !email) {
+    return { status: 400, json: { error: "name and email required" } };
+  }
+
+  const users = ensureUsers(request);
+  if (users.some((user) => String(user.email || "").toLowerCase() === email.toLowerCase())) {
+    return { status: 409, json: { error: "email already exists" } };
+  }
+
+  const user = {
+    id: nextId(users),
+    name,
+    email,
+    role,
+    active: payload.active === undefined ? true : Boolean(payload.active),
+    createdAt: nowIso()
+  };
+  users.push(user);
+  saveUsers(request, users);
+  return { status: 201, json: { ok: true, message: "User created", data: user } };
+}
+
+fn put(request) {
+  const payload = request.body || {};
+  const userId = payload.id;
+  if (!userId) {
+    return { status: 400, json: { error: "id required" } };
+  }
+
+  const users = ensureUsers(request);
+  const user = findUser(users, userId);
+  if (!user) {
+    return { status: 404, json: { error: "User not found", id: userId } };
+  }
+
+  const name = String(payload.name || "").trim();
+  const email = String(payload.email || "").trim();
+  if (!name || !email) {
+    return { status: 400, json: { error: "name and email required for full update" } };
+  }
+
+  user.name = name;
+  user.email = email;
+  user.role = String(payload.role || "user").trim() || "user";
+  user.active = payload.active === undefined ? true : Boolean(payload.active);
+  user.updatedAt = nowIso();
+  saveUsers(request, users);
+  return { status: 200, json: { ok: true, message: "User replaced", data: user } };
+}
+
+fn patch(request) {
+  const payload = request.body || {};
+  const userId = payload.id;
+  if (!userId) {
+    return { status: 400, json: { error: "id required" } };
+  }
+
+  const users = ensureUsers(request);
+  const user = findUser(users, userId);
+  if (!user) {
+    return { status: 404, json: { error: "User not found", id: userId } };
+  }
+
+  for (const key of ["name", "email", "role", "active"]) {
+    if (Object.prototype.hasOwnProperty.call(payload, key)) {
+      user[key] = payload[key];
+    }
+  }
+  user.updatedAt = nowIso();
+  saveUsers(request, users);
+  return { status: 200, json: { ok: true, message: "User updated", data: user } };
+}
+
+fn delete(request) {
+  const payload = request.body || {};
+  const query = request.query || {};
+  const userId = payload.id || query.id;
+  if (!userId) {
+    return { status: 400, json: { error: "id required" } };
+  }
+
+  const users = ensureUsers(request);
+  const user = findUser(users, userId);
+  if (!user) {
+    return { status: 404, json: { error: "User not found", id: userId } };
+  }
+
+  const remaining = users.filter((item) => Number(item.id) !== Number(userId));
+  saveUsers(request, remaining);
+  return { status: 200, json: { ok: true, message: "User deleted", data: user } };
+}

@@ -1,0 +1,52 @@
+load "@../style/header.tss"
+
+header {
+    class "site-header"
+
+    div {
+        class "container header-shell"
+
+        a {
+            href "/"
+            class "brand-link"
+
+            span "TW" {
+                class "brand-mark"
+            }
+
+            span {
+                class "brand-copy"
+
+                strong "TW Language"
+                small "language • compiler • framework"
+            }
+        }
+
+        nav {
+            class "desktop-nav"
+
+            a "Overview" { href "/#overview" }
+            a "Syntax" { href "/#syntax" }
+            a "Pipeline" { href "/#pipeline" }
+            a "System" { href "/#system" }
+            a "CLI" { href "/#cli" }
+        }
+
+        div {
+            class "header-actions"
+
+            button {
+                type "button"
+                class "theme-toggle"
+                click "__twToggleTheme"
+                title "Toggle dark mode"
+                text "Theme"
+            }
+
+            a "Open flow" {
+                href "/#cli"
+                class "header-cta"
+            }
+        }
+    }
+}

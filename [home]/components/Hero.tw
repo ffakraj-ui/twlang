@@ -1,0 +1,68 @@
+load "@../style/hero.tss"
+
+section {
+
+    class "hero"
+
+    div {
+
+        class "hero-container"
+
+        span {
+
+            class "hero-badge"
+
+            text "🚀 TW Language v0.2.3"
+
+        }
+
+        h1 "Build Fast."
+
+        h1 "Build the Future."
+
+        p {
+
+            text "TW Language is a modern programming language and web framework designed to build fast, scalable and beautiful websites with a clean syntax, powerful compiler and an excellent developer experience."
+
+        }
+
+        div {
+
+            class "hero-actions"
+
+            a "Get Started" {
+                href "/docs"
+                class "primary"
+            }
+
+            a "Documentation" {
+                href "/docs"
+                class "secondary"
+            }
+
+            a "GitHub" {
+                href "https://github.com/ffakraj-ui/twlang"
+                class "secondary"
+            }
+
+        }
+
+        div {
+
+            class "install-box"
+
+            span {
+                class "install-title"
+                text "Quick Installation"
+            }
+
+            code {
+                class "install-command"
+                text "pip install tw-framework"
+            }
+
+        }
+
+    }
+
+}

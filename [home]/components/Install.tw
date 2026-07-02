@@ -1,0 +1,214 @@
+load "@../style/install.tss"
+
+section {
+
+    class "install-section"
+
+    div {
+
+        class "section-header"
+
+        span {
+
+            class "badge"
+
+            text "Getting Started"
+
+        }
+
+        h2 "Install TW Language"
+
+        p {
+
+            text "Start building modern web applications in just a few minutes."
+
+        }
+
+    }
+
+    div {
+
+        class "install-grid"
+
+        div {
+
+            class "install-card"
+
+            h3 "Step 1"
+
+            h4 "Install"
+
+            code {
+
+                text "pip install tw-framework"
+
+            }
+
+            p {
+
+                text "Install the latest stable version of the TW Framework."
+
+            }
+
+        }
+
+        div {
+
+            class "install-card"
+
+            h3 "Step 2"
+
+            h4 "Create Project"
+
+            code {
+
+                text "tw init my-app"
+
+            }
+
+            p {
+
+                text "Create a new TW project with the recommended folder structure."
+
+            }
+
+        }
+
+        div {
+
+            class "install-card"
+
+            h3 "Step 3"
+
+            h4 "Development"
+
+            code {
+
+                text "cd my-app"
+
+            }
+
+            code {
+
+                text "tw dev"
+
+            }
+
+            p {
+
+                text "Launch the development server with hot reload."
+
+            }
+
+        }
+
+        div {
+
+            class "install-card"
+
+            h3 "Step 4"
+
+            h4 "Production"
+
+            code {
+
+                text "tw build"
+
+            }
+
+            code {
+
+                text "tw serve"
+
+            }
+
+            p {
+
+                text "Generate optimized production files and preview them locally."
+
+            }
+
+        }
+
+    }
+
+    div {
+
+        class "project-structure"
+
+        h3 "Recommended Project Structure"
+
+        code {
+
+            text "
+my-app/
+├── [home]
+│   ├── components
+│   ├── layouts
+│   ├── pages
+│   └── style
+├── assets
+├── public
+├── tw.config
+└── package.json
+"
+
+        }
+
+    }
+
+    div {
+
+        class "platforms"
+
+        h3 "Supported Platforms"
+
+        div {
+
+            class "platform-grid"
+
+            div {
+
+                class "platform"
+
+                h4 "Windows"
+
+                p "Fully Supported"
+
+            }
+
+            div {
+
+                class "platform"
+
+                h4 "Linux"
+
+                p "Fully Supported"
+
+            }
+
+            div {
+
+                class "platform"
+
+                h4 "macOS"
+
+                p "Fully Supported"
+
+            }
+
+            div {
+
+                class "platform"
+
+                h4 "Vercel"
+
+                p "Production Ready"
+
+            }
+
+        }
+
+    }
+
+}

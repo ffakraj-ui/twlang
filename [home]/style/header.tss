@@ -1,0 +1,154 @@
+.site-header {
+  position sticky
+  top 0
+  z-index 500
+  width 100%
+  background rgba(255,255,255,.78)
+  backdrop-filter blur(18)
+  border-bottom 1 solid var(--border-color)
+}
+
+:root[data-theme="dark"] .site-header {
+  background rgba(9,14,26,.84)
+}
+
+.header-shell {
+  display flex
+  align-items center
+  justify-content space-between
+  gap 24
+  min-height 76
+}
+
+.brand-link {
+  display inline-flex
+  align-items center
+  gap 14
+  text-decoration none
+  color inherit
+}
+
+.brand-mark {
+  width 44
+  height 44
+  border-radius 14
+  display inline-flex
+  align-items center
+  justify-content center
+  background linear-gradient(135deg, #0f172a 0%, #2563eb 100%)
+  color white
+  font-size 15
+  font-weight 800
+  letter-spacing .14em
+  box-shadow 0 20 50 rgba(37,99,235,.22)
+}
+
+.brand-copy {
+  display flex
+  flex-direction column
+  gap 2
+}
+
+.brand-copy strong {
+  font-size 16
+  line-height 1.1
+}
+
+.brand-copy small {
+  font-size 12
+  color var(--muted-color)
+}
+
+.desktop-nav {
+  display flex
+  align-items center
+  gap 26
+}
+
+.desktop-nav a {
+  text-decoration none
+  color var(--muted-color)
+  font-weight 600
+  font-size 14
+  transition color .2s ease
+}
+
+.desktop-nav a:hover {
+  color var(--text-color)
+}
+
+.header-actions {
+  display flex
+  align-items center
+  gap 12
+}
+
+.theme-toggle {
+  min-height 44
+  padding 0 16
+  border-radius 999
+  border 1 solid var(--border-color)
+  background var(--surface-color)
+  color var(--text-color)
+  font-weight 600
+  cursor pointer
+  transition transform .2s ease, border-color .2s ease, background .2s ease
+}
+
+.theme-toggle:hover {
+  transform translateY(-1)
+  border-color rgba(37,99,235,.34)
+}
+
+.header-cta {
+  display inline-flex
+  align-items center
+  justify-content center
+  min-height 46
+  padding 0 20
+  border-radius 999
+  text-decoration none
+  background #0f172a
+  color white
+  font-weight 700
+  box-shadow 0 18 45 rgba(15,23,42,.18)
+}
+
+:root[data-theme="dark"] .header-cta {
+  background #f8fafc
+  color #0f172a
+}
+
+@media (max-width:1024) {
+  .desktop-nav {
+    gap 18
+  }
+}
+
+@media (max-width:768) {
+  .site-header {
+    top 0
+  }
+
+  .header-shell {
+    min-height 70
+  }
+
+  .desktop-nav {
+    display none
+  }
+
+  .brand-copy small {
+    display none
+  }
+
+  .theme-toggle {
+    min-height 42
+    padding 0 14
+    font-size 13
+  }
+
+  .header-cta {
+    display none
+  }
+}

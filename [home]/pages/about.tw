@@ -1,0 +1,188 @@
+page {
+    title "About | Veridian Systems"
+    layout "main"
+    render static
+}
+
+load "@../style/site.tss"
+
+head {
+    seo {
+        description "Learn about the company story, values, and operating style behind Veridian Systems."
+        og_title "About | Veridian Systems"
+        og_description "Professional about page for an official business website."
+    }
+}
+
+BODY {
+    main {
+        section {
+            class "page-hero"
+
+            div {
+                class "container page-hero-copy"
+
+                span "About the company" {
+                    class "eyebrow"
+                }
+
+                h1 "Built to look dependable, not temporary."
+                p "This about page is designed to give your brand a real company presence. It explains who you are, how you think, and why clients should trust your work across desktop and mobile."
+
+                div {
+                    class "button-row"
+
+                    a "Contact the Team" {
+                        href "/contact"
+                        class "btn btn-primary"
+                    }
+
+                    a "Explore Services" {
+                        href "/services"
+                        class "btn btn-secondary"
+                    }
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container split-grid"
+
+                div {
+                    span "Positioning" {
+                        class "eyebrow"
+                    }
+
+                    h2 "A modern business site should explain the company in plain language." {
+                        class "section-title"
+                    }
+
+                    p "Veridian Systems is presented as a focused digital partner that combines clarity, execution, and polished presentation. The copy is neutral enough to be reused by many types of official brands while still sounding credible." {
+                        class "section-copy"
+                    }
+                }
+
+                div {
+                    class "highlight-panel"
+
+                    h3 "Core company values"
+                    ul {
+                        class "info-list"
+                        li "Professional communication from first impression to final enquiry"
+                        li "Design that supports trust, not clutter"
+                        li "Simple navigation that works across every major screen size"
+                        li "Content structure that helps visitors understand the business fast"
+                    }
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container team-grid"
+
+                article {
+                    class "team-card"
+                    span "01" {
+                        class "team-role"
+                    }
+                    h3 "Clarity first"
+                    p "Every section is designed to reduce friction and guide visitors toward the next logical step."
+                }
+
+                article {
+                    class "team-card"
+                    span "02" {
+                        class "team-role"
+                    }
+                    h3 "Professional tone"
+                    p "The language is business-ready, clean, and usable for agencies, consultants, startups, and service brands."
+                }
+
+                article {
+                    class "team-card"
+                    span "03" {
+                        class "team-role"
+                    }
+                    h3 "Responsive execution"
+                    p "The design system keeps the same premium feel on desktops, tablets, and phones."
+                }
+
+                article {
+                    class "team-card"
+                    span "04" {
+                        class "team-role"
+                    }
+                    h3 "Actionable navigation"
+                    p "Buttons and nav links do not feel fake. They take users to actual pages and direct contact actions."
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "metric-grid"
+
+                    div {
+                        class "metric-panel"
+                        strong "Premium"
+                        span "Visual style tuned for official presentation"
+                    }
+
+                    div {
+                        class "metric-panel"
+                        strong "Flexible"
+                        span "Brand text and contact details can be swapped later"
+                    }
+
+                    div {
+                        class "metric-panel"
+                        strong "Ready"
+                        span "Multi-page structure prepared for real-world use"
+                    }
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "cta-banner"
+
+                    div {
+                        h2 "Want the full company story to end in conversion?"
+                        p "Guide visitors from this about page into services, case studies, and direct contact."
+                    }
+
+                    div {
+                        class "button-row"
+
+                        a "Open Work Page" {
+                            href "/work"
+                            class "btn btn-primary"
+                        }
+
+                        a "Go to Contact" {
+                            href "/contact"
+                            class "btn btn-secondary"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

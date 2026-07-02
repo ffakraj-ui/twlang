@@ -1,0 +1,16 @@
+.stats {
+    background: #f9fafb;
+    text-align: center;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+}
+
+.stat {
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+}

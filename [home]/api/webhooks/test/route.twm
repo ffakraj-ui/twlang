@@ -1,0 +1,29 @@
+fn readHeader(headers, candidates) {
+  for (const name of candidates) {
+    const want = String(name).toLowerCase();
+    for (const key of Object.keys(headers || {})) {
+      if (String(key).toLowerCase() === want) {
+        return headers[key];
+      }
+    }
+  }
+  return "";
+}
+
+fn post(request) {
+  const headers = request.headers || {};
+  const signature = readHeader(headers, ["X-Signature", "X-Hub-Signature-256"]);
+  const event = readHeader(headers, ["X-Webhook-Event"]) || "demo.event";
+  return {
+    status: 202,
+    json: {
+      ok: true,
+      received: true,
+      event,
+      hasSignature: Boolean(signature),
+      signature,
+      receivedAt: new Date().toISOString(),
+      payload: request.body || {}
+    }
+  };
+}

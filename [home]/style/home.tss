@@ -1,0 +1,8 @@
+.hero, .features, .stats, .showcase, .cta {
+    padding: 60px 20px;
+}
+
+section {
+    max-width: 1200px;
+    margin: auto;
+}

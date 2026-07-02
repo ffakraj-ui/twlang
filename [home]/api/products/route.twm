@@ -1,0 +1,47 @@
+fn get(request) {
+  const products = [
+    { id: 101, name: "Keyboard", category: "electronics", price: 1499, stock: 12 },
+    { id: 102, name: "Mouse", category: "electronics", price: 799, stock: 30 },
+    { id: 103, name: "Notebook", category: "stationery", price: 99, stock: 100 },
+    { id: 104, name: "Pen Pack", category: "stationery", price: 149, stock: 65 },
+    { id: 105, name: "Backpack", category: "fashion", price: 1999, stock: 9 },
+    { id: 106, name: "Bottle", category: "lifestyle", price: 499, stock: 25 }
+  ];
+
+  const query = request.query || {};
+  const category = String(query.category || "").trim().toLowerCase();
+  const search = String(query.search || "").trim().toLowerCase();
+  const sortBy = String(query.sort || "id").trim().toLowerCase();
+  const order = String(query.order || "asc").trim().toLowerCase();
+  const page = Math.max(Number(query.page || 1), 1);
+  const limit = Math.min(Math.max(Number(query.limit || 3), 1), 20);
+
+  let items = products.slice();
+  if (category) {
+    items = items.filter((item) => item.category === category);
+  }
+  if (search) {
+    items = items.filter((item) => String(item.name).toLowerCase().includes(search));
+  }
+  if (["id", "name", "price", "stock", "category"].includes(sortBy)) {
+    items.sort((a, b) => {
+      if (a[sortBy] < b[sortBy]) return order === "desc" ? 1 : -1;
+      if (a[sortBy] > b[sortBy]) return order === "desc" ? -1 : 1;
+      return 0;
+    });
+  }
+
+  const start = (page - 1) * limit;
+  const paged = items.slice(start, start + limit);
+  return {
+    status: 200,
+    json: {
+      ok: true,
+      page,
+      limit,
+      total: items.length,
+      filters: { category: category || null, search: search || null, sort: sortBy, order },
+      data: paged
+    }
+  };
+}

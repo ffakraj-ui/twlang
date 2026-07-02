@@ -1,0 +1,850 @@
+<!-- [TW] Page: index | Render: static | Route: / -->
+<!-- [TW] Components: — -->
+<!-- [TW] Build: 2026-07-01T17:10:18Z -->
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<title>TW Compiler Test Lab</title>
+  <!-- ⚡ Built with TW Framework -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="TW Framework">
+  <div id="__TW__" style="display:none"></div>
+  <script id="__TW_DATA__" type="application/json">{"page":"index","route":"/","render":"static","build":"2026-07-01T17:10:18Z"}</script>
+  <script>(function() {
+  var STORAGE_KEY = "tw_theme";
+  var DEFAULT_MODE = "system";
+  function prefersDark() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    } catch (e) { return false; }
+  }
+  function resolve(mode) {
+    if (mode === 'dark' || mode === 'light') return mode;
+    return prefersDark() ? 'dark' : 'light';
+  }
+  function apply(resolved) {
+    var root = document.documentElement;
+    root.setAttribute('data-theme', resolved);
+    root.classList.toggle('dark', resolved === 'dark');
+    root.classList.toggle('light', resolved === 'light');
+  }
+  function getMode() {
+    var saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) { saved = null; }
+    return (saved || DEFAULT_MODE || 'system');
+  }
+  function setMode(mode) {
+    try { localStorage.setItem(STORAGE_KEY, mode); } catch (e) {}
+    apply(resolve(mode));
+  }
+  window.__twSetTheme = function(mode) { setMode(String(mode || 'system').toLowerCase()); };
+  window.__twToggleTheme = function() {
+    var current = document.documentElement.getAttribute('data-theme') || resolve(getMode());
+    setMode(current === 'dark' ? 'light' : 'dark');
+  };
+  // Initial paint
+  apply(resolve(getMode()));
+  // Keep in sync with system when mode=system
+  try {
+    if (window.matchMedia) {
+      var mql = window.matchMedia('(prefers-color-scheme: dark)');
+      var onChange = function() {
+        if (getMode() === 'system') apply(resolve('system'));
+      };
+      if (mql.addEventListener) mql.addEventListener('change', onChange);
+      else if (mql.addListener) mql.addListener(onChange);
+    }
+  } catch (e) {}
+})();</script>
+  <meta name="description" content="TW framework ke liye testing-first page jahan compiler pipeline, smoke checks, diagnostics shape, aur fixture snippets direct inspect kiye ja sakte hain.">
+  <meta property="og:title" content="TW Compiler Test Lab">
+  <meta property="og:description" content="Compiler, diagnostics, CLI check output, aur test fixtures ek focused lab page par.">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;}
+    body{margin:0;min-height:100vh;}
+    img,video,canvas,svg{max-width:100%;height:auto;}
+    .tw-container{width:100%;margin:0 auto;padding:0 16px;}
+    @media (min-width:768px){.tw-container{max-width:720px;padding:0 24px;}}
+    @media (min-width:1024px){.tw-container{max-width:960px;}}
+    @media (min-width:1280px){.tw-container{max-width:1140px;}}
+  </style>
+  <link rel="stylesheet" href="/_tw/static/chunks/55793fca.css">
+  <style>
+.testing-shell {
+    display: grid;
+    gap: 28px;
+    padding: 48px 20px 72px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.hero-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+    gap: 22px;
+    padding: 28px;
+    border-radius: 30px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.92));
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+.hero-copy {
+    display: grid;
+    gap: 14px;
+}
+.hero-copy h1 {
+    margin: 0;
+    font-size: 46px;
+    line-height: 1.08;
+    color: #f8fafc;
+}
+.hero-copy p {
+    margin: 0;
+    color: #cbd5e1;
+    line-height: 1.75;
+    max-width: 760px;
+}
+.eyebrow {
+    display: inline-flex;
+    width: fit-content;
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: rgba(96, 165, 250, 0.14);
+    color: #bfdbfe;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+}
+.hero-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(30, 41, 59, 0.88);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    color: #e2e8f0;
+    font-size: 14px;
+}
+.hero-metrics {
+    display: grid;
+    gap: 14px;
+}
+.metric-card {
+    display: grid;
+    gap: 6px;
+    padding: 18px 20px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    color: #e2e8f0;
+}
+.metric-card strong {
+    font-size: 28px;
+    color: #f8fafc;
+}
+.section-block {
+    display: grid;
+    gap: 18px;
+}
+.section-head {
+    display: grid;
+    gap: 10px;
+}
+.section-head h2 {
+    margin: 0;
+    font-size: 32px;
+    color: #0f172a;
+}
+.section-head p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.75;
+    max-width: 820px;
+}
+.command-grid,
+.fixture-grid,
+.improvement-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+.fixture-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.command-card,
+.fixture-card,
+.improvement-card {
+    display: grid;
+    gap: 12px;
+    padding: 22px;
+    border-radius: 24px;
+    background: #ffffff;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 16px 45px rgba(15, 23, 42, 0.06);
+}
+.command-card strong,
+.fixture-card h3,
+.improvement-card h3 {
+    margin: 0;
+    font-size: 20px;
+    color: #0f172a;
+}
+.command-card p,
+.fixture-card p,
+.improvement-card p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.7;
+}
+.command-card code {
+    display: block;
+    padding: 14px 16px;
+    border-radius: 16px;
+    overflow: auto;
+    background: #0f172a;
+    color: #e2e8f0;
+}
+.fixture-code {
+    margin: 0;
+    padding: 16px;
+    border-radius: 18px;
+    overflow: auto;
+    background: #0f172a;
+    color: #cbd5e1;
+}
+@media (max-width: 1100px) {
+    .hero-panel,
+    .fixture-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 860px) {
+    .testing-shell {
+        padding: 36px 16px 56px;
+    }
+    .hero-copy h1 {
+        font-size: 36px;
+    }
+    .section-head h2 {
+        font-size: 28px;
+    }
+    .command-grid,
+    .improvement-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.compiler-lab {
+    display: grid;
+    gap: 24px;
+    padding: 28px;
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.86));
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    box-shadow: 0 22px 60px rgba(2, 6, 23, 0.32);
+    color: #e2e8f0;
+}
+.compiler-header {
+    display: grid;
+    gap: 12px;
+}
+.compiler-header h2 {
+    margin: 0;
+    font-size: 34px;
+    color: #f8fafc;
+}
+.compiler-header p {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.78);
+    line-height: 1.7;
+}
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(96, 165, 250, 0.18);
+    color: #bfdbfe;
+}
+.compiler-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+.compiler-card {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 22px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    min-height: 100%;
+}
+.compiler-card h3 {
+    margin: 0;
+    font-size: 20px;
+    color: #f8fafc;
+}
+.compiler-card p {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.76);
+    line-height: 1.7;
+}
+.compiler-code {
+    margin: 0;
+    padding: 16px;
+    border-radius: 18px;
+    overflow: auto;
+    background: rgba(2, 6, 23, 0.74);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    color: #cbd5e1;
+}
+.phase-stack {
+    display: grid;
+    gap: 10px;
+}
+.phase-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+}
+.phase-row strong {
+    color: #93c5fd;
+}
+.phase-row span {
+    color: #f8fafc;
+}
+.diagnostic-list {
+    display: grid;
+    gap: 12px;
+}
+.diagnostic-item {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(15, 23, 42, 0.92);
+}
+.diagnostic-item strong {
+    font-size: 14px;
+}
+.diagnostic-item p {
+    margin: 0;
+}
+.diagnostic-error strong {
+    color: #fda4af;
+}
+.diagnostic-warning strong {
+    color: #fde68a;
+}
+.diagnostic-info strong {
+    color: #93c5fd;
+}
+.compiler-footer p {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.72);
+}
+@media (max-width: 960px) {
+    .compiler-grid {
+        grid-template-columns: 1fr;
+    }
+}
+  </style>
+
+</head>
+
+<body>
+
+<style>
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 500;
+    width: 100%;
+    background: rgba(255,255,255,.78);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border-color);
+}
+:root[data-theme="dark"] .site-header {
+    background: rgba(9,14,26,.84);
+}
+.header-shell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    min-height: 76px;
+}
+.brand-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    text-decoration: none;
+    color: inherit;
+}
+.brand-mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
+    color: white;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    box-shadow: 0 20px 50px rgba(37,99,235,.22);
+}
+.brand-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.brand-copy strong {
+    font-size: 16px;
+    line-height: 1.1;
+}
+.brand-copy small {
+    font-size: 12px;
+    color: var(--muted-color);
+}
+.desktop-nav {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+}
+.desktop-nav a {
+    text-decoration: none;
+    color: var(--muted-color);
+    font-weight: 600;
+    font-size: 14px;
+    transition: color .2s ease;
+}
+.desktop-nav a:hover {
+    color: var(--text-color);
+}
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.theme-toggle {
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+.theme-toggle:hover {
+    transform: translateY(-1px);
+    border-color: rgba(37,99,235,.34);
+}
+.header-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 0 20px;
+    border-radius: 999px;
+    text-decoration: none;
+    background: #0f172a;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 18px 45px rgba(15,23,42,.18);
+}
+:root[data-theme="dark"] .header-cta {
+    background: #f8fafc;
+    color: #0f172a;
+}
+@media (max-width:1024px) {
+    .desktop-nav {
+        gap: 18px;
+    }
+}
+@media (max-width:768px) {
+    .site-header {
+        top: 0;
+    }
+    .header-shell {
+        min-height: 70px;
+    }
+    .desktop-nav {
+        display: none;
+    }
+    .brand-copy small {
+        display: none;
+    }
+    .theme-toggle {
+        min-height: 42px;
+        padding: 0 14px;
+        font-size: 13px;
+    }
+    .header-cta {
+        display: none;
+    }
+}</style>
+  <header class="site-header">
+    <div class="container header-shell">
+      <a href="/" class="brand-link">
+        <span class="brand-mark">TW</span>
+        <span class="brand-copy">
+          <strong>TW Language</strong>
+          <small>language • compiler • framework</small>
+        </span>
+      </a>
+      <nav class="desktop-nav">
+        <a href="/#overview">Overview</a>
+        <a href="/#syntax">Syntax</a>
+        <a href="/#pipeline">Pipeline</a>
+        <a href="/#system">System</a>
+        <a href="/#cli">CLI</a>
+      </nav>
+      <div class="header-actions">
+        <button type="button" class="theme-toggle" title="Toggle dark mode" onclick="return (window.__twInvoke ? window.__twInvoke('__twToggleTheme', event) : (typeof __twToggleTheme === 'function' ? __twToggleTheme(event) : undefined))">Theme</button>
+        <a href="/#cli" class="header-cta">Open flow</a>
+      </div>
+    </div>
+  </header>
+
+
+  <main class="testing-shell">
+    <section class="hero-panel">
+      <div class="hero-copy">
+        <span class="eyebrow">Testing page</span>
+        <h1>Website nahi, yeh ab TW framework ka focused test lab hai.</h1>
+        <p>Is page ka kaam branding nahi, balki compiler aur framework behavior ko quickly inspect karna hai. Yahan smoke commands, fixture samples, diagnostics expectations, aur output checkpoints ek jagah rakhe gaye hain.</p>
+        <div class="hero-pills">
+          <span class="pill">compiler visibility</span>
+          <span class="pill">error handling</span>
+          <span class="pill">diagnostics summary</span>
+          <span class="pill">fixture review</span>
+        </div>
+      </div>
+      <div class="hero-metrics">
+        <article class="metric-card">
+          <strong>5</strong>
+          <span>Core compiler phases visible</span>
+        </article>
+        <article class="metric-card">
+          <strong>4</strong>
+          <span>Primary smoke commands</span>
+        </article>
+        <article class="metric-card">
+          <strong>JSON</strong>
+          <span>AST, IR, diagnostics, summary output</span>
+        </article>
+      </div>
+    </section>
+    <section class="section-block">
+      <div class="section-head">
+        <span class="eyebrow">Smoke checklist</span>
+        <h2>Quick commands jo framework health immediately dikhate hain.</h2>
+        <p>Goal yeh hai ki parser, AST serializer, diagnostics, aur build path ek short cycle mein verify ho jaayein.</p>
+      </div>
+      <div class="command-grid">
+        <article class="command-card">
+          <strong>Tokens</strong>
+          <code>tw tokens [home]/pages/index.tw</code>
+          <p>Token stream dekhne ke liye lexer output inspect karo.</p>
+        </article>
+        <article class="command-card">
+          <strong>AST</strong>
+          <code>tw ast [home]/pages/index.tw --diagnostics</code>
+          <p>AST aur semantic warnings ko ek hi run mein dekho.</p>
+        </article>
+        <article class="command-card">
+          <strong>Check</strong>
+          <code>tw check [home]/pages/index.tw --include-ast --include-ir</code>
+          <p>Ab JSON output mein summary aur phase-aware diagnostics milte hain.</p>
+        </article>
+        <article class="command-card">
+          <strong>Build</strong>
+          <code>tw build</code>
+          <p>Renderer, stylesheet loading, manifests, aur final output path verify karo.</p>
+        </article>
+      </div>
+    </section>
+    <section class="compiler-lab">
+      <div class="compiler-header">
+        <span class="badge">Compiler Lab</span>
+        <h2>Compiler pipeline, diagnostics, aur smoke checks ek hi panel mein.</h2>
+        <p>Yeh reusable block website showcase ke liye nahi, balki framework testing ke liye hai. Ismein sample input, expected compiler phases, aur error-report shape ko direct review kiya ja sakta hai.</p>
+      </div>
+      <div class="compiler-grid">
+        <article class="compiler-card">
+          <h3>Input fixture</h3>
+          <p>Small `.tw` sample jo parser, semantic checks, aur renderer tino touch karta hai.</p>
+          <pre class="compiler-code">
+            <code>
+page { title &quot;Lab&quot; layout &quot;main&quot; render static }
+let heading = &quot;Compiler&quot;
+BODY {
+  section {
+    class &quot;panel&quot;
+    h2 &quot;Compiler heading&quot;
+  }
+}
+</code>
+          </pre>
+        </article>
+        <article class="compiler-card">
+          <h3>Expected phases</h3>
+          <div class="phase-stack">
+            <div class="phase-row">
+              <strong>01</strong>
+              <span>tokenize</span>
+            </div>
+            <div class="phase-row">
+              <strong>02</strong>
+              <span>parse</span>
+            </div>
+            <div class="phase-row">
+              <strong>03</strong>
+              <span>analyze</span>
+            </div>
+            <div class="phase-row">
+              <strong>04</strong>
+              <span>lower</span>
+            </div>
+            <div class="phase-row">
+              <strong>05</strong>
+              <span>render</span>
+            </div>
+          </div>
+        </article>
+        <article class="compiler-card">
+          <h3>Diagnostics shape</h3>
+          <p>Ab structured output mein severity, code, line, column, phase, aur suggestion sab include kiya ja sakta hai.</p>
+          <div class="diagnostic-list">
+            <div class="diagnostic-item diagnostic-error">
+              <strong>error • TW1000</strong>
+              <p>Syntax ya parser failure ko exact phase ke saath pakdo.</p>
+            </div>
+            <div class="diagnostic-item diagnostic-warning">
+              <strong>warning • TW2001</strong>
+              <p>Missing title, undefined symbols, aur weak authoring hints ko alag rakho.</p>
+            </div>
+            <div class="diagnostic-item diagnostic-info">
+              <strong>summary</strong>
+              <p>CLI check output mein total counts aur phase-wise grouping inspect karo.</p>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div class="compiler-footer">
+        <p>Goal simple hai: website polish se zyada framework observability. Agar parser, AST, IR, ya renderer fail kare, test page se immediately trace milna chahiye.</p>
+      </div>
+    </section>
+    <section class="section-block">
+      <div class="section-head">
+        <span class="eyebrow">Fixture snippets</span>
+        <h2>Testing ke liye small inputs aur expected behavior side by side.</h2>
+        <p>Yeh snippets intentionally concise rakhe gaye hain taaki parse failure, semantic issues, aur successful render tino quickly reproduce kiye ja sakein.</p>
+      </div>
+      <div class="fixture-grid">
+        <article class="fixture-card">
+          <h3>Passing fixture</h3>
+          <pre class="fixture-code">
+            <code>
+page { title &quot;Ok&quot; layout &quot;main&quot; render static }
+BODY { p &quot;ready&quot; }
+</code>
+          </pre>
+          <p>Expected: no errors, HTML output available, summary errors `0`.</p>
+        </article>
+        <article class="fixture-card">
+          <h3>Symbol warning</h3>
+          <pre class="fixture-code">
+            <code>
+page { title &quot;Warn&quot; layout &quot;main&quot; render static }
+BODY { p &quot;missingName placeholder&quot; }
+</code>
+          </pre>
+          <p>Expected: real warning case ko reproduce karte waqt placeholder symbol manually add karo, aur diagnostic entry mein code plus source location inspect karo.</p>
+        </article>
+        <article class="fixture-card">
+          <h3>Syntax break</h3>
+          <pre class="fixture-code">
+            <code>
+page { title &quot;Broken&quot; layout &quot;main&quot; render static }
+BODY { p &quot;oops }
+</code>
+          </pre>
+          <p>Expected: tokenizer or parser phase failure with structured suggestion fields.</p>
+        </article>
+      </div>
+    </section>
+    <section class="section-block">
+      <div class="section-head">
+        <span class="eyebrow">Current focus</span>
+        <h2>Framework-side improvements jo ab directly visible hain.</h2>
+        <p>Page ko intentionally test-console jaisa feel diya gaya hai, taaki aage aur compiler instrumentation add karna easy ho.</p>
+      </div>
+      <div class="improvement-grid">
+        <article class="improvement-card">
+          <h3>Safer AST output</h3>
+          <p>Custom objects aur loaded stylesheet nodes ab JSON serialization ko crash nahi karte.</p>
+        </article>
+        <article class="improvement-card">
+          <h3>Phase-aware diagnostics</h3>
+          <p>Read, tokenize, parse, analyze, lower, aur render path mein failure source clear hota hai.</p>
+        </article>
+        <article class="improvement-card">
+          <h3>CLI summary block</h3>
+          <p>Check output mein totals, severity counts, aur phase grouping ka quick snapshot milta hai.</p>
+        </article>
+        <article class="improvement-card">
+          <h3>Testing-first UI</h3>
+          <p>Landing copy ki jagah fixtures, smoke commands, aur compiler observability rakhi gayi hai.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+
+<style>
+.site-footer {
+    padding: 72px 0 110px;
+    border-top: 1px solid var(--border-color);
+    background: var(--footer-bg);
+}
+.footer-grid {
+    display: grid;
+    grid-template-columns: 1.3fr .8fr .8fr;
+    gap: 28px;
+}
+.footer-brand h3,
+.footer-links h4 {
+    margin: 0 0 14px;
+}
+.footer-brand p {
+    margin: 0;
+    max-width: 480px;
+    color: var(--muted-color);
+}
+.footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.footer-links a {
+    text-decoration: none;
+    color: var(--muted-color);
+}
+.footer-links a:hover {
+    color: var(--text-color);
+}
+.footer-bottom {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    color: var(--muted-color);
+}
+.mobile-footer-nav {
+    display: none;
+}
+@media (max-width:768px) {
+    .site-footer {
+        padding: 56px 0 112px;
+    }
+    .footer-grid {
+        grid-template-columns: 1fr;
+    }
+    .mobile-footer-nav {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 22px;
+        background: rgba(255,255,255,.9);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 22px 60px rgba(15,23,42,.16);
+        z-index: 600;
+    }
+    :root[data-theme="dark"] .mobile-footer-nav {
+        background: rgba(9,14,26,.94);
+    }
+    .mobile-footer-nav a {
+        min-height: 46px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        border-radius: 14px;
+        color: var(--muted-color);
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .mobile-footer-nav a:hover {
+        background: var(--surface-color);
+        color: var(--text-color);
+    }
+}</style>
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <h3>TW Language</h3>
+        <p>Custom language, compiler pipeline, styling system, runtime modules, and deploy-ready framework capabilities in one ecosystem.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Sections</h4>
+        <a href="/#overview">Overview</a>
+        <a href="/#syntax">Syntax</a>
+        <a href="/#pipeline">Pipeline</a>
+        <a href="/#system">System</a>
+        <a href="/#cli">CLI</a>
+      </div>
+      <div class="footer-links">
+        <h4>Signals</h4>
+        <a href="/#pipeline">Compiler layers</a>
+        <a href="/#cli">Project structure</a>
+        <a href="/#overview">Theme toggle</a>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <p>TW Language v0.2.3. Built to showcase syntax clarity, compiler depth, and responsive system design.</p>
+    </div>
+  </footer>
+  <nav class="mobile-footer-nav">
+    <a href="/#overview">Home</a>
+    <a href="/#syntax">Syntax</a>
+    <a href="/#pipeline">Flow</a>
+    <a href="/#system">System</a>
+    <a href="/#cli">CLI</a>
+  </nav>
+
+
+
+
+</body>
+
+</html>

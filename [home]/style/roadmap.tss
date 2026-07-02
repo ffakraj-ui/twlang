@@ -1,0 +1,14 @@
+.roadmap {
+    padding: 60px 20px;
+}
+
+.steps {
+    display: grid;
+    gap: 15px;
+}
+
+.steps div {
+    padding: 15px;
+    border-left: 4px solid #2563eb;
+    background: #f9fafb;
+}

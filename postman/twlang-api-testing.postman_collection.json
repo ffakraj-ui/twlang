@@ -1,0 +1,215 @@
+{
+  "info": {
+    "name": "TWLang API Testing Suite",
+    "_postman_id": "2dd21a7c-7921-45db-a257-713b4cceab2e",
+    "description": "Testing collection for sample TWLang APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8787"
+    },
+    {
+      "key": "token",
+      "value": "test-token-admin"
+    }
+  ],
+  "item": [
+    {
+      "name": "List APIs",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api"
+      }
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/health"
+      }
+    },
+    {
+      "name": "Echo POST",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"demo\",\"env\":\"postman\"}"
+        },
+        "url": "{{baseUrl}}/api/echo"
+      }
+    },
+    {
+      "name": "Users List",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/users"
+      }
+    },
+    {
+      "name": "Create User",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Riya\",\"email\":\"riya@example.com\",\"role\":\"qa\",\"active\":true}"
+        },
+        "url": "{{baseUrl}}/api/users"
+      }
+    },
+    {
+      "name": "Products Filter",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/products?category=electronics&page=1&limit=2&sort=price&order=desc"
+      }
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\":\"admin\",\"password\":\"password123\"}"
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "Profile",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/profile"
+      }
+    },
+    {
+      "name": "Contact Form",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "name",
+              "value": "Rahul"
+            },
+            {
+              "key": "email",
+              "value": "rahul@example.com"
+            },
+            {
+              "key": "message",
+              "value": "Testing contact form endpoint"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/forms/contact"
+      }
+    },
+    {
+      "name": "Meta",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Test-Trace",
+            "value": "qa-run-001"
+          },
+          {
+            "key": "Cookie",
+            "value": "theme=dark; session=abc123"
+          }
+        ],
+        "url": "{{baseUrl}}/api/meta?debug=true"
+      }
+    },
+    {
+      "name": "Status 422",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/status?code=422&message=Validation%20demo"
+      }
+    },
+    {
+      "name": "Delay 2s",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/delay?seconds=2"
+      }
+    },
+    {
+      "name": "Raw Upload",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "sample raw payload for testing"
+        },
+        "url": "{{baseUrl}}/api/upload"
+      }
+    },
+    {
+      "name": "Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Webhook-Event",
+            "value": "order.created"
+          },
+          {
+            "key": "X-Signature",
+            "value": "demo-signature"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"orderId\":\"ORD-1001\",\"amount\":999}"
+        },
+        "url": "{{baseUrl}}/api/webhooks/test"
+      }
+    }
+  ]
+}

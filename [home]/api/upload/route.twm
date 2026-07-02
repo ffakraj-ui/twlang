@@ -1,0 +1,14 @@
+fn post(request) {
+  const body = request.body || {};
+  const rawText = typeof body === "object" ? String(body.raw || "") : String(body || "");
+  return {
+    status: 201,
+    json: {
+      ok: true,
+      message: "Raw payload received",
+      bytes: typeof body === "object" ? Number(body.bytes || rawText.length) : rawText.length,
+      preview: rawText.slice(0, 120),
+      contentType: (request.headers && (request.headers["Content-Type"] || request.headers["content-type"])) || ""
+    }
+  };
+}

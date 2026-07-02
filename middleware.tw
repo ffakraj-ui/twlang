@@ -1,0 +1,82 @@
+rule "blocked-bots" {
+  match "/**"
+
+  user_agent {
+    allow ["googlebot", "bingbot", "gptbot"]
+    block ["curl/", "wget/", "python-requests", "scrapy"]
+    empty_is_blocked true
+  }
+
+  response {
+    status 403
+    html "<h1>403 Forbidden</h1>"
+  }
+}
+
+rule "scanner-paths" {
+  match "/**"
+
+  path {
+    prefixes ["/wp-admin", "/wp-login", "/.env", "/.git"]
+    contains ["/phpmyadmin", "/xmlrpc"]
+    extensions [".php", ".env", ".bak", ".sql"]
+    single_segment_max 100
+    deny_traversal true
+    deny_null_bytes true
+  }
+
+  response {
+    status 404
+    text "Not Found"
+  }
+}
+
+rule "admin-auth" {
+  match "/admin/**"
+
+  auth {
+    cookie "admin_token"
+    jwt_secret_env "JWT_SECRET"
+  }
+
+  response {
+    status 401
+    text "Unauthorized"
+  }
+}
+
+rule "api-origin" {
+  match "/api/**"
+  methods ["GET", "POST"]
+
+  origin {
+    allow ["https://twmods.in", "http://localhost:3000"]
+    require true
+    allow_referer true
+  }
+
+  response {
+    status 403
+    json {
+      error "Access Denied"
+    }
+  }
+}
+
+rule "api-rate-limit" {
+  match "/api/**"
+
+  rate_limit {
+    requests 60
+    window 60
+    identity "path"
+    bucket_segments 2
+  }
+
+  response {
+    status 429
+    json {
+      error "Too many requests"
+    }
+  }
+}

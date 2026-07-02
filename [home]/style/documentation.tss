@@ -1,0 +1,11 @@
+.docs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.doc-card {
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+}

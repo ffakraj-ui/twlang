@@ -1,0 +1,239 @@
+load "@../style/developer.tss"
+
+section {
+
+    class "developer"
+
+    div {
+
+        class "developer-header"
+
+        span {
+
+            class "badge"
+
+            text "Creator"
+
+        }
+
+        h2 "Meet The Creator"
+
+        p {
+
+            text "TW Language is designed, engineered and maintained by a single developer with a vision to build a complete modern web ecosystem."
+
+        }
+
+    }
+
+    div {
+
+        class "developer-card"
+
+        div {
+
+            class "profile"
+
+            h3 "TW MLKRAJ"
+
+            h4 "Kanishk Kumar"
+
+            p {
+
+                text "Age : 17"
+
+            }
+
+            p {
+
+                text "Bihar, India"
+
+            }
+
+            p {
+
+                text "Independent Full Stack Developer"
+
+            }
+
+        }
+
+        div {
+
+            class "about"
+
+            h3 "About"
+
+            p {
+
+                text "Started building TW Language from scratch including the compiler, framework, template engine, styling system, CLI tools and developer experience."
+
+            }
+
+            p {
+
+                text "Focused on creating an ecosystem where developers can build modern websites using one simple and powerful language."
+
+            }
+
+        }
+
+    }
+
+    div {
+
+        class "skills"
+
+        h2 "Expertise"
+
+        div {
+
+            class "skill-grid"
+
+            div {
+
+                class "skill"
+
+                h4 "Programming Languages"
+
+                p "Python, JavaScript, HTML, CSS"
+
+            }
+
+            div {
+
+                class "skill"
+
+                h4 "Framework Development"
+
+                p "Designing complete web frameworks."
+
+            }
+
+            div {
+
+                class "skill"
+
+                h4 "Compiler Engineering"
+
+                p "Lexer, Parser, AST, Rendering Pipeline."
+
+            }
+
+            div {
+
+                class "skill"
+
+                h4 "CLI Development"
+
+                p "Command line tools and automation."
+
+            }
+
+            div {
+
+                class "skill"
+
+                h4 "Frontend"
+
+                p "Responsive UI, Components and Design."
+
+            }
+
+            div {
+
+                class "skill"
+
+                h4 "Backend"
+
+                p "Routing, APIs and Server Architecture."
+
+            }
+
+            div {
+
+                class "skill"
+
+                h4 "SEO"
+
+                p "Static generation and search optimization."
+
+            }
+
+            div {
+
+                class "skill"
+
+                h4 "Performance"
+
+                p "Optimized builds and fast rendering."
+
+            }
+
+        }
+
+    }
+
+    div {
+
+        class "vision"
+
+        h2 "Vision"
+
+        p {
+
+            text "The goal of TW Language is to provide developers with one modern ecosystem containing a language, compiler, framework, styling system, component architecture, routing, CLI and deployment tools."
+
+        }
+
+    }
+
+    div {
+
+        class "timeline"
+
+        h2 "Journey"
+
+        div {
+
+            class "timeline-item"
+
+            h3 "Started Learning"
+
+            p "Programming fundamentals and web development."
+
+        }
+
+        div {
+
+            class "timeline-item"
+
+            h3 "Framework Development"
+
+            p "Designed the TW Framework architecture."
+
+        }
+
+        div {
+
+            class "timeline-item"
+
+            h3 "Compiler"
+
+            p "Built the lexer, parser and rendering engine."
+
+        }
+
+        div {
+
+            class "timeline-item"
+
+            h3 "TW Language"
+
+            p "Creating a complete ecosystem for modern web development."
+
+        }
+
+    }
+
+}

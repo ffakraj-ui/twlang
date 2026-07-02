@@ -1,0 +1,98 @@
+.site-footer {
+  padding 72 0 110
+  border-top 1 solid var(--border-color)
+  background var(--footer-bg)
+}
+
+.footer-grid {
+  display grid
+  grid-template-columns 1.3fr .8fr .8fr
+  gap 28
+}
+
+.footer-brand h3,
+.footer-links h4 {
+  margin 0 0 14
+}
+
+.footer-brand p {
+  margin 0
+  max-width 480
+  color var(--muted-color)
+}
+
+.footer-links {
+  display flex
+  flex-direction column
+  gap 10
+}
+
+.footer-links a {
+  text-decoration none
+  color var(--muted-color)
+}
+
+.footer-links a:hover {
+  color var(--text-color)
+}
+
+.footer-bottom {
+  margin-top 28
+  padding-top 20
+  border-top 1 solid var(--border-color)
+  color var(--muted-color)
+}
+
+.mobile-footer-nav {
+  display none
+}
+
+@media (max-width:768) {
+  .site-footer {
+    padding 56 0 112
+  }
+
+  .footer-grid {
+    grid-template-columns 1fr
+  }
+
+  .mobile-footer-nav {
+    position fixed
+    left 16
+    right 16
+    bottom 14
+    display grid
+    grid-template-columns repeat(5, 1fr)
+    gap 6
+    padding 8
+    border 1 solid var(--border-color)
+    border-radius 18
+    background rgba(255,255,255,.74)
+    backdrop-filter blur(22)
+    box-shadow 0 20 44 rgba(15,23,42,.14)
+    z-index 600
+  }
+
+  :root[data-theme="dark"] .mobile-footer-nav {
+    background rgba(9,14,26,.82)
+  }
+
+  .mobile-footer-nav a {
+    min-height 40
+    display inline-flex
+    align-items center
+    justify-content center
+    text-decoration none
+    border-radius 12
+    color var(--muted-color)
+    font-size 11
+    font-weight 700
+    transition background .2s ease, color .2s ease, transform .2s ease
+  }
+
+  .mobile-footer-nav a:hover {
+    background var(--surface-color)
+    color var(--text-color)
+    transform translateY(-1)
+  }
+}

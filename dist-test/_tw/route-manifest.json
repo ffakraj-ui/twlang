@@ -1,0 +1,69 @@
+[
+  {
+    "route": "/",
+    "type": "page",
+    "render": "static",
+    "revalidate": null,
+    "source": "[home]/pages/index.tw",
+    "title": "TW Compiler Test Lab",
+    "layouts": [
+      "main"
+    ],
+    "components": [
+      "Compiler"
+    ],
+    "pipeline": "modular"
+  },
+  {
+    "route": "/about",
+    "type": "page",
+    "render": "static",
+    "revalidate": null,
+    "source": "[home]/pages/about.tw",
+    "title": "About | Veridian Systems",
+    "layouts": [
+      "main"
+    ],
+    "components": [],
+    "pipeline": "modular"
+  },
+  {
+    "route": "/contact",
+    "type": "page",
+    "render": "static",
+    "revalidate": null,
+    "source": "[home]/pages/contact.tw",
+    "title": "Contact | Veridian Systems",
+    "layouts": [
+      "main"
+    ],
+    "components": [],
+    "pipeline": "modular"
+  },
+  {
+    "route": "/services",
+    "type": "page",
+    "render": "static",
+    "revalidate": null,
+    "source": "[home]/pages/services.tw",
+    "title": "Services | Veridian Systems",
+    "layouts": [
+      "main"
+    ],
+    "components": [],
+    "pipeline": "modular"
+  },
+  {
+    "route": "/work",
+    "type": "page",
+    "render": "static",
+    "revalidate": null,
+    "source": "[home]/pages/work.tw",
+    "title": "Work | Veridian Systems",
+    "layouts": [
+      "main"
+    ],
+    "components": [],
+    "pipeline": "modular"
+  }
+]

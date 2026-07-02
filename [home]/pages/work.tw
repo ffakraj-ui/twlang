@@ -1,0 +1,170 @@
+page {
+    title "Work | Veridian Systems"
+    layout "main"
+    render static
+}
+
+load "@../style/site.tss"
+
+head {
+    seo {
+        description "Review work highlights and sample outcomes presented in a professional case-study format."
+        og_title "Work | Veridian Systems"
+        og_description "Proof-driven work page for an official business website."
+    }
+}
+
+BODY {
+    main {
+        section {
+            class "page-hero"
+
+            div {
+                class "container page-hero-copy"
+
+                span "Selected work" {
+                    class "eyebrow"
+                }
+
+                h1 "Proof makes the website feel real."
+                p "A serious business website needs visible capability, not only decorative sections. This work page gives you case-study style blocks so visitors can see outcomes, process, and professional range."
+
+                div {
+                    class "button-row"
+
+                    a "Start a Project" {
+                        href "/contact"
+                        class "btn btn-primary"
+                    }
+
+                    a "About the Company" {
+                        href "/about"
+                        class "btn btn-secondary"
+                    }
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container case-grid"
+
+                article {
+                    class "case-card"
+
+                    span "Operations platform" {
+                        class "case-meta"
+                    }
+
+                    h3 "Corporate redesign for a service-led business"
+                    p "We transformed a cluttered brochure-style site into a focused company website with clear service pages, stronger hierarchy, and better mobile usability."
+                    ul {
+                        class "bullet-list"
+                        li "Sharper homepage narrative"
+                        li "Consistent service presentation"
+                        li "Improved enquiry path on mobile"
+                    }
+                }
+
+                article {
+                    class "case-card"
+
+                    span "Consulting firm" {
+                        class "case-meta"
+                    }
+
+                    h3 "High-trust brand website for executive clients"
+                    p "This presentation style balances minimal visuals with stronger proof blocks so the company feels reliable and premium from the first screen."
+                    ul {
+                        class "bullet-list"
+                        li "Professional content grouping"
+                        li "Executive tone of voice"
+                        li "Fast contact access"
+                    }
+                }
+
+                article {
+                    class "case-card"
+
+                    span "Technology partner" {
+                        class "case-meta"
+                    }
+
+                    h3 "Responsive multi-page website for launch readiness"
+                    p "The design system was adapted across desktop and mobile with a shared visual language, reusable components, and clear CTA behavior."
+                    ul {
+                        class "bullet-list"
+                        li "Shared page structure"
+                        li "Responsive card system"
+                        li "Framework-safe implementation"
+                    }
+                }
+
+                article {
+                    class "case-card"
+
+                    span "Growth brand" {
+                        class "case-meta"
+                    }
+
+                    h3 "Conversion-focused refresh with stronger messaging"
+                    p "The updated flow helped visitors understand the offer faster and move directly from discovery to contact without confusion."
+                    ul {
+                        class "bullet-list"
+                        li "Clear action sections"
+                        li "Offer-led storytelling"
+                        li "Cleaner trust presentation"
+                    }
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "quote-card"
+
+                    blockquote "The difference between a basic site and a professional site is confidence. People should instantly feel that the company knows what it is doing."
+                    p "That principle drives the layout, spacing, visual hierarchy, and action paths across this website."
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "cta-banner"
+
+                    div {
+                        h2 "Need a work page that supports your sales conversations?"
+                        p "Use this structure to show sample results, client types, delivery style, and why someone should trust your company."
+                    }
+
+                    div {
+                        class "button-row"
+
+                        a "Open Contact" {
+                            href "/contact"
+                            class "btn btn-primary"
+                        }
+
+                        a "See Services" {
+                            href "/services"
+                            class "btn btn-secondary"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

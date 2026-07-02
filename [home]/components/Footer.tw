@@ -1,0 +1,52 @@
+load "@../style/footer.tss"
+
+footer {
+    class "site-footer"
+
+    div {
+        class "container footer-grid"
+
+        div {
+            class "footer-brand"
+
+            h3 "TW Language"
+            p "Custom language, compiler pipeline, styling system, runtime modules, and deploy-ready framework capabilities in one ecosystem."
+        }
+
+        div {
+            class "footer-links"
+
+            h4 "Sections"
+            a "Overview" { href "/#overview" }
+            a "Syntax" { href "/#syntax" }
+            a "Pipeline" { href "/#pipeline" }
+            a "System" { href "/#system" }
+            a "CLI" { href "/#cli" }
+        }
+
+        div {
+            class "footer-links"
+
+            h4 "Signals"
+            a "Compiler layers" { href "/#pipeline" }
+            a "Project structure" { href "/#cli" }
+            a "Theme toggle" { href "/#overview" }
+        }
+    }
+
+    div {
+        class "container footer-bottom"
+
+        p "TW Language v0.2.3. Built to showcase syntax clarity, compiler depth, and responsive system design."
+    }
+}
+
+nav {
+    class "mobile-footer-nav"
+
+    a "Home" { href "/#overview" }
+    a "Syntax" { href "/#syntax" }
+    a "Flow" { href "/#pipeline" }
+    a "System" { href "/#system" }
+    a "CLI" { href "/#cli" }
+}

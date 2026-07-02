@@ -1,0 +1,4 @@
+name: TWLang Site
+pretty_urls: true
+modular_pipeline: true
+theme: system

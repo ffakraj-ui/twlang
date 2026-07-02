@@ -1,0 +1,13 @@
+fn get(request) {
+  return {
+    status: 200,
+    json: {
+      ok: true,
+      service: "twlang-api-suite",
+      method: request.method,
+      path: request.path,
+      timestamp: new Date().toISOString(),
+      query: request.query || {}
+    }
+  };
+}

@@ -1,0 +1,917 @@
+<!-- [TW] Page: work | Render: static | Route: /work -->
+<!-- [TW] Components: — -->
+<!-- [TW] Build: 2026-07-01T17:09:03Z -->
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<title>Work | Veridian Systems</title>
+  <!-- ⚡ Built with TW Framework -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="TW Framework">
+  <div id="__TW__" style="display:none"></div>
+  <script id="__TW_DATA__" type="application/json">{"page":"work","route":"/work","render":"static","build":"2026-07-01T17:09:03Z"}</script>
+  <script>(function() {
+  var STORAGE_KEY = "tw_theme";
+  var DEFAULT_MODE = "system";
+  function prefersDark() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    } catch (e) { return false; }
+  }
+  function resolve(mode) {
+    if (mode === 'dark' || mode === 'light') return mode;
+    return prefersDark() ? 'dark' : 'light';
+  }
+  function apply(resolved) {
+    var root = document.documentElement;
+    root.setAttribute('data-theme', resolved);
+    root.classList.toggle('dark', resolved === 'dark');
+    root.classList.toggle('light', resolved === 'light');
+  }
+  function getMode() {
+    var saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) { saved = null; }
+    return (saved || DEFAULT_MODE || 'system');
+  }
+  function setMode(mode) {
+    try { localStorage.setItem(STORAGE_KEY, mode); } catch (e) {}
+    apply(resolve(mode));
+  }
+  window.__twSetTheme = function(mode) { setMode(String(mode || 'system').toLowerCase()); };
+  window.__twToggleTheme = function() {
+    var current = document.documentElement.getAttribute('data-theme') || resolve(getMode());
+    setMode(current === 'dark' ? 'light' : 'dark');
+  };
+  // Initial paint
+  apply(resolve(getMode()));
+  // Keep in sync with system when mode=system
+  try {
+    if (window.matchMedia) {
+      var mql = window.matchMedia('(prefers-color-scheme: dark)');
+      var onChange = function() {
+        if (getMode() === 'system') apply(resolve('system'));
+      };
+      if (mql.addEventListener) mql.addEventListener('change', onChange);
+      else if (mql.addListener) mql.addListener(onChange);
+    }
+  } catch (e) {}
+})();</script>
+  <meta name="description" content="Review work highlights and sample outcomes presented in a professional case-study format.">
+  <meta property="og:title" content="Work | Veridian Systems">
+  <meta property="og:description" content="Proof-driven work page for an official business website.">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;}
+    body{margin:0;min-height:100vh;}
+    img,video,canvas,svg{max-width:100%;height:auto;}
+    .tw-container{width:100%;margin:0 auto;padding:0 16px;}
+    @media (min-width:768px){.tw-container{max-width:720px;padding:0 24px;}}
+    @media (min-width:1024px){.tw-container{max-width:960px;}}
+    @media (min-width:1280px){.tw-container{max-width:1140px;}}
+  </style>
+  <link rel="stylesheet" href="/_tw/static/chunks/55793fca.css">
+  <style>
+:root {
+    --bg-color: #f6f8fc;
+    --surface-color: rgba(255,255,255,.82);
+    --surface-strong: #ffffff;
+    --text-color: #0f172a;
+    --muted-color: #475569;
+    --border-color: rgba(15,23,42,.08);
+    --primary-color: #2563eb;
+    --primary-soft: rgba(37,99,235,.12);
+    --footer-bg: #eef2ff;
+    --shadow-soft: 0 20 60 rgba(15,23,42,.08);
+}
+:root[data-theme="dark"] {
+    --bg-color: #081120;
+    --surface-color: rgba(15,23,42,.76);
+    --surface-strong: #0f172a;
+    --text-color: #e5eefb;
+    --muted-color: #9db0c8;
+    --border-color: rgba(148,163,184,.18);
+    --primary-color: #60a5fa;
+    --primary-soft: rgba(96,165,250,.14);
+    --footer-bg: #08111d;
+    --shadow-soft: 0 24 70 rgba(2,6,23,.38);
+}
+html {
+    scroll-behavior: smooth;
+}
+body {
+    margin: 0;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: Inter, system-ui, sans-serif;
+    line-height: 1.6;
+}
+main,
+section,
+div,
+article {
+    box-sizing: border-box;
+}
+a,
+button,
+input,
+textarea {
+    font-size: inherit;
+}
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+.section {
+    padding: 88px 0;
+}
+.section-compact {
+    padding: 48px 0;
+}
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--primary-soft);
+    color: var(--primary-color);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.section-title {
+    margin: 0 0 14px;
+    font-size: 42px;
+    line-height: 1.12;
+}
+.section-copy {
+    margin: 0;
+    max-width: 700px;
+    color: var(--muted-color);
+    font-size: 18px;
+}
+.page-hero {
+    padding: 72px 0 40px;
+}
+.hero-grid,
+.split-grid,
+.contact-grid,
+.case-grid,
+.team-grid,
+.metric-grid,
+.card-grid {
+    display: grid;
+    gap: 24px;
+}
+.hero-grid {
+    grid-template-columns: 1.15fr .85fr;
+    align-items: center;
+}
+.hero-copy h1,
+.page-hero-copy h1 {
+    margin: 0 0 18px;
+    font-size: 62px;
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+}
+.hero-copy p,
+.page-hero-copy p {
+    margin: 0;
+    max-width: 660px;
+    color: var(--muted-color);
+    font-size: 19px;
+}
+.button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 28px;
+}
+.btn {
+    min-height: 50px;
+    padding: 0 22px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-weight: 700;
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
+}
+.btn:hover {
+    transform: translateY(-2px);
+}
+.btn-primary {
+    background: var(--text-color);
+    color: var(--bg-color);
+    box-shadow: 0 18px 45px rgba(15,23,42,.16);
+}
+.btn-secondary {
+    background: var(--surface-strong);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+.btn-ghost {
+    background: transparent;
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+.hero-panel,
+.service-card,
+.stat-card,
+.metric-panel,
+.case-card,
+.team-card,
+.quote-card,
+.contact-card,
+.contact-form,
+.highlight-panel,
+.process-card {
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    border-radius: 28px;
+    box-shadow: var(--shadow-soft);
+}
+.hero-panel {
+    padding: 28px;
+}
+.hero-panel strong {
+    display: block;
+    margin-bottom: 18px;
+    font-size: 18px;
+}
+.hero-list,
+.info-list,
+.bullet-list {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--muted-color);
+}
+.hero-list li,
+.info-list li,
+.bullet-list li {
+    margin-bottom: 10px;
+}
+.stats-row,
+.logo-row,
+.contact-actions,
+.pill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+.stat-card {
+    min-width: 160px;
+    padding: 20px 22px;
+}
+.stat-card strong {
+    display: block;
+    font-size: 28px;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+.stat-card span {
+    color: var(--muted-color);
+    font-size: 14px;
+}
+.logo-strip {
+    padding-top: 10px;
+}
+.logo-row span {
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-color);
+    font-weight: 700;
+    letter-spacing: .03em;
+}
+.card-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+.service-card,
+.case-card,
+.team-card,
+.process-card,
+.contact-card {
+    padding: 28px;
+}
+.service-card h3,
+.case-card h3,
+.team-card h3,
+.process-card h3,
+.contact-card h3 {
+    margin: 0 0 12px;
+    font-size: 24px;
+}
+.service-card p,
+.case-card p,
+.team-card p,
+.process-card p,
+.contact-card p {
+    margin: 0 0 16px;
+    color: var(--muted-color);
+}
+.tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--primary-soft);
+    color: var(--primary-color);
+    font-size: 13px;
+    font-weight: 700;
+}
+.split-grid {
+    grid-template-columns: .95fr 1.05fr;
+    align-items: start;
+}
+.timeline {
+    display: grid;
+    gap: 16px;
+}
+.timeline-item {
+    padding: 22px 24px;
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    background: var(--surface-color);
+}
+.timeline-item strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 18px;
+}
+.timeline-item p {
+    margin: 0;
+    color: var(--muted-color);
+}
+.metric-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+.metric-panel {
+    padding: 26px;
+}
+.metric-panel strong {
+    display: block;
+    font-size: 34px;
+    margin-bottom: 10px;
+}
+.metric-panel span {
+    color: var(--muted-color);
+}
+.quote-card {
+    padding: 30px;
+}
+.quote-card blockquote {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.35;
+}
+.quote-card p {
+    margin: 16px 0 0;
+    color: var(--muted-color);
+}
+.case-grid,
+.team-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+.case-meta,
+.team-role,
+.contact-label {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+.highlight-panel {
+    padding: 32px;
+}
+.highlight-panel h3 {
+    margin: 0 0 14px;
+    font-size: 28px;
+}
+.highlight-panel p {
+    margin: 0 0 16px;
+    color: var(--muted-color);
+}
+.faq-list {
+    display: grid;
+    gap: 16px;
+}
+.faq-item {
+    padding: 24px 26px;
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    background: var(--surface-color);
+}
+.faq-item h3 {
+    margin: 0 0 10px;
+    font-size: 21px;
+}
+.faq-item p {
+    margin: 0;
+    color: var(--muted-color);
+}
+.contact-grid {
+    grid-template-columns: .78fr 1.22fr;
+    align-items: start;
+}
+.contact-card a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 700;
+}
+.contact-form {
+    padding: 30px;
+}
+.field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.field {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.field label {
+    font-size: 14px;
+    font-weight: 700;
+}
+.field input,
+.field textarea {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: var(--surface-strong);
+    color: var(--text-color);
+    outline: none;
+}
+.field input:focus,
+.field textarea:focus {
+    border-color: rgba(37,99,235,.45);
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+}
+.form-status {
+    margin-top: 14px;
+    color: var(--muted-color);
+}
+.cta-banner {
+    padding: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border: 1px solid var(--border-color);
+    border-radius: 32px;
+    background: linear-gradient(135deg, var(--surface-strong) 0%, var(--primary-soft) 100%);
+    box-shadow: var(--shadow-soft);
+}
+.cta-banner h2 {
+    margin: 0 0 10px;
+    font-size: 34px;
+}
+.cta-banner p {
+    margin: 0;
+    color: var(--muted-color);
+}
+@media (max-width:1024px) {
+    .hero-grid,
+    .split-grid,
+    .contact-grid {
+        grid-template-columns: 1fr;
+    }
+    .card-grid,
+    .metric-grid,
+    .case-grid,
+    .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .hero-copy h1,
+    .page-hero-copy h1 {
+        font-size: 52px;
+    }
+}
+@media (max-width:768px) {
+    .section {
+        padding: 68px 0;
+    }
+    .section-title {
+        font-size: 34px;
+    }
+    .hero-copy h1,
+    .page-hero-copy h1 {
+        font-size: 42px;
+    }
+    .hero-copy p,
+    .page-hero-copy p,
+    .section-copy {
+        font-size: 17px;
+    }
+    .container {
+        padding: 0 18px;
+    }
+    .card-grid,
+    .metric-grid,
+    .case-grid,
+    .team-grid,
+    .field-row {
+        grid-template-columns: 1fr;
+    }
+    .button-row,
+    .stats-row {
+        flex-direction: column;
+    }
+    .btn {
+        width: 100%;
+    }
+    .cta-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    body {
+        padding-bottom: 94px;
+    }
+}
+  </style>
+
+</head>
+
+<body>
+
+<style>
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 500;
+    width: 100%;
+    background: rgba(255,255,255,.78);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border-color);
+}
+:root[data-theme="dark"] .site-header {
+    background: rgba(9,14,26,.84);
+}
+.header-shell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    min-height: 76px;
+}
+.brand-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    text-decoration: none;
+    color: inherit;
+}
+.brand-mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
+    color: white;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    box-shadow: 0 20px 50px rgba(37,99,235,.22);
+}
+.brand-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.brand-copy strong {
+    font-size: 16px;
+    line-height: 1.1;
+}
+.brand-copy small {
+    font-size: 12px;
+    color: var(--muted-color);
+}
+.desktop-nav {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+}
+.desktop-nav a {
+    text-decoration: none;
+    color: var(--muted-color);
+    font-weight: 600;
+    font-size: 14px;
+    transition: color .2s ease;
+}
+.desktop-nav a:hover {
+    color: var(--text-color);
+}
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.theme-toggle {
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+.theme-toggle:hover {
+    transform: translateY(-1px);
+    border-color: rgba(37,99,235,.34);
+}
+.header-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 0 20px;
+    border-radius: 999px;
+    text-decoration: none;
+    background: #0f172a;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 18px 45px rgba(15,23,42,.18);
+}
+:root[data-theme="dark"] .header-cta {
+    background: #f8fafc;
+    color: #0f172a;
+}
+@media (max-width:1024px) {
+    .desktop-nav {
+        gap: 18px;
+    }
+}
+@media (max-width:768px) {
+    .site-header {
+        top: 0;
+    }
+    .header-shell {
+        min-height: 70px;
+    }
+    .desktop-nav {
+        display: none;
+    }
+    .brand-copy small {
+        display: none;
+    }
+    .theme-toggle {
+        min-height: 42px;
+        padding: 0 14px;
+        font-size: 13px;
+    }
+    .header-cta {
+        display: none;
+    }
+}</style>
+  <header class="site-header">
+    <div class="container header-shell">
+      <a href="/" class="brand-link">
+        <span class="brand-mark">TW</span>
+        <span class="brand-copy">
+          <strong>TW Language</strong>
+          <small>language • compiler • framework</small>
+        </span>
+      </a>
+      <nav class="desktop-nav">
+        <a href="/#overview">Overview</a>
+        <a href="/#syntax">Syntax</a>
+        <a href="/#pipeline">Pipeline</a>
+        <a href="/#system">System</a>
+        <a href="/#cli">CLI</a>
+      </nav>
+      <div class="header-actions">
+        <button type="button" class="theme-toggle" title="Toggle dark mode" onclick="return (window.__twInvoke ? window.__twInvoke('__twToggleTheme', event) : (typeof __twToggleTheme === 'function' ? __twToggleTheme(event) : undefined))">Theme</button>
+        <a href="/#cli" class="header-cta">Open flow</a>
+      </div>
+    </div>
+  </header>
+
+
+  <main>
+    <section class="page-hero">
+      <div class="container page-hero-copy">
+        <span class="eyebrow">Selected work</span>
+        <h1>Proof makes the website feel real.</h1>
+        <p>A serious business website needs visible capability, not only decorative sections. This work page gives you case-study style blocks so visitors can see outcomes, process, and professional range.</p>
+        <div class="button-row">
+          <a href="/contact" class="btn btn-primary">Start a Project</a>
+          <a href="/about" class="btn btn-secondary">About the Company</a>
+        </div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container case-grid">
+        <article class="case-card">
+          <span class="case-meta">Operations platform</span>
+          <h3>Corporate redesign for a service-led business</h3>
+          <p>We transformed a cluttered brochure-style site into a focused company website with clear service pages, stronger hierarchy, and better mobile usability.</p>
+          <ul class="bullet-list">
+            <li>Sharper homepage narrative</li>
+            <li>Consistent service presentation</li>
+            <li>Improved enquiry path on mobile</li>
+          </ul>
+        </article>
+        <article class="case-card">
+          <span class="case-meta">Consulting firm</span>
+          <h3>High-trust brand website for executive clients</h3>
+          <p>This presentation style balances minimal visuals with stronger proof blocks so the company feels reliable and premium from the first screen.</p>
+          <ul class="bullet-list">
+            <li>Professional content grouping</li>
+            <li>Executive tone of voice</li>
+            <li>Fast contact access</li>
+          </ul>
+        </article>
+        <article class="case-card">
+          <span class="case-meta">Technology partner</span>
+          <h3>Responsive multi-page website for launch readiness</h3>
+          <p>The design system was adapted across desktop and mobile with a shared visual language, reusable components, and clear CTA behavior.</p>
+          <ul class="bullet-list">
+            <li>Shared page structure</li>
+            <li>Responsive card system</li>
+            <li>Framework-safe implementation</li>
+          </ul>
+        </article>
+        <article class="case-card">
+          <span class="case-meta">Growth brand</span>
+          <h3>Conversion-focused refresh with stronger messaging</h3>
+          <p>The updated flow helped visitors understand the offer faster and move directly from discovery to contact without confusion.</p>
+          <ul class="bullet-list">
+            <li>Clear action sections</li>
+            <li>Offer-led storytelling</li>
+            <li>Cleaner trust presentation</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <div class="quote-card">
+          <blockquote>The difference between a basic site and a professional site is confidence. People should instantly feel that the company knows what it is doing.</blockquote>
+          <p>That principle drives the layout, spacing, visual hierarchy, and action paths across this website.</p>
+        </div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <div class="cta-banner">
+          <div>
+            <h2>Need a work page that supports your sales conversations?</h2>
+            <p>Use this structure to show sample results, client types, delivery style, and why someone should trust your company.</p>
+          </div>
+          <div class="button-row">
+            <a href="/contact" class="btn btn-primary">Open Contact</a>
+            <a href="/services" class="btn btn-secondary">See Services</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+
+<style>
+.site-footer {
+    padding: 72px 0 110px;
+    border-top: 1px solid var(--border-color);
+    background: var(--footer-bg);
+}
+.footer-grid {
+    display: grid;
+    grid-template-columns: 1.3fr .8fr .8fr;
+    gap: 28px;
+}
+.footer-brand h3,
+.footer-links h4 {
+    margin: 0 0 14px;
+}
+.footer-brand p {
+    margin: 0;
+    max-width: 480px;
+    color: var(--muted-color);
+}
+.footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.footer-links a {
+    text-decoration: none;
+    color: var(--muted-color);
+}
+.footer-links a:hover {
+    color: var(--text-color);
+}
+.footer-bottom {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    color: var(--muted-color);
+}
+.mobile-footer-nav {
+    display: none;
+}
+@media (max-width:768px) {
+    .site-footer {
+        padding: 56px 0 112px;
+    }
+    .footer-grid {
+        grid-template-columns: 1fr;
+    }
+    .mobile-footer-nav {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 22px;
+        background: rgba(255,255,255,.9);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 22px 60px rgba(15,23,42,.16);
+        z-index: 600;
+    }
+    :root[data-theme="dark"] .mobile-footer-nav {
+        background: rgba(9,14,26,.94);
+    }
+    .mobile-footer-nav a {
+        min-height: 46px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        border-radius: 14px;
+        color: var(--muted-color);
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .mobile-footer-nav a:hover {
+        background: var(--surface-color);
+        color: var(--text-color);
+    }
+}</style>
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <h3>TW Language</h3>
+        <p>Custom language, compiler pipeline, styling system, runtime modules, and deploy-ready framework capabilities in one ecosystem.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Sections</h4>
+        <a href="/#overview">Overview</a>
+        <a href="/#syntax">Syntax</a>
+        <a href="/#pipeline">Pipeline</a>
+        <a href="/#system">System</a>
+        <a href="/#cli">CLI</a>
+      </div>
+      <div class="footer-links">
+        <h4>Signals</h4>
+        <a href="/#pipeline">Compiler layers</a>
+        <a href="/#cli">Project structure</a>
+        <a href="/#overview">Theme toggle</a>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <p>TW Language v0.2.3. Built to showcase syntax clarity, compiler depth, and responsive system design.</p>
+    </div>
+  </footer>
+  <nav class="mobile-footer-nav">
+    <a href="/#overview">Home</a>
+    <a href="/#syntax">Syntax</a>
+    <a href="/#pipeline">Flow</a>
+    <a href="/#system">System</a>
+    <a href="/#cli">CLI</a>
+  </nav>
+
+
+
+
+</body>
+
+</html>
