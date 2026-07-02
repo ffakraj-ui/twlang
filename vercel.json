@@ -1,4 +1,4 @@
 {
-  "buildCommand": "tw build",
+  "buildCommand": "python3 -m venv .venv && .venv/bin/pip install . && .venv/bin/python -m tw_framework.cli build --prod",
   "outputDirectory": "dist"
 }
