@@ -1,7 +1,7 @@
 .site-footer {
-  padding 72 0 110
+  padding 76 0 110
   border-top 1 solid var(--border-color)
-  background var(--footer-bg)
+  background linear-gradient(180deg, rgba(7,16,30,.32) 0%, var(--footer-bg) 100%)
 }
 
 .footer-grid {
@@ -15,9 +15,13 @@
   margin 0 0 14
 }
 
+.footer-brand h3 {
+  font-size 24
+}
+
 .footer-brand p {
   margin 0
-  max-width 480
+  max-width 500
   color var(--muted-color)
 }
 
@@ -37,7 +41,7 @@
 }
 
 .footer-bottom {
-  margin-top 28
+  margin-top 30
   padding-top 20
   border-top 1 solid var(--border-color)
   color var(--muted-color)
@@ -67,14 +71,14 @@
     padding 8
     border 1 solid var(--border-color)
     border-radius 18
-    background rgba(255,255,255,.74)
+    background rgba(7,16,30,.86)
     backdrop-filter blur(22)
-    box-shadow 0 20 44 rgba(15,23,42,.14)
+    box-shadow 0 20 44 rgba(15,23,42,.20)
     z-index 600
   }
 
-  :root[data-theme="dark"] .mobile-footer-nav {
-    background rgba(9,14,26,.82)
+  :root[data-theme="light"] .mobile-footer-nav {
+    background rgba(255,255,255,.84)
   }
 
   .mobile-footer-nav a {
