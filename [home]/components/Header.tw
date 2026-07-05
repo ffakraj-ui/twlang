@@ -10,26 +10,51 @@ header {
             href "/#home"
             class "brand-link"
 
-            span "TM" {
+            span {
                 class "brand-mark"
+                text "TM"
             }
 
             span {
                 class "brand-copy"
 
                 strong "TWMODS"
-                small "premium apps • games • mod catalog"
+                small "premium apps • games • tools"
             }
         }
 
         nav {
             class "desktop-nav"
 
-            a "Home" { href "/#home" }
-            a "Hot Apps" { href "/#hot-apps" }
-            a "Popular" { href "/#popular" }
-            a "Categories" { href "/#categories" }
-            a "Request" { href "/#request" }
+            a {
+                href "/#home"
+                class "nav-link nav-link-active"
+                text "Home"
+            }
+
+            a {
+                href "/#hot-apps"
+                class "nav-link"
+                text "Apps"
+            }
+
+            a {
+                href "/#search"
+                class "nav-link"
+                text "Search"
+            }
+
+            a {
+                href "/#categories"
+                class "nav-link"
+                text "Categories"
+            }
+
+            a {
+                href "/#request"
+                class "nav-link"
+                text "Request"
+            }
         }
 
         div {
@@ -43,8 +68,8 @@ header {
                 text "Theme"
             }
 
-            a "Browse Apps" {
-                href "/#hot-apps"
+            a "Join Telegram" {
+                href "https://t.me/twmodstore"
                 class "header-cta"
             }
         }
