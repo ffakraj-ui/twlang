@@ -3,21 +3,23 @@
   top 0
   z-index 500
   width 100%
-  background rgba(255,255,255,.78)
-  backdrop-filter blur(18)
-  border-bottom 1 solid var(--border-color)
+  background rgba(7,16,30,.84)
+  backdrop-filter blur(20)
+  border-bottom 1 solid rgba(148,163,184,.14)
+  box-shadow 0 14 36 rgba(2,6,23,.16)
 }
 
-:root[data-theme="dark"] .site-header {
-  background rgba(9,14,26,.84)
+:root[data-theme="light"] .site-header {
+  background rgba(255,255,255,.88)
+  border-bottom 1 solid rgba(15,23,42,.08)
 }
 
 .header-shell {
   display flex
   align-items center
   justify-content space-between
-  gap 24
-  min-height 76
+  gap 22
+  min-height 78
 }
 
 .brand-link {
@@ -29,18 +31,19 @@
 }
 
 .brand-mark {
-  width 44
-  height 44
-  border-radius 14
+  width 46
+  height 46
+  border-radius 16
   display inline-flex
   align-items center
   justify-content center
-  background linear-gradient(135deg, #0f172a 0%, #2563eb 100%)
+  background linear-gradient(135deg, #34d399 0%, #10b981 52%, #0891b2 100%)
   color white
   font-size 15
-  font-weight 800
-  letter-spacing .14em
-  box-shadow 0 20 50 rgba(37,99,235,.22)
+  font-weight 900
+  letter-spacing .16em
+  box-shadow 0 20 50 rgba(16,185,129,.24)
+  flex-shrink 0
 }
 
 .brand-copy {
@@ -62,19 +65,40 @@
 .desktop-nav {
   display flex
   align-items center
-  gap 26
+  gap 8
 }
 
-.desktop-nav a {
+.nav-link {
   text-decoration none
   color var(--muted-color)
-  font-weight 600
+  font-weight 700
   font-size 14
-  transition color .2s ease
+  min-height 40
+  padding 0 14
+  border-radius 12
+  display inline-flex
+  align-items center
+  justify-content center
+  transition color .2s ease, background .2s ease, transform .2s ease
 }
 
-.desktop-nav a:hover {
+.nav-link:hover {
+  background rgba(255,255,255,.06)
   color var(--text-color)
+  transform translateY(-1)
+}
+
+:root[data-theme="light"] .nav-link:hover {
+  background rgba(15,23,42,.04)
+}
+
+.nav-link-active {
+  background rgba(16,185,129,.14)
+  color #6ee7b7
+}
+
+:root[data-theme="light"] .nav-link-active {
+  color #047857
 }
 
 .header-actions {
@@ -86,18 +110,22 @@
 .theme-toggle {
   min-height 44
   padding 0 16
-  border-radius 999
+  border-radius 12
   border 1 solid var(--border-color)
-  background var(--surface-color)
+  background rgba(255,255,255,.05)
   color var(--text-color)
-  font-weight 600
+  font-weight 700
   cursor pointer
   transition transform .2s ease, border-color .2s ease, background .2s ease
 }
 
+:root[data-theme="light"] .theme-toggle {
+  background rgba(15,23,42,.03)
+}
+
 .theme-toggle:hover {
   transform translateY(-1)
-  border-color rgba(37,99,235,.34)
+  border-color rgba(16,185,129,.34)
 }
 
 .header-cta {
@@ -106,30 +134,21 @@
   justify-content center
   min-height 46
   padding 0 20
-  border-radius 999
+  border-radius 12
   text-decoration none
-  background #0f172a
+  background linear-gradient(135deg, #0ea5e9 0%, #10b981 100%)
   color white
-  font-weight 700
-  box-shadow 0 18 45 rgba(15,23,42,.18)
-}
-
-:root[data-theme="dark"] .header-cta {
-  background #f8fafc
-  color #0f172a
+  font-weight 800
+  box-shadow 0 18 45 rgba(14,165,233,.18)
 }
 
 @media (max-width:1024) {
   .desktop-nav {
-    gap 18
+    gap 16
   }
 }
 
 @media (max-width:768) {
-  .site-header {
-    top 0
-  }
-
   .header-shell {
     min-height 70
   }
@@ -146,6 +165,7 @@
     min-height 42
     padding 0 14
     font-size 13
+    border-radius 10
   }
 
   .header-cta {
