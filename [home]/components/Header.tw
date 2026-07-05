@@ -7,29 +7,29 @@ header {
         class "container header-shell"
 
         a {
-            href "/"
+            href "/#home"
             class "brand-link"
 
-            span "TW" {
+            span "TM" {
                 class "brand-mark"
             }
 
             span {
                 class "brand-copy"
 
-                strong "TW Language"
-                small "language • compiler • framework"
+                strong "TWMODS"
+                small "premium apps • games • mod catalog"
             }
         }
 
         nav {
             class "desktop-nav"
 
-            a "Overview" { href "/#overview" }
-            a "Syntax" { href "/#syntax" }
-            a "Pipeline" { href "/#pipeline" }
-            a "System" { href "/#system" }
-            a "CLI" { href "/#cli" }
+            a "Home" { href "/#home" }
+            a "Hot Apps" { href "/#hot-apps" }
+            a "Popular" { href "/#popular" }
+            a "Categories" { href "/#categories" }
+            a "Request" { href "/#request" }
         }
 
         div {
@@ -39,12 +39,12 @@ header {
                 type "button"
                 class "theme-toggle"
                 click "__twToggleTheme"
-                title "Toggle dark mode"
+                title "Toggle theme"
                 text "Theme"
             }
 
-            a "Open flow" {
-                href "/#cli"
+            a "Browse Apps" {
+                href "/#hot-apps"
                 class "header-cta"
             }
         }
