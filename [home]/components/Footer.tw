@@ -9,44 +9,44 @@ footer {
         div {
             class "footer-brand"
 
-            h3 "TW Language"
-            p "Custom language, compiler pipeline, styling system, runtime modules, and deploy-ready framework capabilities in one ecosystem."
+            h3 "TWMODS"
+            p "Premium APK style catalog ka twlang port. Home page, navigation, showcase cards, categories aur request CTA ko mobile-friendly layout me present kiya gaya hai."
         }
 
         div {
             class "footer-links"
 
-            h4 "Sections"
-            a "Overview" { href "/#overview" }
-            a "Syntax" { href "/#syntax" }
-            a "Pipeline" { href "/#pipeline" }
-            a "System" { href "/#system" }
-            a "CLI" { href "/#cli" }
+            h4 "Explore"
+            a "Home" { href "/#home" }
+            a "Hot Apps" { href "/#hot-apps" }
+            a "Popular" { href "/#popular" }
+            a "Categories" { href "/#categories" }
         }
 
         div {
             class "footer-links"
 
-            h4 "Signals"
-            a "Compiler layers" { href "/#pipeline" }
-            a "Project structure" { href "/#cli" }
-            a "Theme toggle" { href "/#overview" }
+            h4 "Actions"
+            a "Search teaser" { href "/#search" }
+            a "Request app" { href "/#request" }
+            a "Top picks" { href "/#top-picks" }
+            a "Telegram" { href "https://t.me/twmodstore" }
         }
     }
 
     div {
         class "container footer-bottom"
 
-        p "TW Language v0.2.3. Built to showcase syntax clarity, compiler depth, and responsive system design."
+        p "TWMODS twlang port. Home, header, footer aur core homepage sections ab custom TW stack par aligned hain."
     }
 }
 
 nav {
     class "mobile-footer-nav"
 
-    a "Home" { href "/#overview" }
-    a "Syntax" { href "/#syntax" }
-    a "Flow" { href "/#pipeline" }
-    a "System" { href "/#system" }
-    a "CLI" { href "/#cli" }
+    a "Home" { href "/#home" }
+    a "Hot" { href "/#hot-apps" }
+    a "Popular" { href "/#popular" }
+    a "Cats" { href "/#categories" }
+    a "Ask" { href "/#request" }
 }
