@@ -33,28 +33,20 @@ BODY {
                     }
 
                     h1 "Premium APK Downloads, Apps, Games and Mod Catalog."
-                    p "Ye homepage `Next.js` clone ko aapke custom `twlang` stack par port karke banaya gaya hai. Isme hero banner, hot apps, popular download list, categories, search teaser aur request section ko clean responsive style me shift kiya gaya hai."
+                    p "Search aur browse premium-style APK listings with categories, ratings, version info, file size aur clean download-focused app cards. Homepage ko original app catalog flow ke closer redesign kiya gaya hai."
 
                     div {
                         class "hero-actions"
 
-                        a "Browse hot apps" {
-                            href "/#hot-apps"
+                        a "Search Now" {
+                            href "/#search"
                             class "btn btn-primary"
                         }
 
-                        a "Explore categories" {
-                            href "/#categories"
+                        a "Browse Apps" {
+                            href "/#hot-apps"
                             class "btn btn-secondary"
                         }
-                    }
-
-                    div {
-                        class "hero-pill-row"
-
-                        span ".tw pages" { class "pill" }
-                        span ".tss styling" { class "pill" }
-                        span "custom header/footer" { class "pill" }
                     }
                 }
 
@@ -62,91 +54,30 @@ BODY {
                     class "hero-surface"
 
                     article {
-                        class "hero-card"
+                        class "hero-card hero-card-large"
 
                         div {
                             class "hero-topline"
 
-                            span "Live homepage preview"
+                            span "Trending now"
                             span {
                                 class "live-dot"
                             }
                         }
 
-                        h2 "Twmods landing surface ab modern catalog layout ke saath aligned hai."
+                        h2 "Spotify Premium"
                         p {
                             class "card-copy"
-                            text "Main focus homepage UX par rakha gaya hai: fast visual hierarchy, strong app cards, clean CTA flow aur mobile-friendly navigation."
+                            text "Music streaming app card with premium catalog styling, highlighted rating, quick metadata aur bold CTA treatment."
                         }
 
                         div {
-                            class "mini-stats"
+                            class "hero-pill-row"
 
-                            article {
-                                class "stat-tile"
-                                strong "4"
-                                span "featured hot apps"
-                            }
-
-                            article {
-                                class "stat-tile"
-                                strong "3"
-                                span "popular download rows"
-                            }
-
-                            article {
-                                class "stat-tile"
-                                strong "6"
-                                span "category shortcuts"
-                            }
+                            span "4.9 rating" { class "pill" }
+                            span "98 MB" { class "pill" }
+                            span "Music" { class "pill" }
                         }
-                    }
-                }
-            }
-        }
-
-        section {
-            id "top-picks"
-            class "section"
-
-            div {
-                class "container"
-
-                div {
-                    class "section-head"
-
-                    span "Quick highlights" {
-                        class "section-kicker"
-                    }
-
-                    h2 "Homepage ke top-level blocks same premium catalog feeling ko carry karte hain." {
-                        class "section-title"
-                    }
-
-                    p "Hero ke baad user ko instantly trust signals aur top picks dikhte hain, taaki page empty ya generic na lage." {
-                        class "section-copy"
-                    }
-                }
-
-                div {
-                    class "stats-grid"
-
-                    article {
-                        class "stat-tile"
-                        strong "Dark / Light"
-                        span "built-in theme toggle already wired through TW runtime"
-                    }
-
-                    article {
-                        class "stat-tile"
-                        strong "Catalog feel"
-                        span "app-first layout with badges, scores and metadata chips"
-                    }
-
-                    article {
-                        class "stat-tile"
-                        strong "Responsive"
-                        span "hero, cards and footer nav mobile screens ke liye adapted"
                     }
                 }
             }
@@ -154,62 +85,75 @@ BODY {
 
         section {
             id "hot-apps"
-            class "section section-soft"
+            class "section"
 
             div {
                 class "container"
 
                 div {
-                    class "section-head"
+                    class "section-head section-head-row"
 
-                    span "Featured apps" {
-                        class "section-kicker"
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Hot Apps" {
+                            class "section-title section-title-small"
+                        }
                     }
 
-                    h2 "Hot apps section homepage ka main visual anchor hai." {
-                        class "section-title"
-                    }
-
-                    p "Abhi static showcase cards banaye gaye hain, jise next step me real data route se bind kiya ja sakta hai." {
-                        class "section-copy"
+                    a "More" {
+                        href "/#latest"
+                        class "section-more"
                     }
                 }
 
                 div {
-                    class "app-grid"
+                    class "catalog-grid"
 
                     article {
                         class "app-card"
 
                         div {
-                            class "badge-row"
+                            class "app-cover app-cover-emerald"
+
+                            span "SP" {
+                                class "app-icon"
+                            }
+
+                            span "Premium" {
+                                class "app-badge"
+                            }
 
                             span "Hot" {
-                                class "tag tag-hot"
+                                class "app-hot"
                             }
 
-                            span "4.9★" {
-                                class "score"
+                            span "98 MB" {
+                                class "app-size"
                             }
-                        }
-
-                        h3 "Spotify Premium"
-                        p {
-                            class "card-copy"
-                            text "Music streaming app with unlocked premium style experience, cleaner playback flow and offline-friendly presentation."
                         }
 
                         div {
-                            class "meta-row"
+                            class "app-body"
 
-                            span "v8.10"
-                            span "98 MB"
-                            span "Music"
-                        }
+                            h3 "Spotify Premium"
+                            p {
+                                class "app-subtitle"
+                                text "Spotify Ltd"
+                            }
 
-                        a "Open app" {
-                            href "/#request"
-                            class "card-link"
+                            p {
+                                class "app-copy"
+                                text "Premium music streaming card with strong visuals, trimmed description aur quick scan metadata."
+                            }
+
+                            div {
+                                class "app-meta"
+
+                                span "4.9 ★"
+                                span "1.9M"
+                                span "Music"
+                            }
                         }
                     }
 
@@ -217,34 +161,46 @@ BODY {
                         class "app-card"
 
                         div {
-                            class "badge-row"
+                            class "app-cover app-cover-cyan"
+
+                            span "CC" {
+                                class "app-icon"
+                            }
+
+                            span "Editor" {
+                                class "app-badge"
+                            }
 
                             span "Hot" {
-                                class "tag tag-hot"
+                                class "app-hot"
                             }
 
-                            span "4.8★" {
-                                class "score"
+                            span "124 MB" {
+                                class "app-size"
                             }
-                        }
-
-                        h3 "CapCut Pro"
-                        p {
-                            class "card-copy"
-                            text "Video editing focused listing with creative tools, export centric layout and strong mobile-first demand."
                         }
 
                         div {
-                            class "meta-row"
+                            class "app-body"
 
-                            span "v13.4"
-                            span "124 MB"
-                            span "Video"
-                        }
+                            h3 "CapCut Pro"
+                            p {
+                                class "app-subtitle"
+                                text "Bytedance"
+                            }
 
-                        a "Open app" {
-                            href "/#request"
-                            class "card-link"
+                            p {
+                                class "app-copy"
+                                text "Video editing focused card with bright cover surface, compact copy aur premium utility feel."
+                            }
+
+                            div {
+                                class "app-meta"
+
+                                span "4.8 ★"
+                                span "1.5M"
+                                span "Video"
+                            }
                         }
                     }
 
@@ -252,34 +208,46 @@ BODY {
                         class "app-card"
 
                         div {
-                            class "badge-row"
+                            class "app-cover app-cover-purple"
+
+                            span "AM" {
+                                class "app-icon"
+                            }
+
+                            span "Motion" {
+                                class "app-badge"
+                            }
 
                             span "New" {
-                                class "tag tag-new"
+                                class "app-hot app-hot-blue"
                             }
 
-                            span "4.7★" {
-                                class "score"
+                            span "146 MB" {
+                                class "app-size"
                             }
-                        }
-
-                        h3 "Alight Motion"
-                        p {
-                            class "card-copy"
-                            text "Motion design app card with newer creative positioning, short metadata and quick-access CTA treatment."
                         }
 
                         div {
-                            class "meta-row"
+                            class "app-body"
 
-                            span "v5.2"
-                            span "146 MB"
-                            span "Design"
-                        }
+                            h3 "Alight Motion"
+                            p {
+                                class "app-subtitle"
+                                text "Alight Creative"
+                            }
 
-                        a "Open app" {
-                            href "/#request"
-                            class "card-link"
+                            p {
+                                class "app-copy"
+                                text "Motion design listing with vibrant gradient cover aur high-contrast app presentation."
+                            }
+
+                            div {
+                                class "app-meta"
+
+                                span "4.7 ★"
+                                span "912K"
+                                span "Design"
+                            }
                         }
                     }
 
@@ -287,36 +255,53 @@ BODY {
                         class "app-card"
 
                         div {
-                            class "badge-row"
+                            class "app-cover app-cover-orange"
 
-                            span "Top Pick" {
-                                class "tag tag-top"
+                            span "TC" {
+                                class "app-icon"
                             }
 
-                            span "4.8★" {
-                                class "score"
+                            span "Utility" {
+                                class "app-badge"
                             }
-                        }
 
-                        h3 "Truecaller Gold"
-                        p {
-                            class "card-copy"
-                            text "Communication category ke liye polished listing block with metadata chips aur tight card spacing."
+                            span "Hot" {
+                                class "app-hot"
+                            }
+
+                            span "82 MB" {
+                                class "app-size"
+                            }
                         }
 
                         div {
-                            class "meta-row"
+                            class "app-body"
 
-                            span "v15.9"
-                            span "82 MB"
-                            span "Tools"
-                        }
+                            h3 "Truecaller Gold"
+                            p {
+                                class "app-subtitle"
+                                text "True Software"
+                            }
 
-                        a "Open app" {
-                            href "/#request"
-                            class "card-link"
+                            p {
+                                class "app-copy"
+                                text "Utility app listing with tighter spacing, clear title hierarchy aur bold ranking surface."
+                            }
+
+                            div {
+                                class "app-meta"
+
+                                span "4.8 ★"
+                                span "2.2M"
+                                span "Tools"
+                            }
                         }
                     }
+                }
+
+                a "More apps" {
+                    href "/#latest"
+                    class "section-button"
                 }
             }
         }
@@ -329,110 +314,655 @@ BODY {
                 class "container"
 
                 div {
-                    class "section-head"
+                    class "section-head section-head-row"
 
-                    span "Popular downloads" {
-                        class "section-kicker"
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Popular Downloads" {
+                            class "section-title section-title-small"
+                        }
                     }
 
-                    h2 "List style cards se secondary content block bhi strong feel deta hai." {
-                        class "section-title"
-                    }
-
-                    p "Ye area Next project ke popular download rows ko twlang layout ke andar compact, readable aur scannable form me present karta hai." {
-                        class "section-copy"
+                    a "More" {
+                        href "/#new"
+                        class "section-more"
                     }
                 }
 
                 div {
-                    class "list-stack"
+                    class "wide-grid"
 
                     article {
-                        class "list-card"
+                        class "wide-card"
 
-                        span "01" {
-                            class "list-rank"
+                        div {
+                            class "app-cover app-cover-red wide-cover"
+
+                            span "YT" {
+                                class "app-icon"
+                            }
+
+                            span "Top" {
+                                class "app-badge"
+                            }
                         }
 
                         div {
-                            class "list-main"
+                            class "wide-body"
 
                             h3 "YouTube Premium"
-                            p "Daily-use media app jisme high interest audience ke liye fast listing summary aur clean metadata placement diya gaya hai."
-                        }
-
-                        div {
-                            class "list-aside"
-                            strong "2.4M+"
-                            span "downloads"
+                            p {
+                                class "app-subtitle"
+                                text "Google LLC"
+                            }
+                            p {
+                                class "app-copy"
+                                text "High interest media app card with stronger copy block, larger cover panel aur top download emphasis."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.9 ★"
+                                span "2.4M"
+                                span "Entertainment"
+                            }
                         }
                     }
 
                     article {
-                        class "list-card"
+                        class "wide-card"
 
-                        span "02" {
-                            class "list-rank"
+                        div {
+                            class "app-cover app-cover-pink wide-cover"
+
+                            span "PA" {
+                                class "app-icon"
+                            }
+
+                            span "Popular" {
+                                class "app-badge"
+                            }
                         }
 
                         div {
-                            class "list-main"
+                            class "wide-body"
 
                             h3 "PicsArt Gold"
-                            p "Creative tools category ke liye polished popular card with balanced copy, rank badge aur download emphasis."
-                        }
-
-                        div {
-                            class "list-aside"
-                            strong "1.9M+"
-                            span "downloads"
-                        }
-                    }
-
-                    article {
-                        class "list-card"
-
-                        span "03" {
-                            class "list-rank"
-                        }
-
-                        div {
-                            class "list-main"
-
-                            h3 "Minecraft PE"
-                            p "Games focused entry jo home page ko only utility catalog na lagne de, balki mixed app plus game library jaisa banaye."
-                        }
-
-                        div {
-                            class "list-aside"
-                            strong "1.7M+"
-                            span "downloads"
+                            p {
+                                class "app-subtitle"
+                                text "PicsArt Inc"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Creative utility listing with broader body copy aur balanced metadata layout just like original wide cards."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "1.9M"
+                                span "Photography"
+                            }
                         }
                     }
+                }
+
+                a "More apps" {
+                    href "/#new"
+                    class "section-button"
                 }
             }
         }
 
         section {
-            id "categories"
+            id "latest"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head section-head-row"
+
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Latest Premium APKs" {
+                            class "section-title section-title-small"
+                        }
+                    }
+
+                    a "More" {
+                        href "/#recommended"
+                        class "section-more"
+                    }
+                }
+
+                div {
+                    class "catalog-grid"
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-sky"
+
+                            span "MC" {
+                                class "app-icon"
+                            }
+
+                            span "Game" {
+                                class "app-badge"
+                            }
+
+                            span "New" {
+                                class "app-hot app-hot-blue"
+                            }
+
+                            span "210 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Minecraft PE"
+                            p {
+                                class "app-subtitle"
+                                text "Mojang"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Gaming category ke liye bold cover, shorter text aur clearer metadata balance."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "1.7M"
+                                span "Games"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-indigo"
+
+                            span "NP" {
+                                class "app-icon"
+                            }
+
+                            span "Tool" {
+                                class "app-badge"
+                            }
+
+                            span "New" {
+                                class "app-hot app-hot-blue"
+                            }
+
+                            span "44 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Netflix Premium"
+                            p {
+                                class "app-subtitle"
+                                text "Netflix Inc"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Streaming app entry with premium look, compact subtitle aur strong surface contrast."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.7 ★"
+                                span "884K"
+                                span "Entertainment"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-amber"
+
+                            span "VS" {
+                                class "app-icon"
+                            }
+
+                            span "Creator" {
+                                class "app-badge"
+                            }
+
+                            span "New" {
+                                class "app-hot app-hot-blue"
+                            }
+
+                            span "118 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "VN Video Editor"
+                            p {
+                                class "app-subtitle"
+                                text "VN Studio"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Creator tools card styled to mirror the original latest APK grid rhythm."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "1.1M"
+                                span "Video"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-green"
+
+                            span "SC" {
+                                class "app-icon"
+                            }
+
+                            span "Social" {
+                                class "app-badge"
+                            }
+
+                            span "New" {
+                                class "app-hot app-hot-blue"
+                            }
+
+                            span "76 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Snapchat Plus"
+                            p {
+                                class "app-subtitle"
+                                text "Snap Inc"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Fast moving social listing with lighter copy and compact app info row."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.6 ★"
+                                span "694K"
+                                span "Social"
+                            }
+                        }
+                    }
+                }
+
+                a "More apps" {
+                    href "/#recommended"
+                    class "section-button"
+                }
+            }
+        }
+
+        section {
+            id "recommended"
             class "section section-soft"
 
             div {
                 class "container"
 
                 div {
-                    class "section-head"
+                    class "section-head section-head-row"
 
-                    span "Browse categories" {
-                        class "section-kicker"
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Recommended For You" {
+                            class "section-title section-title-small"
+                        }
                     }
 
-                    h2 "Category shortcuts homepage ko catalog depth dete hain." {
-                        class "section-title"
+                    a "More" {
+                        href "/#new"
+                        class "section-more"
+                    }
+                }
+
+                div {
+                    class "catalog-grid"
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-violet"
+
+                            span "KP" {
+                                class "app-icon"
+                            }
+
+                            span "Design" {
+                                class "app-badge"
+                            }
+
+                            span "Hot" {
+                                class "app-hot"
+                            }
+
+                            span "68 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "KineMaster Pro"
+                            p {
+                                class "app-subtitle"
+                                text "KineMaster Corp"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Creative editing app with highly recommended card styling and cleaner body ratio."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "1.2M"
+                                span "Video"
+                            }
+                        }
                     }
 
-                    p "Abhi representative category cards use ho rahe hain. Inko aage JSON ya API source se dynamic banana easy rahega." {
-                        class "section-copy"
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-rose"
+
+                            span "PP" {
+                                class "app-icon"
+                            }
+
+                            span "Photo" {
+                                class "app-badge"
+                            }
+
+                            span "Hot" {
+                                class "app-hot"
+                            }
+
+                            span "72 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "PixelLab Premium"
+                            p {
+                                class "app-subtitle"
+                                text "PixelLab"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Photo utility card with premium feel, trimmed copy and balanced metadata chips."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.7 ★"
+                                span "807K"
+                                span "Photography"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-cyan"
+
+                            span "AM" {
+                                class "app-icon"
+                            }
+
+                            span "Music" {
+                                class "app-badge"
+                            }
+
+                            span "Top" {
+                                class "app-hot"
+                            }
+
+                            span "36 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Apple Music Mod"
+                            p {
+                                class "app-subtitle"
+                                text "Apple Inc"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Recommended music utility block with softer surface and bright cyan cover treatment."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.6 ★"
+                                span "568K"
+                                span "Music"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-orange"
+
+                            span "WA" {
+                                class "app-icon"
+                            }
+
+                            span "Chat" {
+                                class "app-badge"
+                            }
+
+                            span "Top" {
+                                class "app-hot"
+                            }
+
+                            span "61 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "WhatsApp Gold"
+                            p {
+                                class "app-subtitle"
+                                text "Meta"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Communication card that keeps the original recommendation grid dense and fast-scannable."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.5 ★"
+                                span "1.4M"
+                                span "Communication"
+                            }
+                        }
+                    }
+                }
+
+                a "More apps" {
+                    href "/#new"
+                    class "section-button"
+                }
+            }
+        }
+
+        section {
+            id "new"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head section-head-row"
+
+                    div {
+                        class "section-head-copy"
+
+                        h2 "New" {
+                            class "section-title section-title-small"
+                        }
+                    }
+
+                    a "More" {
+                        href "/#categories"
+                        class "section-more"
+                    }
+                }
+
+                div {
+                    class "wide-grid"
+
+                    article {
+                        class "wide-card"
+
+                        div {
+                            class "app-cover app-cover-lime wide-cover"
+
+                            span "TB" {
+                                class "app-icon"
+                            }
+
+                            span "Fresh" {
+                                class "app-badge"
+                            }
+                        }
+
+                        div {
+                            class "wide-body"
+
+                            h3 "Telegram Beta"
+                            p {
+                                class "app-subtitle"
+                                text "Telegram LLC"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Fresh app row inspired by the original New section, using wide layout and concise metadata treatment."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.7 ★"
+                                span "468K"
+                                span "Communication"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "wide-card"
+
+                        div {
+                            class "app-cover app-cover-purple wide-cover"
+
+                            span "LR" {
+                                class "app-icon"
+                            }
+
+                            span "Fresh" {
+                                class "app-badge"
+                            }
+                        }
+
+                        div {
+                            class "wide-body"
+
+                            h3 "Lightroom Premium"
+                            p {
+                                class "app-subtitle"
+                                text "Adobe"
+                            }
+                            p {
+                                class "app-copy"
+                                text "New uploads style row matching the original homepage flow with broader body copy and clear app emphasis."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "752K"
+                                span "Photography"
+                            }
+                        }
+                    }
+                }
+
+                a "More apps" {
+                    href "/#categories"
+                    class "section-button"
+                }
+            }
+        }
+
+        section {
+            id "categories"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head section-head-row"
+
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Browse categories" {
+                            class "section-title section-title-small"
+                        }
+                    }
+
+                    a "More" {
+                        href "/#request"
+                        class "section-more"
                     }
                 }
 
@@ -441,92 +971,38 @@ BODY {
 
                     article {
                         class "category-card"
+                        span "A" { class "category-icon" }
+                        h3 "Apps"
+                    }
 
-                        span "🎮" {
-                            class "category-icon"
-                        }
-
+                    article {
+                        class "category-card"
+                        span "G" { class "category-icon" }
                         h3 "Games"
-                        p "Action, casual aur multiplayer downloads ke liye dedicated entry path."
-                        a "Open category" {
-                            href "/#request"
-                            class "category-link"
-                        }
                     }
 
                     article {
                         class "category-card"
-
-                        span "🛠️" {
-                            class "category-icon"
-                        }
-
+                        span "T" { class "category-icon" }
                         h3 "Tools"
-                        p "Cleaner utilities, booster apps aur productivity style listings ke liye."
-                        a "Open category" {
-                            href "/#request"
-                            class "category-link"
-                        }
                     }
 
                     article {
                         class "category-card"
-
-                        span "🎵" {
-                            class "category-icon"
-                        }
-
-                        h3 "Music"
-                        p "Streaming aur audio focused apps jo high-repeat usage audience ko target karte hain."
-                        a "Open category" {
-                            href "/#request"
-                            class "category-link"
-                        }
+                        span "S" { class "category-icon" }
+                        h3 "Social"
                     }
 
                     article {
                         class "category-card"
-
-                        span "🎬" {
-                            class "category-icon"
-                        }
-
-                        h3 "Video"
-                        p "Editors, players aur creator tools ko quick discoverability dene ke liye."
-                        a "Open category" {
-                            href "/#request"
-                            class "category-link"
-                        }
-                    }
-
-                    article {
-                        class "category-card"
-
-                        span "📷" {
-                            class "category-icon"
-                        }
-
+                        span "P" { class "category-icon" }
                         h3 "Photography"
-                        p "Filters, image editing aur premium capture utilities ke liye visual lane."
-                        a "Open category" {
-                            href "/#request"
-                            class "category-link"
-                        }
                     }
 
                     article {
                         class "category-card"
-
-                        span "💬" {
-                            class "category-icon"
-                        }
-
-                        h3 "Communication"
-                        p "Calling, privacy aur messaging apps ke liye compact user route."
-                        a "Open category" {
-                            href "/#request"
-                            class "category-link"
-                        }
+                        span "V" { class "category-icon" }
+                        h3 "Video"
                     }
                 }
             }
@@ -534,73 +1010,21 @@ BODY {
 
         section {
             id "search"
-            class "section"
+            class "section section-soft"
 
             div {
                 class "container"
 
-                div {
-                    class "section-head"
-
-                    span "Search teaser" {
-                        class "section-kicker"
-                    }
-
-                    h2 "Search page ka preview section home par hi direction de deta hai." {
-                        class "section-title"
-                    }
-
-                    p "Is block me actual search route nahi banaya gaya, lekin homepage UX ke liye uska teaser aur result preview pattern port kar diya gaya hai." {
-                        class "section-copy"
-                    }
-                }
-
                 article {
-                    class "search-panel"
+                    class "search-bar-shell"
 
                     div {
-                        class "request-copy"
-
-                        div {
-                            class "fake-search"
-                            text "Search APK, app, category..."
-                        }
-
-                        p "Debounced search, recommendation strip aur filtered results ko next phase me client-side ya server-backed flow se connect kiya ja sakta hai."
-
-                        div {
-                            class "search-chip-row"
-
-                            span "Recommended apps" { class "pill" }
-                            span "Instant results" { class "pill" }
-                            span "Category matching" { class "pill" }
-                        }
-
-                        span "Ready for interactive search route." {
-                            class "search-note"
-                        }
+                        class "search-bar"
+                        text "Search APK, app, category..."
                     }
 
-                    div {
-                        class "search-results-preview"
-
-                        article {
-                            class "preview-card"
-                            strong "Spotify Premium"
-                            span "Music • 4.9 rating • Recommended result"
-                        }
-
-                        article {
-                            class "preview-card"
-                            strong "CapCut Pro"
-                            span "Video • 4.8 rating • Popular result"
-                        }
-
-                        article {
-                            class "preview-card"
-                            strong "Minecraft PE"
-                            span "Games • 4.8 rating • Trending result"
-                        }
+                    span "Search route next phase me connect ho sakta hai." {
+                        class "search-note"
                     }
                 }
             }
@@ -608,63 +1032,20 @@ BODY {
 
         section {
             id "request"
-            class "section section-soft"
+            class "section"
 
             div {
                 class "container"
 
                 article {
-                    class "request-shell"
+                    class "request-banner"
 
-                    div {
-                        class "request-copy"
+                    h2 "Can't find an app?"
+                    p "Request an app upload and we'll add it to the catalog."
 
-                        span "Request upload" {
-                            class "eyebrow"
-                        }
-
-                        h2 "Can't find an app? Request block homepage ko action-ready finish deta hai."
-                        p "Original Next project me upload request modal tha. Abhi uska homepage CTA aur content framing twlang me port kiya gaya hai, jise next phase me real form ya `.twm` API route ke saath connect kiya ja sakta hai."
-
-                        div {
-                            class "request-actions"
-
-                            a "Request this app" {
-                                href "mailto:hello@twmods.in?subject=App%20Request"
-                                class "btn btn-primary"
-                            }
-
-                            a "Open Telegram" {
-                                href "https://t.me/twmodstore"
-                                class "btn btn-secondary"
-                            }
-                        }
-                    }
-
-                    div {
-                        class "request-box"
-
-                        div {
-                            class "request-list"
-
-                            div {
-                                class "request-item"
-                                strong "1"
-                                span "App ka naam aur category share karo."
-                            }
-
-                            div {
-                                class "request-item"
-                                strong "2"
-                                span "Agar possible ho to version ya source detail add karo."
-                            }
-
-                            div {
-                                class "request-item"
-                                strong "3"
-                                span "Next phase me isi area ko live request form me convert kiya ja sakta hai."
-                            }
-                        }
+                    a "Request Upload" {
+                        href "mailto:hello@twmods.in?subject=App%20Request"
+                        class "btn btn-primary"
                     }
                 }
             }
