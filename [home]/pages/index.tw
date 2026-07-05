@@ -1,261 +1,103 @@
 page {
-    title "TW Language | Language, Compiler, Framework"
+    title "TWMODS | Premium APK Catalog"
     layout "main"
     render static
 }
 
-load "@./style/home-showcase.tss"
+load "@./style/twmods-home.tss"
 
 head {
     seo {
-        description "TW Language ka modern home page jo language syntax, compiler pipeline, CLI workflow, framework system, aur project structure ko responsive way mein represent karta hai."
-        og_title "TW Language | Language, Compiler, Framework"
-        og_description "Explore TW syntax, compiler layers, runtime system, CLI workflow, and production-ready framework capabilities."
+        description "TWMODS style premium APK catalog ka twlang homepage port with hero, hot apps, popular downloads, categories aur request CTA."
+        og_title "TWMODS | Premium APK Catalog"
+        og_description "Browse premium app cards, top picks, category blocks and mobile friendly homepage sections built on twlang."
     }
 }
 
 BODY {
     main {
-        class "home-shell"
+        class "twmods-home"
 
         section {
-            id "overview"
-            class "hero-section"
+            id "home"
+            class "home-hero"
 
             div {
-                class "container hero-grid"
+                class "container hero-shell"
 
                 div {
                     class "hero-copy"
 
-                    span "TW ecosystem" {
+                    span "Premium APK hub" {
                         class "eyebrow"
                     }
 
-                    h1 "One language surface for syntax, structure, compiler flow, and production output."
-                    p "TW Language ek custom language plus framework stack hai jo `.tw`, `.tss`, aur `.twm` ko ek clean developer workflow mein jodta hai. Yeh homepage usi system ko modern, responsive aur visually strong tareeke se represent karta hai."
+                    h1 "Premium APK Downloads, Apps, Games and Mod Catalog."
+                    p "Ye homepage `Next.js` clone ko aapke custom `twlang` stack par port karke banaya gaya hai. Isme hero banner, hot apps, popular download list, categories, search teaser aur request section ko clean responsive style me shift kiya gaya hai."
 
                     div {
-                        class "button-row"
+                        class "hero-actions"
 
-                        a "See syntax" {
-                            href "/#syntax"
+                        a "Browse hot apps" {
+                            href "/#hot-apps"
                             class "btn btn-primary"
                         }
 
-                        a "View pipeline" {
-                            href "/#pipeline"
+                        a "Explore categories" {
+                            href "/#categories"
                             class "btn btn-secondary"
                         }
-
-                        a "Open CLI flow" {
-                            href "/#cli"
-                            class "btn btn-ghost"
-                        }
                     }
 
                     div {
-                        class "hero-inline-stats"
+                        class "hero-pill-row"
 
-                        article {
-                            class "mini-stat"
-                            strong "Compiler-aware"
-                            span "Language + framework + output"
-                        }
-
-                        article {
-                            class "mini-stat"
-                            strong "Production UX"
-                            span "Fast, clean, deploy-ready"
-                        }
-                    }
-
-                    div {
-                        class "pill-row"
-
-                        span ".tw pages + components" {
-                            class "pill"
-                        }
-
-                        span ".tss styling layer" {
-                            class "pill"
-                        }
-
-                        span ".twm runtime modules" {
-                            class "pill"
-                        }
+                        span ".tw pages" { class "pill" }
+                        span ".tss styling" { class "pill" }
+                        span "custom header/footer" { class "pill" }
                     }
                 }
 
                 div {
                     class "hero-surface"
 
-                    div {
-                        class "hero-backdrop"
+                    article {
+                        class "hero-card"
 
                         div {
-                            class "hero-orb hero-orb-one"
-                        }
+                            class "hero-topline"
 
-                        div {
-                            class "hero-orb hero-orb-two"
-                        }
-
-                        div {
-                            class "hero-grid-lines"
-                        }
-                    }
-
-                    div {
-                        class "surface-bar"
-
-                        span "TW Language v0.2.3" {
-                            class "surface-title"
-                        }
-
-                        span "Responsive by design" {
-                            class "surface-kicker"
-                        }
-                    }
-
-                    div {
-                        class "surface-grid"
-
-                        article {
-                            class "surface-card surface-card-primary"
-
-                            span "Language layer" {
-                                class "card-label"
-                            }
-
-                            h2 ".tw + .tss + .twm"
-                            p "Templates, stylesheets, and script modules ek consistent authoring model ke andar."
-                        }
-
-                        article {
-                            class "surface-card"
-
-                            span "Compiler depth" {
-                                class "card-label"
-                            }
-
-                            h3 "Lexer to renderer"
-                            p "Tokenization, parsing, semantic checks, IR lowering, and final HTML/CSS rendering."
-                        }
-
-                        article {
-                            class "surface-card"
-
-                            span "Framework system" {
-                                class "card-label"
-                            }
-
-                            h3 "Routing, API, middleware"
-                            p "Static pages se lekar runtime metadata aur deploy workflows tak."
-                        }
-
-                        article {
-                            class "surface-card"
-
-                            span "Output quality" {
-                                class "card-label"
-                            }
-
-                            h3 "SEO and deploy ready"
-                            p "Sitemap, robots, RSS, gzip, brotli, route manifests, aur hosting adapters."
-                        }
-                    }
-
-                    div {
-                        class "surface-status-row"
-
-                        div {
-                            class "status-pill"
-                            span "Compiler"
-                            strong "active"
-                        }
-
-                        div {
-                            class "status-pill"
-                            span "Framework"
-                            strong "ready"
-                        }
-
-                        div {
-                            class "status-pill"
-                            span "Deploy"
-                            strong "stable"
-                        }
-                    }
-
-                    div {
-                        class "surface-console"
-
-                        div {
-                            class "console-top"
-
-                            strong "Runtime activity"
-
-                            span "live" {
-                                class "console-live"
+                            span "Live homepage preview"
+                            span {
+                                class "live-dot"
                             }
                         }
 
+                        h2 "Twmods landing surface ab modern catalog layout ke saath aligned hai."
+                        p {
+                            class "card-copy"
+                            text "Main focus homepage UX par rakha gaya hai: fast visual hierarchy, strong app cards, clean CTA flow aur mobile-friendly navigation."
+                        }
+
                         div {
-                            class "console-list"
+                            class "mini-stats"
 
                             article {
-                                class "console-row"
-
-                                div {
-                                    class "console-meta"
-                                    strong "Parser graph"
-                                    span "AST sync"
-                                }
-
-                                div {
-                                    class "meter"
-
-                                    span {
-                                        class "meter-fill meter-fill-primary"
-                                    }
-                                }
+                                class "stat-tile"
+                                strong "4"
+                                span "featured hot apps"
                             }
 
                             article {
-                                class "console-row"
-
-                                div {
-                                    class "console-meta"
-                                    strong "Render output"
-                                    span "HTML + CSS"
-                                }
-
-                                div {
-                                    class "meter"
-
-                                    span {
-                                        class "meter-fill meter-fill-accent"
-                                    }
-                                }
+                                class "stat-tile"
+                                strong "3"
+                                span "popular download rows"
                             }
 
                             article {
-                                class "console-row"
-
-                                div {
-                                    class "console-meta"
-                                    strong "Deploy adapter"
-                                    span "Static ready"
-                                }
-
-                                div {
-                                    class "meter"
-
-                                    span {
-                                        class "meter-fill meter-fill-success"
-                                    }
-                                }
+                                class "stat-tile"
+                                strong "6"
+                                span "category shortcuts"
                             }
                         }
                     }
@@ -264,39 +106,7 @@ BODY {
         }
 
         section {
-            class "signal-section"
-
-            div {
-                class "container signal-grid"
-
-                article {
-                    class "signal-card"
-                    strong "3"
-                    span "Core authoring files: `.tw`, `.tss`, `.twm`"
-                }
-
-                article {
-                    class "signal-card"
-                    strong "9+"
-                    span "Major compiler layers visible in the repo"
-                }
-
-                article {
-                    class "signal-card"
-                    strong "10+"
-                    span "CLI and build workflows for dev, check, build, preview"
-                }
-
-                article {
-                    class "signal-card"
-                    strong "Multi-mode"
-                    span "Static, server, edge, metadata, and deploy oriented rendering"
-                }
-            }
-        }
-
-        section {
-            id "syntax"
+            id "top-picks"
             class "section"
 
             div {
@@ -305,118 +115,46 @@ BODY {
                 div {
                     class "section-head"
 
-                    span "Syntax surface" {
-                        class "eyebrow"
+                    span "Quick highlights" {
+                        class "section-kicker"
                     }
 
-                    h2 "Readable syntax that keeps structure obvious." {
+                    h2 "Homepage ke top-level blocks same premium catalog feeling ko carry karte hain." {
                         class "section-title"
                     }
 
-                    p "Homepage ka core idea yeh hai ki TW sirf ek landing brand nahi, balki ek real language system lage. Isliye yahan syntax, styling grammar aur runtime module shape ko visually alag blocks mein dikhaya gaya hai." {
+                    p "Hero ke baad user ko instantly trust signals aur top picks dikhte hain, taaki page empty ya generic na lage." {
                         class "section-copy"
                     }
                 }
 
                 div {
-                    class "syntax-grid"
+                    class "stats-grid"
 
                     article {
-                        class "code-card"
-
-                        div {
-                            class "code-head"
-
-                            span ".tw" {
-                                class "code-tag"
-                            }
-
-                            strong "Page + component structure"
-                        }
-
-                        pre {
-                            class "code-frame"
-
-                            code {
-                                text "
-page {
-  title TWLanguage
-  layout main
-  render static
-}
-
-BODY {
-  section {
-    class hero-section
-    h1 Build with TW
-  }
-}
-"
-                            }
-                        }
+                        class "stat-tile"
+                        strong "Dark / Light"
+                        span "built-in theme toggle already wired through TW runtime"
                     }
 
                     article {
-                        class "code-card"
-
-                        div {
-                            class "code-head"
-
-                            span ".tss" {
-                                class "code-tag"
-                            }
-
-                            strong "Style system"
-                        }
-
-                        pre {
-                            class "code-frame"
-
-                            code {
-                                text "
-.hero-section {
-  display grid
-  gap 24
-  padding 96 0
-  background var(--surface-color)
-}
-"
-                            }
-                        }
+                        class "stat-tile"
+                        strong "Catalog feel"
+                        span "app-first layout with badges, scores and metadata chips"
                     }
 
                     article {
-                        class "code-card"
-
-                        div {
-                            class "code-head"
-
-                            span ".twm" {
-                                class "code-tag"
-                            }
-
-                            strong "Runtime modules"
-                        }
-
-                        pre {
-                            class "code-frame"
-
-                            code {
-                                text "
-export function initHome() {
-  console.log(TW runtime ready)
-}
-"
-                            }
-                        }
+                        class "stat-tile"
+                        strong "Responsive"
+                        span "hero, cards and footer nav mobile screens ke liye adapted"
                     }
                 }
             }
         }
 
         section {
-            id "pipeline"
-            class "section section-muted"
+            id "hot-apps"
+            class "section section-soft"
 
             div {
                 class "container"
@@ -424,93 +162,378 @@ export function initHome() {
                 div {
                     class "section-head"
 
-                    span "Compiler pipeline" {
-                        class "eyebrow"
+                    span "Featured apps" {
+                        class "section-kicker"
                     }
 
-                    h2 "Source se production output tak ek visible system." {
+                    h2 "Hot apps section homepage ka main visual anchor hai." {
                         class "section-title"
                     }
 
-                    p "README aur framework files se jo core pipeline dikh raha hai usko homepage par explicit banaya gaya hai, taaki project immediately serious compiler work jaisa lage." {
+                    p "Abhi static showcase cards banaye gaye hain, jise next step me real data route se bind kiya ja sakta hai." {
                         class "section-copy"
                     }
                 }
 
                 div {
-                    class "pipeline-grid"
+                    class "app-grid"
 
                     article {
-                        class "pipeline-step"
+                        class "app-card"
+
+                        div {
+                            class "badge-row"
+
+                            span "Hot" {
+                                class "tag tag-hot"
+                            }
+
+                            span "4.9★" {
+                                class "score"
+                            }
+                        }
+
+                        h3 "Spotify Premium"
+                        p {
+                            class "card-copy"
+                            text "Music streaming app with unlocked premium style experience, cleaner playback flow and offline-friendly presentation."
+                        }
+
+                        div {
+                            class "meta-row"
+
+                            span "v8.10"
+                            span "98 MB"
+                            span "Music"
+                        }
+
+                        a "Open app" {
+                            href "/#request"
+                            class "card-link"
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "badge-row"
+
+                            span "Hot" {
+                                class "tag tag-hot"
+                            }
+
+                            span "4.8★" {
+                                class "score"
+                            }
+                        }
+
+                        h3 "CapCut Pro"
+                        p {
+                            class "card-copy"
+                            text "Video editing focused listing with creative tools, export centric layout and strong mobile-first demand."
+                        }
+
+                        div {
+                            class "meta-row"
+
+                            span "v13.4"
+                            span "124 MB"
+                            span "Video"
+                        }
+
+                        a "Open app" {
+                            href "/#request"
+                            class "card-link"
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "badge-row"
+
+                            span "New" {
+                                class "tag tag-new"
+                            }
+
+                            span "4.7★" {
+                                class "score"
+                            }
+                        }
+
+                        h3 "Alight Motion"
+                        p {
+                            class "card-copy"
+                            text "Motion design app card with newer creative positioning, short metadata and quick-access CTA treatment."
+                        }
+
+                        div {
+                            class "meta-row"
+
+                            span "v5.2"
+                            span "146 MB"
+                            span "Design"
+                        }
+
+                        a "Open app" {
+                            href "/#request"
+                            class "card-link"
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "badge-row"
+
+                            span "Top Pick" {
+                                class "tag tag-top"
+                            }
+
+                            span "4.8★" {
+                                class "score"
+                            }
+                        }
+
+                        h3 "Truecaller Gold"
+                        p {
+                            class "card-copy"
+                            text "Communication category ke liye polished listing block with metadata chips aur tight card spacing."
+                        }
+
+                        div {
+                            class "meta-row"
+
+                            span "v15.9"
+                            span "82 MB"
+                            span "Tools"
+                        }
+
+                        a "Open app" {
+                            href "/#request"
+                            class "card-link"
+                        }
+                    }
+                }
+            }
+        }
+
+        section {
+            id "popular"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head"
+
+                    span "Popular downloads" {
+                        class "section-kicker"
+                    }
+
+                    h2 "List style cards se secondary content block bhi strong feel deta hai." {
+                        class "section-title"
+                    }
+
+                    p "Ye area Next project ke popular download rows ko twlang layout ke andar compact, readable aur scannable form me present karta hai." {
+                        class "section-copy"
+                    }
+                }
+
+                div {
+                    class "list-stack"
+
+                    article {
+                        class "list-card"
 
                         span "01" {
-                            class "step-index"
+                            class "list-rank"
                         }
 
-                        h3 "Author"
-                        p "`.tw`, `.tss`, `.twm` files se page, style aur module author karo."
+                        div {
+                            class "list-main"
+
+                            h3 "YouTube Premium"
+                            p "Daily-use media app jisme high interest audience ke liye fast listing summary aur clean metadata placement diya gaya hai."
+                        }
+
+                        div {
+                            class "list-aside"
+                            strong "2.4M+"
+                            span "downloads"
+                        }
                     }
 
                     article {
-                        class "pipeline-step"
+                        class "list-card"
 
                         span "02" {
-                            class "step-index"
+                            class "list-rank"
                         }
 
-                        h3 "Lex + parse"
-                        p "Lexer aur parser source ko tokens aur syntax trees mein convert karte hain."
+                        div {
+                            class "list-main"
+
+                            h3 "PicsArt Gold"
+                            p "Creative tools category ke liye polished popular card with balanced copy, rank badge aur download emphasis."
+                        }
+
+                        div {
+                            class "list-aside"
+                            strong "1.9M+"
+                            span "downloads"
+                        }
                     }
 
                     article {
-                        class "pipeline-step"
+                        class "list-card"
 
                         span "03" {
-                            class "step-index"
+                            class "list-rank"
                         }
 
-                        h3 "AST + semantics"
-                        p "AST nodes aur semantic validation structure ko reliable banate hain."
-                    }
+                        div {
+                            class "list-main"
 
-                    article {
-                        class "pipeline-step"
-
-                        span "04" {
-                            class "step-index"
+                            h3 "Minecraft PE"
+                            p "Games focused entry jo home page ko only utility catalog na lagne de, balki mixed app plus game library jaisa banaye."
                         }
 
-                        h3 "Lower + interpret"
-                        p "IR lowering, runtime values aur interpreter compiler path ko shape dete hain."
-                    }
-
-                    article {
-                        class "pipeline-step"
-
-                        span "05" {
-                            class "step-index"
+                        div {
+                            class "list-aside"
+                            strong "1.7M+"
+                            span "downloads"
                         }
-
-                        h3 "Render"
-                        p "HTML, CSS, scripts, route metadata aur manifests final output mein generate hote hain."
-                    }
-
-                    article {
-                        class "pipeline-step"
-
-                        span "06" {
-                            class "step-index"
-                        }
-
-                        h3 "Ship"
-                        p "Preview, deploy, static export, hosting adapters aur production optimizations ready rehte hain."
                     }
                 }
             }
         }
 
         section {
-            id "system"
+            id "categories"
+            class "section section-soft"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head"
+
+                    span "Browse categories" {
+                        class "section-kicker"
+                    }
+
+                    h2 "Category shortcuts homepage ko catalog depth dete hain." {
+                        class "section-title"
+                    }
+
+                    p "Abhi representative category cards use ho rahe hain. Inko aage JSON ya API source se dynamic banana easy rahega." {
+                        class "section-copy"
+                    }
+                }
+
+                div {
+                    class "category-grid"
+
+                    article {
+                        class "category-card"
+
+                        span "🎮" {
+                            class "category-icon"
+                        }
+
+                        h3 "Games"
+                        p "Action, casual aur multiplayer downloads ke liye dedicated entry path."
+                        a "Open category" {
+                            href "/#request"
+                            class "category-link"
+                        }
+                    }
+
+                    article {
+                        class "category-card"
+
+                        span "🛠️" {
+                            class "category-icon"
+                        }
+
+                        h3 "Tools"
+                        p "Cleaner utilities, booster apps aur productivity style listings ke liye."
+                        a "Open category" {
+                            href "/#request"
+                            class "category-link"
+                        }
+                    }
+
+                    article {
+                        class "category-card"
+
+                        span "🎵" {
+                            class "category-icon"
+                        }
+
+                        h3 "Music"
+                        p "Streaming aur audio focused apps jo high-repeat usage audience ko target karte hain."
+                        a "Open category" {
+                            href "/#request"
+                            class "category-link"
+                        }
+                    }
+
+                    article {
+                        class "category-card"
+
+                        span "🎬" {
+                            class "category-icon"
+                        }
+
+                        h3 "Video"
+                        p "Editors, players aur creator tools ko quick discoverability dene ke liye."
+                        a "Open category" {
+                            href "/#request"
+                            class "category-link"
+                        }
+                    }
+
+                    article {
+                        class "category-card"
+
+                        span "📷" {
+                            class "category-icon"
+                        }
+
+                        h3 "Photography"
+                        p "Filters, image editing aur premium capture utilities ke liye visual lane."
+                        a "Open category" {
+                            href "/#request"
+                            class "category-link"
+                        }
+                    }
+
+                    article {
+                        class "category-card"
+
+                        span "💬" {
+                            class "category-icon"
+                        }
+
+                        h3 "Communication"
+                        p "Calling, privacy aur messaging apps ke liye compact user route."
+                        a "Open category" {
+                            href "/#request"
+                            class "category-link"
+                        }
+                    }
+                }
+            }
+        }
+
+        section {
+            id "search"
             class "section"
 
             div {
@@ -519,173 +542,64 @@ export function initHome() {
                 div {
                     class "section-head"
 
-                    span "Framework system" {
-                        class "eyebrow"
+                    span "Search teaser" {
+                        class "section-kicker"
                     }
 
-                    h2 "Framework, language, structure, aur deploy story sab ek hi place par." {
+                    h2 "Search page ka preview section home par hi direction de deta hai." {
                         class "section-title"
                     }
 
-                    p "Implemented features aur repo structure ke basis par homepage ab sirf marketing copy nahi, balki actual framework capabilities ko highlight karta hai." {
+                    p "Is block me actual search route nahi banaya gaya, lekin homepage UX ke liye uska teaser aur result preview pattern port kar diya gaya hai." {
                         class "section-copy"
                     }
                 }
 
-                div {
-                    class "feature-grid"
+                article {
+                    class "search-panel"
 
-                    article {
-                        class "feature-card"
+                    div {
+                        class "request-copy"
 
-                        span "Routing" {
-                            class "card-label"
+                        div {
+                            class "fake-search"
+                            text "Search APK, app, category..."
                         }
 
-                        h3 "Nested routes and layouts"
-                        p "Catch-all routes, route groups, redirects, rewrites, custom error pages, aur multi-layer layouts."
-                    }
+                        p "Debounced search, recommendation strip aur filtered results ko next phase me client-side ya server-backed flow se connect kiya ja sakta hai."
 
-                    article {
-                        class "feature-card"
+                        div {
+                            class "search-chip-row"
 
-                        span "Runtime" {
-                            class "card-label"
+                            span "Recommended apps" { class "pill" }
+                            span "Instant results" { class "pill" }
+                            span "Category matching" { class "pill" }
                         }
 
-                        h3 "Theme, cache, env"
-                        p "Theme modes, cache directives, env exposure, rate limiting primitives aur runtime helpers."
-                    }
-
-                    article {
-                        class "feature-card"
-
-                        span "Platform" {
-                            class "card-label"
+                        span "Ready for interactive search route." {
+                            class "search-note"
                         }
-
-                        h3 "API and middleware"
-                        p "File-based API routes, method blocks, response directives, middleware matching, auth, cookies, rewrites."
-                    }
-
-                    article {
-                        class "feature-card"
-
-                        span "Output" {
-                            class "card-label"
-                        }
-
-                        h3 "SEO and performance"
-                        p "Sitemap, robots, RSS, canonical metadata, minified assets, fingerprints, gzip aur optional brotli."
-                    }
-
-                    article {
-                        class "feature-card"
-
-                        span "Delivery" {
-                            class "card-label"
-                        }
-
-                        h3 "Deploy adapters"
-                        p "Netlify, Vercel, Cloudflare Pages, GitHub Pages workflow, aur Docker based shipping paths."
-                    }
-
-                    article {
-                        class "feature-card"
-
-                        span "DX" {
-                            class "card-label"
-                        }
-
-                        h3 "Diagnostics and tooling"
-                        p "AST/IR inspection, diagnostics flags, component recursion guards, nested component resolution, and clearer errors."
-                    }
-                }
-            }
-        }
-
-        section {
-            id "cli"
-            class "section section-muted"
-
-            div {
-                class "container split-layout"
-
-                div {
-                    class "stack-panel"
-
-                    span "Project structure" {
-                        class "eyebrow"
-                    }
-
-                    h2 "Folder structure ko bhi homepage pe product signal banaya gaya hai." {
-                        class "section-title"
-                    }
-
-                    p "Yahan `[home]`, `components`, `layouts`, `pages`, aur `style` ko visible rakha gaya hai so that visitors samajh saken ki project kitna organized hai." {
-                        class "section-copy"
-                    }
-
-                    pre {
-                        class "code-frame"
-
-                        code {
-                            text "
-project/
-├── [home]
-│   ├── components
-│   ├── layouts
-│   ├── pages
-│   └── style
-├── docs/spec
-├── tw_framework
-├── tw.config
-└── package.json
-"
-                        }
-                    }
-                }
-
-                div {
-                    class "stack-panel"
-
-                    span "CLI workflow" {
-                        class "eyebrow"
-                    }
-
-                    h2 "Developer flow fast aur direct feel hona chahiye." {
-                        class "section-title"
                     }
 
                     div {
-                        class "command-list"
+                        class "search-results-preview"
 
                         article {
-                            class "command-card"
-                            strong "Install"
-                            code "pip install tw-framework"
-                            p "Framework CLI ko bootstrap karo aur local workflow ready karo."
+                            class "preview-card"
+                            strong "Spotify Premium"
+                            span "Music • 4.9 rating • Recommended result"
                         }
 
                         article {
-                            class "command-card"
-                            strong "Inspect"
-                            code "tw ast file.tw"
-                            p "AST, IR, tokens, diagnostics se compiler internals inspect karo."
+                            class "preview-card"
+                            strong "CapCut Pro"
+                            span "Video • 4.8 rating • Popular result"
                         }
 
                         article {
-                            class "command-card"
-                            strong "Develop"
-                            code "tw dev"
-                            p "Dev server ke through fast iteration aur preview."
-                        }
-
-                        article {
-                            class "command-card"
-                            strong "Ship"
-                            code "tw build && tw preview"
-                            p "Production output, route metadata, aur deploy-ready artifacts generate karo."
+                            class "preview-card"
+                            strong "Minecraft PE"
+                            span "Games • 4.8 rating • Trending result"
                         }
                     }
                 }
@@ -693,34 +607,63 @@ project/
         }
 
         section {
-            class "section section-compact"
+            id "request"
+            class "section section-soft"
 
             div {
                 class "container"
 
-                div {
-                    class "cta-panel"
+                article {
+                    class "request-shell"
 
                     div {
-                        span "TW representation" {
+                        class "request-copy"
+
+                        span "Request upload" {
                             class "eyebrow"
                         }
 
-                        h2 "Ab homepage framework ko represent karta hai, sirf placeholder site ko nahi."
-                        p "Responsive layout, stronger hierarchy, syntax blocks, compiler narrative, system cards aur CLI flow ke saath yeh front page project ki actual identity ko match karta hai."
+                        h2 "Can't find an app? Request block homepage ko action-ready finish deta hai."
+                        p "Original Next project me upload request modal tha. Abhi uska homepage CTA aur content framing twlang me port kiya gaya hai, jise next phase me real form ya `.twm` API route ke saath connect kiya ja sakta hai."
+
+                        div {
+                            class "request-actions"
+
+                            a "Request this app" {
+                                href "mailto:hello@twmods.in?subject=App%20Request"
+                                class "btn btn-primary"
+                            }
+
+                            a "Open Telegram" {
+                                href "https://t.me/twmodstore"
+                                class "btn btn-secondary"
+                            }
+                        }
                     }
 
                     div {
-                        class "button-row"
+                        class "request-box"
 
-                        a "Back to top" {
-                            href "/#overview"
-                            class "btn btn-primary"
-                        }
+                        div {
+                            class "request-list"
 
-                        a "Review system" {
-                            href "/#system"
-                            class "btn btn-secondary"
+                            div {
+                                class "request-item"
+                                strong "1"
+                                span "App ka naam aur category share karo."
+                            }
+
+                            div {
+                                class "request-item"
+                                strong "2"
+                                span "Agar possible ho to version ya source detail add karo."
+                            }
+
+                            div {
+                                class "request-item"
+                                strong "3"
+                                span "Next phase me isi area ko live request form me convert kiya ja sakta hai."
+                            }
                         }
                     }
                 }
