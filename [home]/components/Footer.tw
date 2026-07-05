@@ -4,13 +4,41 @@ footer {
     class "site-footer"
 
     div {
-        class "container footer-grid"
+        class "container footer-shell"
 
         div {
             class "footer-brand"
 
-            h3 "TWMODS"
-            p "Premium APK style catalog ka twlang port. Home page, navigation, showcase cards, categories aur request CTA ko mobile-friendly layout me present kiya gaya hai."
+            div {
+                class "footer-brand-top"
+
+                span "TM" {
+                    class "footer-brand-mark"
+                }
+
+                div {
+                    class "footer-brand-copy"
+
+                    h3 "TWMODS"
+                    p "Premium APK hub"
+                }
+            }
+
+            p "Ye nayi site ke liye updated footer hai. Isme catalog-style brand presence, quick explore links, category shortcuts aur direct action block diya gaya hai."
+
+            div {
+                class "footer-cta-row"
+
+                a "Open Telegram" {
+                    href "https://t.me/twmodstore"
+                    class "footer-cta"
+                }
+
+                a "Request App" {
+                    href "/#request"
+                    class "footer-ghost"
+                }
+            }
         }
 
         div {
@@ -18,26 +46,36 @@ footer {
 
             h4 "Explore"
             a "Home" { href "/#home" }
-            a "Hot Apps" { href "/#hot-apps" }
+            a "Apps" { href "/#hot-apps" }
             a "Popular" { href "/#popular" }
-            a "Categories" { href "/#categories" }
+            a "Search" { href "/#search" }
         }
 
         div {
             class "footer-links"
 
-            h4 "Actions"
-            a "Search teaser" { href "/#search" }
-            a "Request app" { href "/#request" }
-            a "Top picks" { href "/#top-picks" }
+            h4 "Categories"
+            a "Games" { href "/#categories" }
+            a "Tools" { href "/#categories" }
+            a "Music" { href "/#categories" }
+            a "Video" { href "/#categories" }
+        }
+
+        div {
+            class "footer-links"
+
+            h4 "Quick links"
+            a "Top Picks" { href "/#top-picks" }
+            a "Request App" { href "/#request" }
             a "Telegram" { href "https://t.me/twmodstore" }
+            a "Theme Toggle" { href "/#home" }
         }
     }
 
     div {
         class "container footer-bottom"
 
-        p "TWMODS twlang port. Home, header, footer aur core homepage sections ab custom TW stack par aligned hain."
+        p "TWMODS homepage port for the new site. Header aur footer dono ab new catalog look ke hisaab se updated hain."
     }
 }
 
@@ -45,8 +83,8 @@ nav {
     class "mobile-footer-nav"
 
     a "Home" { href "/#home" }
-    a "Hot" { href "/#hot-apps" }
-    a "Popular" { href "/#popular" }
+    a "Apps" { href "/#hot-apps" }
+    a "Search" { href "/#search" }
     a "Cats" { href "/#categories" }
     a "Ask" { href "/#request" }
 }
