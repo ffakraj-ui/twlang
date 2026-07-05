@@ -1,37 +1,25 @@
 :root {
-  --bg-color #07101e
-  --bg-soft #0f1b2f
-  --surface-color rgba(15,23,42,.74)
-  --surface-strong #0f172a
-  --surface-muted rgba(255,255,255,.04)
-  --text-color #f8fafc
-  --muted-color #9fb2cb
-  --border-color rgba(148,163,184,.18)
+  --bg-color #f5f8fb
+  --surface-color rgba(255,255,255,.94)
+  --surface-soft rgba(248,250,252,.96)
+  --text-color #0f172a
+  --muted-color #64748b
+  --border-color rgba(15,23,42,.08)
   --primary-color #10b981
-  --primary-strong #059669
-  --primary-soft rgba(16,185,129,.14)
-  --accent-color #38bdf8
-  --accent-soft rgba(56,189,248,.12)
-  --footer-bg #08111d
-  --shadow-soft 0 24 80 rgba(2,6,23,.32)
+  --primary-soft rgba(16,185,129,.12)
+  --shadow-soft 0 18 48 rgba(15,23,42,.08)
 }
 
-:root[data-theme="light"] {
-  --bg-color #f4f8fc
-  --bg-soft #e7f3ee
-  --surface-color rgba(255,255,255,.88)
-  --surface-strong #ffffff
-  --surface-muted rgba(15,23,42,.03)
-  --text-color #0f172a
-  --muted-color #526179
-  --border-color rgba(15,23,42,.09)
-  --primary-color #059669
-  --primary-strong #047857
-  --primary-soft rgba(5,150,105,.10)
-  --accent-color #0284c7
-  --accent-soft rgba(2,132,199,.08)
-  --footer-bg #edf6f2
-  --shadow-soft 0 22 60 rgba(15,23,42,.10)
+:root[data-theme="dark"] {
+  --bg-color #020817
+  --surface-color rgba(15,23,42,.94)
+  --surface-soft rgba(30,41,59,.80)
+  --text-color #f8fafc
+  --muted-color #94a3b8
+  --border-color rgba(148,163,184,.16)
+  --primary-color #34d399
+  --primary-soft rgba(52,211,153,.14)
+  --shadow-soft 0 20 60 rgba(2,6,23,.36)
 }
 
 html {
@@ -40,7 +28,7 @@ html {
 
 body {
   margin 0
-  background radial-gradient(circle at top left, rgba(16,185,129,.10) 0%, transparent 30%), radial-gradient(circle at top right, rgba(56,189,248,.10) 0%, transparent 26%), var(--bg-color)
+  background var(--bg-color)
   color var(--text-color)
   font-family Inter, system-ui, sans-serif
   line-height 1.6
@@ -50,12 +38,9 @@ main,
 section,
 div,
 article,
-header,
-footer,
-nav,
+span,
 a,
-button,
-span {
+button {
   box-sizing border-box
 }
 
@@ -65,9 +50,9 @@ button {
 }
 
 .container {
-  max-width 1240
+  max-width 1200
   margin 0 auto
-  padding 0 24
+  padding 0 16
 }
 
 .twmods-home {
@@ -75,172 +60,147 @@ button {
 }
 
 .section {
-  padding 88 0
+  padding 38 0 0
 }
 
 .section-soft {
-  background linear-gradient(180deg, transparent 0%, rgba(255,255,255,.02) 100%)
-}
-
-:root[data-theme="light"] .section-soft {
-  background linear-gradient(180deg, rgba(5,150,105,.03) 0%, rgba(2,132,199,.03) 100%)
+  margin-top 38
 }
 
 .home-hero {
-  padding 54 0 34
+  padding 24 0 0
 }
 
 .hero-shell {
   display grid
-  grid-template-columns 1.08fr .92fr
-  gap 28
-  padding 34
-  border-radius 34
-  background linear-gradient(135deg, #081120 0%, #10203a 45%, #0d1728 100%)
-  border 1 solid rgba(148,163,184,.16)
-  box-shadow var(--shadow-soft)
+  grid-template-columns 1.1fr .9fr
+  gap 24
+  padding 28 30
+  border-radius 28
+  background linear-gradient(135deg, #10b981 0%, #0f766e 52%, #0891b2 100%)
+  position relative
+  overflow hidden
 }
 
-:root[data-theme="light"] .hero-shell {
-  background linear-gradient(135deg, #ffffff 0%, #eef7f3 52%, #f4fbfd 100%)
+.hero-shell::before {
+  content ""
+  position absolute
+  inset 0
+  opacity .2
+  background radial-gradient(circle at 20% 20%, white 0, transparent 46%), radial-gradient(circle at 80% 70%, white 0, transparent 44%)
 }
 
 .hero-copy,
 .hero-surface,
 .hero-card,
-.mini-stats,
-.section-head,
-.request-box,
-.request-copy {
+.section-head-copy,
+.app-body,
+.wide-body,
+.request-banner {
   display grid
-  gap 18
-}
-
-.hero-copy {
-  align-content center
+  gap 10
+  position relative
+  z-index 1
 }
 
 .eyebrow {
+  width fit-content
+  min-height 30
+  padding 0 12
+  border-radius 999
   display inline-flex
   align-items center
-  width fit-content
-  min-height 36
-  padding 0 14
-  border-radius 999
-  background var(--primary-soft)
-  border 1 solid rgba(16,185,129,.22)
-  color var(--primary-color)
-  font-size 13
-  font-weight 800
-  letter-spacing .08em
-  text-transform uppercase
+  background rgba(255,255,255,.18)
+  color white
+  font-size 12
+  font-weight 700
 }
 
 .hero-copy h1 {
   margin 0
-  font-size 60
+  color white
+  font-size 50
   line-height 1.02
-  letter-spacing -0.05em
-  max-width 700
+  letter-spacing -0.04em
+  max-width 620
 }
 
-.hero-copy p,
-.section-copy,
-.card-copy,
-.request-copy p {
+.hero-copy p {
   margin 0
-  color var(--muted-color)
+  color rgba(240,253,250,.92)
   font-size 18
+  max-width 620
 }
 
 .hero-actions,
 .hero-pill-row,
-.search-chip-row,
-.meta-row,
-.request-actions {
+.app-meta {
   display flex
   flex-wrap wrap
-  gap 14
+  gap 10
 }
 
 .btn {
-  min-height 50
-  padding 0 22
-  border-radius 999
+  min-height 46
+  padding 0 18
+  border-radius 14
   border 1 solid transparent
   display inline-flex
   align-items center
   justify-content center
   text-decoration none
   font-weight 800
-  transition transform .22s ease, box-shadow .22s ease, border-color .22s ease
-}
-
-.btn:hover {
-  transform translateY(-2)
 }
 
 .btn-primary {
-  background linear-gradient(135deg, #34d399 0%, #10b981 100%)
-  color white
-  box-shadow 0 18 44 rgba(16,185,129,.24)
+  background #ffffff
+  color #047857
+  box-shadow 0 12 30 rgba(15,23,42,.16)
 }
 
 .btn-secondary {
-  background rgba(255,255,255,.06)
-  color var(--text-color)
-  border-color rgba(148,163,184,.18)
-}
-
-:root[data-theme="light"] .btn-secondary {
-  background rgba(255,255,255,.86)
+  background rgba(15,23,42,.14)
+  color #ffffff
+  border-color rgba(255,255,255,.26)
+  backdrop-filter blur(10)
 }
 
 .pill {
-  min-height 36
-  padding 0 14
+  min-height 32
+  padding 0 12
   border-radius 999
-  border 1 solid var(--border-color)
-  background var(--surface-muted)
-  color var(--muted-color)
+  border 1 solid rgba(255,255,255,.20)
+  background rgba(255,255,255,.12)
+  color white
+  font-size 12
+  font-weight 700
   display inline-flex
   align-items center
-  justify-content center
-  font-size 13
-  font-weight 700
-}
-
-.hero-surface {
-  align-content stretch
-}
-
-.hero-card,
-.stat-tile,
-.app-card,
-.list-card,
-.category-card,
-.search-panel,
-.request-shell {
-  border 1 solid var(--border-color)
-  border-radius 28
-  background var(--surface-color)
-  box-shadow var(--shadow-soft)
 }
 
 .hero-card {
-  padding 26
+  min-height 100%
+  padding 22
+  border-radius 24
+  background rgba(255,255,255,.16)
+  border 1 solid rgba(255,255,255,.18)
+  backdrop-filter blur(14)
+}
+
+.hero-card-large {
+  align-content center
 }
 
 .hero-topline {
   display flex
   align-items center
   justify-content space-between
-  gap 16
-  color var(--muted-color)
-  font-size 13
+  gap 12
+  color rgba(240,253,250,.84)
+  font-size 12
   font-weight 700
-  text-transform uppercase
   letter-spacing .06em
+  text-transform uppercase
 }
 
 .live-dot {
@@ -248,380 +208,335 @@ button {
   height 10
   border-radius 999
   background #22c55e
-  box-shadow 0 0 0 8 rgba(34,197,94,.12)
-}
-
-.hero-card h2,
-.section-title,
-.request-copy h2 {
-  margin 0
+  box-shadow 0 0 0 7 rgba(34,197,94,.16)
 }
 
 .hero-card h2 {
+  margin 0
+  color white
   font-size 30
-  line-height 1.16
-}
-
-.mini-stats {
-  grid-template-columns repeat(3, 1fr)
-}
-
-.stat-tile {
-  padding 18 20
-}
-
-.stat-tile strong {
-  display block
-  font-size 28
-  line-height 1
-  margin-bottom 8
-}
-
-.stat-tile span {
-  color var(--muted-color)
-  font-size 14
-}
-
-.section-head {
-  margin-bottom 28
-}
-
-.section-kicker {
-  color var(--primary-color)
-  font-weight 800
-  letter-spacing .08em
-  text-transform uppercase
-  font-size 13
-}
-
-.section-title {
-  font-size 42
-  line-height 1.08
-}
-
-.stats-grid,
-.app-grid,
-.category-grid {
-  display grid
-  gap 20
-}
-
-.stats-grid {
-  grid-template-columns repeat(3, 1fr)
-}
-
-.app-grid {
-  grid-template-columns repeat(4, 1fr)
-}
-
-.app-card {
-  padding 22
-}
-
-.badge-row {
-  display flex
-  align-items center
-  justify-content space-between
-  gap 12
-  margin-bottom 18
-}
-
-.tag {
-  min-height 28
-  padding 0 12
-  border-radius 999
-  display inline-flex
-  align-items center
-  justify-content center
-  font-size 12
-  font-weight 800
-}
-
-.tag-hot {
-  background rgba(239,68,68,.16)
-  color #fca5a5
-}
-
-.tag-new {
-  background rgba(56,189,248,.14)
-  color #7dd3fc
-}
-
-.tag-top {
-  background rgba(16,185,129,.16)
-  color #6ee7b7
-}
-
-:root[data-theme="light"] .tag-hot {
-  color #b91c1c
-}
-
-:root[data-theme="light"] .tag-new {
-  color #0369a1
-}
-
-:root[data-theme="light"] .tag-top {
-  color #047857
-}
-
-.score {
-  color var(--muted-color)
-  font-size 13
-  font-weight 700
-}
-
-.app-card h3,
-.list-main h3,
-.category-card h3 {
-  margin 0 0 10
-  font-size 22
+  line-height 1.1
 }
 
 .card-copy {
+  margin 0
+  color rgba(240,253,250,.92)
+}
+
+.section-head {
   margin-bottom 16
 }
 
-.meta-row {
-  margin-bottom 16
-}
-
-.meta-row span {
-  min-height 32
-  padding 0 12
-  border-radius 999
-  background var(--surface-muted)
-  color var(--muted-color)
-  display inline-flex
+.section-head-row {
+  display flex
   align-items center
-  justify-content center
-  font-size 12
-  font-weight 700
+  justify-content space-between
+  gap 14
 }
 
-.card-link,
-.category-link {
-  text-decoration none
-  color var(--primary-color)
+.section-title {
+  margin 0
+  font-size 34
+  line-height 1.08
+}
+
+.section-title-small {
+  font-size 22
   font-weight 800
 }
 
-.list-stack {
-  display grid
-  gap 18
+.section-more,
+.section-button {
+  text-decoration none
+  font-weight 700
 }
 
-.list-card {
-  padding 24
-  display grid
-  grid-template-columns auto 1fr auto
-  gap 18
-  align-items center
+.section-more {
+  color #059669
+  font-size 14
 }
 
-.list-rank {
-  width 54
-  height 54
+.section-button {
+  margin-top 16
+  min-height 48
   border-radius 18
-  display inline-flex
+  border 1 solid var(--border-color)
+  background var(--surface-color)
+  color var(--text-color)
+  display flex
   align-items center
   justify-content center
-  background linear-gradient(135deg, #34d399 0%, #10b981 100%)
-  color white
-  font-size 18
-  font-weight 900
+  box-shadow var(--shadow-soft)
 }
 
-.list-main p {
-  margin 0
-  color var(--muted-color)
-}
-
-.list-aside {
+.catalog-grid,
+.wide-grid,
+.category-grid {
   display grid
-  gap 8
-  justify-items end
+  gap 16
 }
 
-.list-aside strong {
-  font-size 18
+.catalog-grid {
+  grid-template-columns repeat(4, 1fr)
+}
+
+.wide-grid {
+  grid-template-columns repeat(2, 1fr)
 }
 
 .category-grid {
-  grid-template-columns repeat(3, 1fr)
+  grid-template-columns repeat(6, 1fr)
 }
 
-.category-card {
-  padding 22
+.app-card,
+.wide-card,
+.category-card,
+.search-bar-shell,
+.request-banner {
+  border 1 solid var(--border-color)
+  background var(--surface-color)
+  box-shadow var(--shadow-soft)
 }
 
+.app-card,
+.wide-card {
+  overflow hidden
+  border-radius 20
+}
+
+.wide-card {
+  display grid
+  grid-template-columns 220 1fr
+}
+
+.app-cover {
+  min-height 126
+  position relative
+  overflow hidden
+  padding 12
+  display flex
+  align-items flex-end
+}
+
+.wide-cover {
+  min-height 100%
+}
+
+.app-cover::before {
+  content ""
+  position absolute
+  inset 0
+  opacity .28
+  background radial-gradient(circle at 28% 28%, white 0, transparent 44%)
+}
+
+.app-cover-emerald { background linear-gradient(135deg, #34d399 0%, #059669 100%) }
+.app-cover-cyan { background linear-gradient(135deg, #22d3ee 0%, #2563eb 100%) }
+.app-cover-purple { background linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%) }
+.app-cover-orange { background linear-gradient(135deg, #fb923c 0%, #ea580c 100%) }
+.app-cover-red { background linear-gradient(135deg, #fb7185 0%, #e11d48 100%) }
+.app-cover-pink { background linear-gradient(135deg, #f472b6 0%, #db2777 100%) }
+.app-cover-sky { background linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) }
+.app-cover-indigo { background linear-gradient(135deg, #818cf8 0%, #4338ca 100%) }
+.app-cover-amber { background linear-gradient(135deg, #fbbf24 0%, #d97706 100%) }
+.app-cover-green { background linear-gradient(135deg, #4ade80 0%, #16a34a 100%) }
+.app-cover-violet { background linear-gradient(135deg, #c084fc 0%, #7c3aed 100%) }
+.app-cover-rose { background linear-gradient(135deg, #fb7185 0%, #be185d 100%) }
+.app-cover-lime { background linear-gradient(135deg, #a3e635 0%, #4d7c0f 100%) }
+
+.app-icon,
 .category-icon {
-  width 54
-  height 54
-  border-radius 18
+  width 56
+  height 56
+  border-radius 16
   display inline-flex
   align-items center
   justify-content center
-  background linear-gradient(135deg, rgba(16,185,129,.18) 0%, rgba(56,189,248,.18) 100%)
-  font-size 24
-  margin-bottom 16
+  background rgba(255,255,255,.18)
+  color white
+  font-size 18
+  font-weight 900
+  letter-spacing .08em
+  position relative
+  z-index 1
 }
 
-.category-card p {
-  margin 0 0 14
+.app-badge,
+.app-hot,
+.app-size {
+  position absolute
+  z-index 1
+  min-height 24
+  padding 0 10
+  border-radius 999
+  display inline-flex
+  align-items center
+  justify-content center
+  font-size 11
+  font-weight 700
+}
+
+.app-badge {
+  top 10
+  left 10
+  background rgba(15,23,42,.30)
+  color white
+}
+
+.app-hot {
+  top 10
+  right 10
+  background #ef4444
+  color white
+}
+
+.app-hot-blue {
+  background #0ea5e9
+}
+
+.app-size {
+  right 10
+  bottom 10
+  background rgba(255,255,255,.92)
+  color #334155
+}
+
+.app-body,
+.wide-body {
+  padding 14 14 16
+}
+
+.app-card h3,
+.wide-card h3,
+.category-card h3 {
+  margin 0
+  font-size 17
+  line-height 1.2
+}
+
+.app-subtitle {
+  margin 0
+  font-size 13
   color var(--muted-color)
 }
 
-.search-panel,
-.request-shell {
-  padding 30
+.app-copy {
+  margin 0
+  font-size 13
+  color var(--muted-color)
 }
 
-.search-panel {
+.app-meta span {
+  min-height 28
+  padding 0 10
+  border-radius 999
+  background var(--surface-soft)
+  color var(--muted-color)
+  border 1 solid var(--border-color)
+  font-size 11
+  font-weight 700
+  display inline-flex
+  align-items center
+}
+
+.category-card {
+  padding 18
+  border-radius 18
+  text-align center
   display grid
-  grid-template-columns 1.05fr .95fr
-  gap 26
+  gap 12
+  justify-items center
 }
 
-.fake-search {
-  min-height 62
-  padding 0 22
+:root[data-theme="light"] .category-icon {
+  color #ffffff
+  background linear-gradient(135deg, #34d399 0%, #0ea5e9 100%)
+}
+
+.search-bar-shell {
+  padding 18
+  border-radius 20
+  display grid
+  gap 10
+}
+
+.search-bar {
+  min-height 58
   border-radius 18
   border 1 solid var(--border-color)
-  background var(--surface-muted)
+  background var(--surface-soft)
   display flex
   align-items center
+  padding 0 18
   color var(--muted-color)
-  font-size 16
 }
 
 .search-note {
   color var(--muted-color)
-  font-size 14
+  font-size 13
 }
 
-.search-results-preview {
-  display grid
-  gap 14
-}
-
-.preview-card {
-  padding 18 20
-  border-radius 20
-  border 1 solid var(--border-color)
-  background var(--surface-muted)
-}
-
-.preview-card strong {
-  display block
-  margin-bottom 6
-}
-
-.preview-card span {
-  color var(--muted-color)
-  font-size 14
-}
-
-.request-shell {
-  display grid
-  grid-template-columns 1.1fr .9fr
-  gap 26
-}
-
-.request-box {
-  padding 24
+.request-banner {
+  padding 34
   border-radius 24
-  border 1 solid var(--border-color)
-  background var(--surface-muted)
+  text-align center
+  background linear-gradient(180deg, var(--surface-color) 0%, var(--primary-soft) 100%)
 }
 
-.request-copy h2 {
-  font-size 40
-  line-height 1.08
+.request-banner h2 {
+  margin 0
+  font-size 28
 }
 
-.request-list {
-  display grid
-  gap 12
-}
-
-.request-item {
-  display flex
-  gap 12
-  align-items flex-start
+.request-banner p {
+  margin 0 0 16
   color var(--muted-color)
 }
 
-.request-item strong {
-  width 30
-  height 30
-  border-radius 999
-  background var(--primary-soft)
-  color var(--primary-color)
-  display inline-flex
-  align-items center
-  justify-content center
-  flex-shrink 0
-}
-
-@media (max-width:1080) {
+@media (max-width:1024) {
   .hero-shell,
-  .search-panel,
-  .request-shell {
+  .catalog-grid,
+  .wide-grid {
+    grid-template-columns 1fr 1fr
+  }
+
+  .hero-shell {
     grid-template-columns 1fr
   }
 
-  .app-grid {
-    grid-template-columns repeat(2, 1fr)
-  }
-
   .category-grid {
-    grid-template-columns repeat(2, 1fr)
+    grid-template-columns repeat(3, 1fr)
   }
 }
 
 @media (max-width:768) {
   .container {
-    padding 0 18
-  }
-
-  .section {
-    padding 64 0
+    padding 0 14
   }
 
   .hero-shell {
-    padding 24
-    border-radius 28
+    padding 22
   }
 
   .hero-copy h1 {
-    font-size 42
+    font-size 36
   }
 
-  .hero-copy p,
-  .section-copy,
-  .card-copy,
-  .request-copy p {
-    font-size 16
+  .hero-copy p {
+    font-size 15
   }
 
-  .mini-stats,
-  .stats-grid,
-  .app-grid,
+  .catalog-grid,
+  .wide-grid,
   .category-grid {
     grid-template-columns 1fr
   }
 
-  .list-card {
+  .wide-card {
     grid-template-columns 1fr
-    align-items flex-start
   }
 
-  .list-aside {
-    justify-items start
-  }
-
-  .section-title,
-  .request-copy h2 {
-    font-size 32
+  .section-title-small {
+    font-size 20
   }
 }
