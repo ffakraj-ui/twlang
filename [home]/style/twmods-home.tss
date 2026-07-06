@@ -59,6 +59,147 @@ button {
   overflow-x hidden
 }
 
+.twmods-sidebar {
+  display none
+}
+
+.twmods-page ~ .twmods-sidebar {
+  display none
+}
+
+.twmods-sidebar-inner {
+  display grid
+  gap 18
+  padding 16
+}
+
+.sidebar-card {
+  border 1 solid var(--border-color)
+  background var(--surface-color)
+  box-shadow var(--shadow-soft)
+  border-radius 18
+  padding 16
+  display grid
+  gap 10
+}
+
+.sidebar-card-head {
+  display flex
+  align-items center
+  gap 10
+}
+
+.sidebar-icon {
+  width 28
+  height 28
+  border-radius 12
+  display inline-flex
+  align-items center
+  justify-content center
+  background var(--primary-soft)
+}
+
+.sidebar-card h3,
+.sidebar-title {
+  margin 0
+  font-size 14
+  font-weight 900
+}
+
+.sidebar-search {
+  display grid
+  gap 10
+}
+
+.sidebar-input {
+  width 100%
+  min-height 42
+  border-radius 14
+  border 1 solid var(--border-color)
+  background var(--surface-soft)
+  padding 0 14
+  outline none
+  color var(--text-color)
+}
+
+.sidebar-input:focus {
+  border-color rgba(16,185,129,.55)
+  box-shadow 0 0 0 4 rgba(16,185,129,.12)
+}
+
+.sidebar-note {
+  margin 0
+  font-size 11
+  color var(--muted-color)
+}
+
+.sidebar-nav {
+  display grid
+  gap 6
+}
+
+.sidebar-link {
+  min-height 42
+  padding 0 12
+  border-radius 14
+  text-decoration none
+  color var(--muted-color)
+  font-weight 800
+  display flex
+  align-items center
+  gap 10
+}
+
+.sidebar-link:hover {
+  background var(--surface-soft)
+  color var(--text-color)
+}
+
+.sidebar-link-active {
+  background rgba(16,185,129,.12)
+  color #047857
+}
+
+:root[data-theme="dark"] .sidebar-link-active {
+  color #a7f3d0
+}
+
+.sidebar-link-ic {
+  width 24
+  height 24
+  border-radius 12
+  display inline-flex
+  align-items center
+  justify-content center
+  background rgba(16,185,129,.12)
+}
+
+.sidebar-grid {
+  display grid
+  grid-template-columns repeat(2, 1fr)
+  gap 6
+}
+
+.sidebar-chip {
+  min-height 34
+  padding 0 12
+  border-radius 14
+  border 1 solid var(--border-color)
+  background var(--surface-soft)
+  text-decoration none
+  color var(--muted-color)
+  font-size 12
+  font-weight 800
+  display inline-flex
+  align-items center
+  justify-content flex-start
+}
+
+.sidebar-chip:hover {
+  color var(--text-color)
+  border-color rgba(16,185,129,.34)
+}
+
 .section {
   padding 38 0 0
 }
@@ -538,5 +679,29 @@ button {
 
   .section-title-small {
     font-size 20
+  }
+}
+
+@media (min-width:768) {
+  .twmods-page {
+    padding-right 288
+  }
+
+  .twmods-page ~ .twmods-sidebar {
+    display block
+    position fixed
+    right 0
+    top 78
+    bottom 0
+    width 288
+    border-left 1 solid var(--border-color)
+    background rgba(255,255,255,.92)
+    backdrop-filter blur(18)
+    overflow-y auto
+    z-index 200
+  }
+
+  :root[data-theme="dark"] .twmods-page ~ .twmods-sidebar {
+    background rgba(2,8,23,.92)
   }
 }
