@@ -12,8 +12,18 @@ footer {
             div {
                 class "footer-brand-top"
 
-                span "TM" {
+                span {
                     class "footer-brand-mark"
+
+                    span {
+                        class "footer-brand-mark-core"
+                        text "TW"
+                    }
+
+                    span {
+                        class "footer-brand-mark-accent"
+                        text "•"
+                    }
                 }
 
                 div {
@@ -24,7 +34,7 @@ footer {
                 }
             }
 
-            p "Ye nayi site ke liye updated footer hai. Isme catalog-style brand presence, quick explore links, category shortcuts aur direct action block diya gaya hai."
+            p "Browse premium-style app listings, fast category shortcuts aur direct request actions in a cleaner beta-style catalog footer."
 
             div {
                 class "footer-cta-row"
@@ -65,17 +75,31 @@ footer {
             class "footer-links"
 
             h4 "Quick links"
-            a "Top Picks" { href "/#top-picks" }
+            a "Popular" { href "/#popular" }
+            a "Latest" { href "/#latest" }
             a "Request App" { href "/#request" }
             a "Telegram" { href "https://t.me/twmodstore" }
-            a "Theme Toggle" { href "/#home" }
+            a "Search" { href "/#search" }
         }
     }
 
     div {
         class "container footer-bottom"
 
-        p "TWMODS homepage port for the new site. Header aur footer dono ab new catalog look ke hisaab se updated hain."
+        p "© 2026 TWMODS. Twlang homepage ko beta site ke visual style ke closer header aur footer ke saath tune kiya gaya hai."
+
+        div {
+            class "footer-powered"
+
+            span {
+                class "footer-powered-mark"
+                text "TW"
+            }
+
+            span "Powered by TW" {
+                class "footer-powered-text"
+            }
+        }
     }
 }
 
