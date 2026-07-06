@@ -38,37 +38,22 @@ header {
             a {
                 href "/#home"
                 class "nav-link nav-link-active"
+                span { class "nav-ic"; text "⌂" }
                 text "Home"
             }
 
             a {
                 href "/#hot-apps"
                 class "nav-link"
+                span { class "nav-ic"; text "🏷" }
                 text "Apps"
             }
 
             a {
                 href "/#search"
                 class "nav-link"
+                span { class "nav-ic"; text "🔎" }
                 text "Search"
-            }
-
-            a {
-                href "/#categories"
-                class "nav-link"
-                text "Categories"
-            }
-
-            a {
-                href "/#popular"
-                class "nav-link"
-                text "Popular"
-            }
-
-            a {
-                href "/#request"
-                class "nav-link"
-                text "Request"
             }
         }
 
@@ -80,7 +65,7 @@ header {
                 class "theme-toggle"
                 click "__twToggleTheme"
                 title "Toggle theme"
-                text "Theme"
+                text "🌙"
             }
 
             a "Request App" {
