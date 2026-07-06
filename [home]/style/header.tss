@@ -3,15 +3,16 @@
   top 0
   z-index 500
   width 100%
-  background rgba(7,16,30,.84)
+  background rgba(255,255,255,.82)
   backdrop-filter blur(20)
-  border-bottom 1 solid rgba(148,163,184,.14)
-  box-shadow 0 14 36 rgba(2,6,23,.16)
+  border-bottom 1 solid rgba(15,23,42,.08)
+  box-shadow 0 14 36 rgba(15,23,42,.08)
 }
 
-:root[data-theme="light"] .site-header {
-  background rgba(255,255,255,.88)
-  border-bottom 1 solid rgba(15,23,42,.08)
+:root[data-theme="dark"] .site-header {
+  background rgba(2,8,23,.82)
+  border-bottom 1 solid rgba(148,163,184,.14)
+  box-shadow 0 14 36 rgba(2,6,23,.22)
 }
 
 .header-shell {
@@ -34,16 +35,33 @@
   width 46
   height 46
   border-radius 16
-  display inline-flex
-  align-items center
-  justify-content center
+  display grid
+  place-items center
   background linear-gradient(135deg, #34d399 0%, #10b981 52%, #0891b2 100%)
+  box-shadow 0 20 50 rgba(16,185,129,.24)
+  flex-shrink 0
+  position relative
+  overflow hidden
+}
+
+.brand-mark-core {
   color white
   font-size 15
   font-weight 900
-  letter-spacing .16em
-  box-shadow 0 20 50 rgba(16,185,129,.24)
-  flex-shrink 0
+  letter-spacing .12em
+  position relative
+  z-index 1
+}
+
+.brand-mark-accent {
+  position absolute
+  top 8
+  right 9
+  width 10
+  height 10
+  border-radius 999
+  background rgba(255,255,255,.36)
+  color transparent
 }
 
 .brand-copy {
@@ -107,23 +125,36 @@
   gap 12
 }
 
-.theme-toggle {
+.theme-toggle,
+.header-ghost {
   min-height 44
   padding 0 16
   border-radius 12
   border 1 solid var(--border-color)
-  background rgba(255,255,255,.05)
+  background rgba(255,255,255,.65)
   color var(--text-color)
   font-weight 700
-  cursor pointer
   transition transform .2s ease, border-color .2s ease, background .2s ease
 }
 
-:root[data-theme="light"] .theme-toggle {
-  background rgba(15,23,42,.03)
+:root[data-theme="dark"] .theme-toggle,
+:root[data-theme="dark"] .header-ghost {
+  background rgba(15,23,42,.52)
 }
 
-.theme-toggle:hover {
+.theme-toggle {
+  cursor pointer
+}
+
+.header-ghost {
+  text-decoration none
+  display inline-flex
+  align-items center
+  justify-content center
+}
+
+.theme-toggle:hover,
+.header-ghost:hover {
   transform translateY(-1)
   border-color rgba(16,185,129,.34)
 }
@@ -144,7 +175,7 @@
 
 @media (max-width:1024) {
   .desktop-nav {
-    gap 16
+    gap 6
   }
 }
 
@@ -166,6 +197,10 @@
     padding 0 14
     font-size 13
     border-radius 10
+  }
+
+  .header-ghost {
+    display none
   }
 
   .header-cta {
