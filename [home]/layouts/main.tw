@@ -18,6 +18,8 @@ load @./components/Header.tw
 
 {slot}
 
+load @./components/TwmodsSidebar.tw
+
 load @./components/Footer.tw
 
 {scripts}
