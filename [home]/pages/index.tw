@@ -16,7 +16,7 @@ head {
 
 BODY {
     main {
-        class "twmods-home"
+        class "twmods-home twmods-page"
 
         section {
             id "home"
