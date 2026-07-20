@@ -9,7 +9,7 @@ load "@../style/site.tss"
 head {
     seo {
         description "Contact Veridian Systems through the enquiry form, email, or direct phone action."
-        og_title "Contact | Veridian Systems"
+        og_title "Contact |  Veridian Systems"
         og_description "Professional contact page with direct actions and enquiry form."
     }
 }
