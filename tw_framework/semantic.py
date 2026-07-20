@@ -72,6 +72,51 @@ class SemanticAnalyzer:
                     self._check_interpolations(prop.value, next_scope, diagnostics, source_path, f"`{node.name}` prop `{prop.name}`")
                 self._walk_nodes(node.children, dict(next_scope), diagnostics, source_path)
 
+    def _check_page_meta(self, program: Program, diagnostics: DiagnosticBag, source_path: str):
+        meta = program.meta
+
+        valid_render_modes = {"static", "server", "edge"}
+        if meta.render_mode not in valid_render_modes:
+            diagnostics.add(
+                Diagnostic(
+                    severity="error",
+                    code="TW2201",
+                    message=f'Invalid `render` mode "{meta.render_mode}". Use one of: static, server, edge.',
+                    file_path=source_path,
+                )
+            )
+
+        if meta.render_mode == "static" and meta.revalidate is not None:
+            diagnostics.add(
+                Diagnostic(
+                    severity="warning",
+                    code="TW2202",
+                    message="`revalidate` has no effect on `render static` pages. "
+                            "Use `render server` or `render edge` for ISR-style revalidation.",
+                    file_path=source_path,
+                )
+            )
+
+        if meta.revalidate is not None and meta.revalidate < 0:
+            diagnostics.add(
+                Diagnostic(
+                    severity="error",
+                    code="TW2203",
+                    message=f"`revalidate` must be a non-negative number, got {meta.revalidate}.",
+                    file_path=source_path,
+                )
+            )
+
+        if meta.redirect_to and meta.rewrite_to:
+            diagnostics.add(
+                Diagnostic(
+                    severity="error",
+                    code="TW2204",
+                    message="A page cannot define both `redirect` and `rewrite` at the same time.",
+                    file_path=source_path,
+                )
+            )
+
     def analyze(self, program: Program, context: Optional[Dict] = None) -> DiagnosticBag:
         diagnostics = DiagnosticBag()
         compiler = _legacy()
@@ -98,6 +143,8 @@ class SemanticAnalyzer:
                     file_path=program.source_path,
                 )
             )
+
+        self._check_page_meta(program, diagnostics, program.source_path)
 
         scope = {}
         scope.update(program.lets)
