@@ -895,6 +895,66 @@ def command_check(args):
         payload["ir"] = artifacts.ir
     _write_or_print_output(args.out, json.dumps(_json_safe(payload), indent=2, ensure_ascii=False))
     return 1 if _diagnostics_have_errors(artifacts.diagnostics) else 0
+    
+
+def command_verify(args):
+    project_root = find_project_root(args.project_root)
+    output_dir = args.out_dir or resolve_output_dir(project_root)
+    manifest_path = os.path.join(output_dir, "_tw", "route-manifest.json")
+    if not os.path.exists(manifest_path):
+        log(f" Route manifest not found: {manifest_path}. Run `tw build` first.", level="error")
+        return 1
+
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    routes = manifest.get("routes") if isinstance(manifest, dict) else manifest
+    if not isinstance(routes, list):
+        log(" Unexpected route-manifest.json format; cannot verify.", level="error")
+        return 1
+
+    from .signature import compute_tw_signature
+
+    total = 0
+    ok = 0
+    mismatched = []
+    for route in routes:
+        source_path = route.get("source") or route.get("source_path") or route.get("file")
+        output_path = route.get("output") or route.get("output_path") or route.get("html_path")
+        route_name = route.get("route") or route.get("path") or source_path or "?"
+        if not source_path or not output_path:
+            continue
+        abs_source = os.path.join(project_root, source_path) if not os.path.isabs(source_path) else source_path
+        abs_output = os.path.join(output_dir, output_path) if not os.path.isabs(output_path) else output_path
+        if not os.path.exists(abs_source) or not os.path.exists(abs_output):
+            continue
+
+        total += 1
+        try:
+            program = parse_file(abs_source)
+            expected_sig = compute_tw_signature(program)
+        except Exception as err:
+            mismatched.append((route_name, f"failed to recompile source: {err}"))
+            continue
+
+        with open(abs_output, "r", encoding="utf-8") as f:
+            built_html = f.read()
+
+        match = re.search(r'name="tw-signature"\s+content="([a-f0-9]+)"', built_html)
+        found_sig = match.group(1) if match else None
+
+        if found_sig == expected_sig:
+            ok += 1
+        else:
+            mismatched.append((route_name, f"expected {expected_sig}, found {found_sig or 'none'}"))
+
+    log(f" Verified {ok}/{total} route(s) against their TW source.")
+    if mismatched:
+        log(f"  {len(mismatched)} mismatch(es):", level="warning")
+        for name, detail in mismatched:
+            log(f"   - {name}: {detail}", level="warning")
+        return 1
+    return 0
 
 
 def apply_deploy_config(config, provider):
