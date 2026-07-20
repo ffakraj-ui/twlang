@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import logging
+import os
 from typing import Dict, Iterable, List, Optional
 
 from .ir import IRComponent, IRElement, IRFor, IRIf, IRLet, IRProgram, IRScript, IRText
@@ -17,6 +18,11 @@ def _legacy():
 
 
 VOID_TAGS = {"br", "hr", "img", "input", "meta", "link"}
+
+# Cache of resolved-and-lowered component IR, keyed by resolved file path.
+# This avoids re-parsing the same component `.tw` file every time it is used
+# on a page (e.g. a `Button` used 20 times in a list).
+_COMPONENT_PROGRAM_CACHE: Dict[str, IRProgram] = {}
 
 
 def _interpolate(value, context):
@@ -71,6 +77,44 @@ def _render_style(styles: Iterable[Dict], env: RuntimeEnvironment) -> str:
     return f' style="{html.escape("; ".join(resolved), quote=True)}"' if resolved else ""
 
 
+def _load_component_ir(name: str) -> Optional[IRProgram]:
+    """
+    Resolve a component name (e.g. "Button" or "ui/Button") to its `.tw` file,
+    parse it, and lower it into IR so it can actually be rendered.
+
+    Returns None if the component file cannot be found or fails to parse;
+    the caller is responsible for falling back to a visible error placeholder
+    instead of silently producing empty output.
+    """
+    compiler = _legacy()
+    try:
+        path = compiler.resolve_component_path(name)
+    except Exception:
+        logger.exception("Failed to resolve component path for `%s`", name)
+        return None
+
+    if not path or not os.path.exists(path):
+        return None
+
+    cached = _COMPONENT_PROGRAM_CACHE.get(path)
+    if cached is not None:
+        return cached
+
+    # Local imports to avoid circular import issues at module load time.
+    from .lowering import lower_program
+    from .parser import parse_file
+
+    try:
+        program = parse_file(path)
+        ir_program = lower_program(program)
+    except Exception:
+        logger.exception("Failed to parse/lower component `%s` at %s", name, path)
+        return None
+
+    _COMPONENT_PROGRAM_CACHE[path] = ir_program
+    return ir_program
+
+
 def render_node(node, env: RuntimeEnvironment) -> str:
     context = env.to_context()
     if isinstance(node, IRText):
@@ -91,17 +135,48 @@ def render_node(node, env: RuntimeEnvironment) -> str:
     if isinstance(node, IRScript):
         return f"<script>{node.raw_js}</script>"
     if isinstance(node, IRComponent):
+        # Props are evaluated against the *caller's* context, since expressions
+        # like `label "{count}"` refer to the caller's scope, not the component's.
         props = {prop["name"]: _interpolate(prop["value"], context) for prop in node.props}
-        children_html = "".join(render_node(child, env.child()) for child in node.children)
-        props_html = "".join(
-            f'<li><strong>{html.escape(str(key))}</strong>: {html.escape(str(value))}</li>'
-            for key, value in props.items()
+
+        stack = context.get("__tw_component_stack__", ())
+        if node.name in stack:
+            chain = " -> ".join(stack + (node.name,))
+            logger.error("Circular component reference detected: %s", chain)
+            return (
+                f'<div data-tw-component-error="circular" data-tw-component="{html.escape(node.name, quote=True)}">'
+                f"Circular component reference: {html.escape(chain)}"
+                f"</div>"
+            )
+
+        component_ir = _load_component_ir(node.name)
+        if component_ir is None:
+            # Fallback placeholder so a missing/broken component fails loudly
+            # and visibly instead of silently breaking the page layout.
+            children_html = "".join(render_node(child, env.child()) for child in node.children)
+            props_html = "".join(
+                f'<li><strong>{html.escape(str(key))}</strong>: {html.escape(str(value))}</li>'
+                for key, value in props.items()
+            )
+            logger.warning("Component `%s` could not be resolved; rendering placeholder.", node.name)
+            return (
+                f'<div data-tw-component-error="not-found" data-tw-component="{html.escape(node.name, quote=True)}">'
+                f"<div>Component not found: {html.escape(node.name)}</div>"
+                f"<ul>{props_html}</ul>{children_html}</div>"
+            )
+
+        # Render the component's own body with its own lets/state plus the
+        # props passed in by the caller. This is a fresh scope on purpose:
+        # a component should not implicitly see the caller's unrelated variables.
+        component_env = RuntimeEnvironment(
+            values={
+                **dict(component_ir.lets),
+                **dict(component_ir.state),
+                **props,
+                "__tw_component_stack__": stack + (node.name,),
+            }
         )
-        return (
-            f'<div data-tw-component="{html.escape(node.name, quote=True)}">'
-            f"<div>Component: {html.escape(node.name)}</div>"
-            f"<ul>{props_html}</ul>{children_html}</div>"
-        )
+        return "".join(render_node(child, component_env) for child in component_ir.body)
     if isinstance(node, IRElement):
         attrs = _render_attrs(node.attrs, env)
         style_attr = _render_style(node.styles, env)
