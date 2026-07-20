@@ -7,6 +7,7 @@ from typing import Dict, Iterable, List, Optional
 
 from .ir import IRComponent, IRElement, IRFor, IRIf, IRLet, IRProgram, IRScript, IRText
 from .runtime_values import RuntimeEnvironment
+from .signature import build_signature_banner, build_signature_meta_tag, compute_tw_signature
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +20,6 @@ def _legacy():
 
 VOID_TAGS = {"br", "hr", "img", "input", "meta", "link"}
 
-# Cache of resolved-and-lowered component IR, keyed by resolved file path.
-# This avoids re-parsing the same component `.tw` file every time it is used
-# on a page (e.g. a `Button` used 20 times in a list).
 _COMPONENT_PROGRAM_CACHE: Dict[str, IRProgram] = {}
 
 
@@ -78,14 +76,6 @@ def _render_style(styles: Iterable[Dict], env: RuntimeEnvironment) -> str:
 
 
 def _load_component_ir(name: str) -> Optional[IRProgram]:
-    """
-    Resolve a component name (e.g. "Button" or "ui/Button") to its `.tw` file,
-    parse it, and lower it into IR so it can actually be rendered.
-
-    Returns None if the component file cannot be found or fails to parse;
-    the caller is responsible for falling back to a visible error placeholder
-    instead of silently producing empty output.
-    """
     compiler = _legacy()
     try:
         path = compiler.resolve_component_path(name)
@@ -100,7 +90,6 @@ def _load_component_ir(name: str) -> Optional[IRProgram]:
     if cached is not None:
         return cached
 
-    # Local imports to avoid circular import issues at module load time.
     from .lowering import lower_program
     from .parser import parse_file
 
@@ -135,8 +124,6 @@ def render_node(node, env: RuntimeEnvironment) -> str:
     if isinstance(node, IRScript):
         return f"<script>{node.raw_js}</script>"
     if isinstance(node, IRComponent):
-        # Props are evaluated against the *caller's* context, since expressions
-        # like `label "{count}"` refer to the caller's scope, not the component's.
         props = {prop["name"]: _interpolate(prop["value"], context) for prop in node.props}
 
         stack = context.get("__tw_component_stack__", ())
@@ -151,8 +138,6 @@ def render_node(node, env: RuntimeEnvironment) -> str:
 
         component_ir = _load_component_ir(node.name)
         if component_ir is None:
-            # Fallback placeholder so a missing/broken component fails loudly
-            # and visibly instead of silently breaking the page layout.
             children_html = "".join(render_node(child, env.child()) for child in node.children)
             props_html = "".join(
                 f'<li><strong>{html.escape(str(key))}</strong>: {html.escape(str(value))}</li>'
@@ -165,9 +150,6 @@ def render_node(node, env: RuntimeEnvironment) -> str:
                 f"<ul>{props_html}</ul>{children_html}</div>"
             )
 
-        # Render the component's own body with its own lets/state plus the
-        # props passed in by the caller. This is a fresh scope on purpose:
-        # a component should not implicitly see the caller's unrelated variables.
         component_env = RuntimeEnvironment(
             values={
                 **dict(component_ir.lets),
@@ -193,20 +175,45 @@ def render_program(program: IRProgram, context: Optional[Dict] = None) -> str:
     env = RuntimeEnvironment(values={**dict(program.lets), **dict(program.state), **dict(context or {})})
     body = "".join(render_node(node, env) for node in program.body)
     title = html.escape(str(program.meta.get("title") or "TW Program"))
+
+    signature = compute_tw_signature(program)
+    banner = build_signature_banner(signature, title=title)
+    meta_tags = build_signature_meta_tag(signature)
+
     return (
         "<!DOCTYPE html>"
+        f"{banner}"
         "<html>"
         "<head>"
         f"<title>{title}</title>"
+        f"{meta_tags}"
         "</head>"
         f"<body>{body}</body>"
         "</html>"
     )
 
 
+def _inject_tw_signature(html_doc: str, banner: str, meta_tag: str) -> str:
+    """
+    Legacy renderer सीधे HTML string return करता है, IR tree नहीं, इसलिए
+    यहां हम एक best-effort post-processing करते हैं: document के सबसे ऊपर
+    एक comment banner डालते हैं, और अगर `<head>` tag मिल जाए तो उसके ठीक
+    बाद <meta> tags भी डाल देते हैं। अगर `<head>` न मिले, तो signature फिर
+    भी silently गायब नहीं होगी — banner के बाद meta tags जोड़ दी जाती हैं।
+    """
+    lowered = html_doc.lower()
+    head_idx = lowered.find("<head>")
+    if head_idx != -1:
+        insert_at = head_idx + len("<head>")
+        html_doc = html_doc[:insert_at] + "\n" + meta_tag + html_doc[insert_at:]
+        return banner + "\n" + html_doc
+    return banner + "\n" + meta_tag + "\n" + html_doc
+
+
 def render_program_document(ir_program: IRProgram, *, page_program=None, context: Optional[Dict] = None, css_href: Optional[str] = None) -> str:
     compiler = _legacy()
     merged_context = build_runtime_context(page_program, context=context) if page_program is not None else dict(context or {})
+
     if page_program is not None and getattr(page_program, "legacy_page", None) is not None:
         resolved_css = css_href
         if resolved_css is None:
@@ -215,7 +222,14 @@ def render_program_document(ir_program: IRProgram, *, page_program=None, context
             except Exception as err:
                 logger.exception("Failed to read global stylesheet")
                 resolved_css = ""
-        return compiler.render_html(page_program.legacy_page, merged_context, resolved_css or "")
+        raw_html = compiler.render_html(page_program.legacy_page, merged_context, resolved_css or "")
+
+        signature = compute_tw_signature(page_program)
+        title = str(getattr(page_program.meta, "title", "") or "")
+        banner = build_signature_banner(signature, title=title)
+        meta_tag = build_signature_meta_tag(signature)
+        return _inject_tw_signature(raw_html, banner, meta_tag)
+
     return render_program(ir_program, context=merged_context)
 
 
