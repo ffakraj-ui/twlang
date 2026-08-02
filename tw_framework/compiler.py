@@ -1136,9 +1136,11 @@ def tokenize(code, allow_inline_scripts=False):
         start_line, start_col = line, col
         word = []
         # Read until whitespace, braces, quotes, or common operators.
-        # Exception: a `-` surrounded by alnum chars on both sides is kept as
-        # part of the word (kebab-case identifiers like `aria-label`,
-        # `data-foo`), since HTML/ARIA attribute names rely on this.
+        # Exceptions kept as part of the word:
+        #  - `-` between two alnum chars: kebab-case identifiers like
+        #    `aria-label`, `data-foo`.
+        #  - `:` right after `on` or `bind`: reactive directives like
+        #    `on:click`, `bind:value` (see reactivity.py).
         while i < n:
             ch = code[i]
             if ch in ' \t\r\n{}"\'' or ch in ONE_CHAR_OPS:
@@ -1148,6 +1150,14 @@ def tokenize(code, allow_inline_scripts=False):
                     and word[-1].isalnum()
                     and i + 1 < n
                     and code[i + 1].isalnum()
+                ):
+                    word.append(advance_one())
+                    continue
+                if (
+                    ch == ":"
+                    and "".join(word) in ("on", "bind")
+                    and i + 1 < n
+                    and (code[i + 1].isalnum() or code[i + 1] == "_")
                 ):
                     word.append(advance_one())
                     continue
@@ -1182,6 +1192,14 @@ def classify_known_prop(name):
     nl = name.lower()
     if nl in ROUTER_KEYS:
         return "router"
+    if (
+        nl.startswith("bind:")
+        or nl.startswith("on:")
+        or nl.startswith("show:")
+        or nl.startswith("tw-")
+        or nl.startswith("tw:")
+    ):
+        return "attr"
     if nl in EVENTS or (nl.startswith("on") and nl[2:] in EVENTS):
         return "event"
     if nl in HTML_ATTRIBUTES or nl.startswith("data-") or nl.startswith("aria-"):

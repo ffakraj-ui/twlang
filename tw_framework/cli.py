@@ -27,6 +27,7 @@ theme: system
 pretty_urls: true
 search: true
 modular_pipeline: true
+allow_raw_script: true
 """,
     ".env": """SITE_NAME=My TW Site
 API_TOKEN=change-me
