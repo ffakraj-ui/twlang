@@ -1136,7 +1136,22 @@ def tokenize(code, allow_inline_scripts=False):
         start_line, start_col = line, col
         word = []
         # Read until whitespace, braces, quotes, or common operators.
-        while i < n and (code[i] not in ' \t\r\n{}"\'' and code[i] not in ONE_CHAR_OPS):
+        # Exception: a `-` surrounded by alnum chars on both sides is kept as
+        # part of the word (kebab-case identifiers like `aria-label`,
+        # `data-foo`), since HTML/ARIA attribute names rely on this.
+        while i < n:
+            ch = code[i]
+            if ch in ' \t\r\n{}"\'' or ch in ONE_CHAR_OPS:
+                if (
+                    ch == "-"
+                    and word
+                    and word[-1].isalnum()
+                    and i + 1 < n
+                    and code[i + 1].isalnum()
+                ):
+                    word.append(advance_one())
+                    continue
+                break
             word.append(advance_one())
         word = "".join(word)
         if not word:
