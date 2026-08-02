@@ -605,6 +605,20 @@ def parse_value_token(tokens, i):
     return compiler.parse_literal_value(expr), j
 
 
+def parse_single_value_token(tokens, i):
+    """Parse exactly one literal token (STRING or WORD), without consuming
+    the rest of the line. Needed for directives that carry more than one
+    value on the same line, e.g. `auth "cookie" "redirect"`."""
+    if i >= len(tokens):
+        raise RuntimeError("Expected value token")
+    tok = tokens[i]
+    if tok.type == "STRING":
+        return tok.value, i + 1
+    if tok.type == "WORD" and tok.value not in {"{", "}", "[", "]", "(", ")"}:
+        return compiler.parse_literal_value(tok.value), i + 1
+    raise RuntimeError("Expected value token")
+
+
 def parse_middleware_rules(project_root: str) -> List[dict]:
     source_path = next((path for path in middleware_file_candidates(project_root) if os.path.exists(path)), None)
     if not source_path:
@@ -890,16 +904,16 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
                     if i < len(tokens) and tokens[i].type == "BRACE" and tokens[i].value == "{":
                         rule["auth_rule"], i = parse_auth_block(i)
                     else:
-                        cookie_name, i = parse_value_token(tokens, i)
-                        redirect_to, i = parse_value_token(tokens, i)
+                        cookie_name, i = parse_single_value_token(tokens, i)
+                        redirect_to, i = parse_single_value_token(tokens, i)
                         rule["auth"] = {"cookie": cookie_name, "redirect": redirect_to}
                 elif key == "header":
-                    header_name, i = parse_value_token(tokens, i)
-                    header_value, i = parse_value_token(tokens, i)
+                    header_name, i = parse_single_value_token(tokens, i)
+                    header_value, i = parse_single_value_token(tokens, i)
                     rule["headers"].append((str(header_name), str(header_value)))
                 elif key == "cookie":
-                    cookie_name, i = parse_value_token(tokens, i)
-                    cookie_value, i = parse_value_token(tokens, i)
+                    cookie_name, i = parse_single_value_token(tokens, i)
+                    cookie_value, i = parse_single_value_token(tokens, i)
                     rule["cookies"].append((str(cookie_name), str(cookie_value)))
                 elif key == "rate_limit":
                     rule["rate_limit"], i = parse_rate_limit_block(i)
@@ -1153,12 +1167,12 @@ def parse_api_route_file(tw_path: str) -> Dict[str, dict]:
             elif key in {"json", "text", "html", "redirect"}:
                 spec[key], i = parse_value_token(tokens, i)
             elif key == "header":
-                header_name, i = parse_value_token(tokens, i)
-                header_value, i = parse_value_token(tokens, i)
+                header_name, i = parse_single_value_token(tokens, i)
+                header_value, i = parse_single_value_token(tokens, i)
                 spec["headers"].append((header_name, header_value))
             elif key == "cookie":
-                cookie_name, i = parse_value_token(tokens, i)
-                cookie_value, i = parse_value_token(tokens, i)
+                cookie_name, i = parse_single_value_token(tokens, i)
+                cookie_value, i = parse_single_value_token(tokens, i)
                 spec["cookies"].append((cookie_name, cookie_value))
             else:
                 raise RuntimeError(f"Unsupported API key `{key}` in {tw_path}")

@@ -1569,6 +1569,11 @@ def parse_literal_value(raw):
                 if os.environ.get("TW_WARN_LITERAL_PARSE", "").strip().lower() in {"1", "true", "yes", "on"}:
                     log(f"⚠️ Literal parse failed, treating as string: {raw!r}", level="warning")
                 return raw
+    if stripped.startswith('"') and stripped.endswith('"') and len(stripped) >= 2:
+        try:
+            return json.loads(stripped)
+        except json.JSONDecodeError:
+            return stripped[1:-1]
     return raw
 
 
