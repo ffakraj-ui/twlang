@@ -1,0 +1,91 @@
+aside {
+  class "twmods-sidebar"
+
+  div {
+    class "twmods-sidebar-inner"
+
+    div {
+      class "sidebar-card"
+
+      div {
+        class "sidebar-card-head"
+        span { class "sidebar-icon"; text "✨" }
+        h3 "Quick search"
+      }
+
+      form {
+        class "sidebar-search"
+        action "/#search"
+
+        input {
+          type "text"
+          name "q"
+          placeholder "Search APK, app, category..."
+          class "sidebar-input"
+        }
+      }
+
+      p "Desktop pe yahin se direct search kar sakte ho. (Abhi demo mode)" {
+        class "sidebar-note"
+      }
+    }
+
+    div {
+      class "sidebar-card"
+
+      h3 "Navigation" { class "sidebar-title" }
+
+      div {
+        class "sidebar-nav"
+
+        a {
+          href "/#home"
+          class "sidebar-link sidebar-link-active"
+          span { class "sidebar-link-ic"; text "⌂" }
+          text "Home"
+        }
+
+        a {
+          href "/#hot-apps"
+          class "sidebar-link"
+          span { class "sidebar-link-ic"; text "🏷" }
+          text "Apps"
+        }
+
+        a {
+          href "/#search"
+          class "sidebar-link"
+          span { class "sidebar-link-ic"; text "🔎" }
+          text "Search"
+        }
+      }
+    }
+
+    div {
+      class "sidebar-card"
+
+      div {
+        class "sidebar-card-head"
+        span { class "sidebar-icon"; text "🏷" }
+        h3 "Categories"
+      }
+
+      div {
+        class "sidebar-grid"
+
+        a "Ai" { href "/#categories"; class "sidebar-chip" }
+        a "Browser" { href "/#categories"; class "sidebar-chip" }
+        a "Editing" { href "/#categories"; class "sidebar-chip" }
+        a "Education" { href "/#categories"; class "sidebar-chip" }
+        a "Entertainment" { href "/#categories"; class "sidebar-chip" }
+        a "Games" { href "/#categories"; class "sidebar-chip" }
+        a "Photography" { href "/#categories"; class "sidebar-chip" }
+        a "Social" { href "/#categories"; class "sidebar-chip" }
+        a "Tools" { href "/#categories"; class "sidebar-chip" }
+        a "Video" { href "/#categories"; class "sidebar-chip" }
+        a "Vpn" { href "/#categories"; class "sidebar-chip" }
+      }
+    }
+  }
+}
+

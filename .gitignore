@@ -1,0 +1,6 @@
+.tw/
+.tw-cache/
+dist/
+__pycache__/
+*.pyc
+.aider*

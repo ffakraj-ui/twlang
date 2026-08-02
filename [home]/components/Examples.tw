@@ -1,0 +1,23 @@
+load "@../style/examples.tss"
+
+section {
+
+    class "examples"
+
+    h2 "Examples"
+
+    div {
+
+        class "example-grid"
+
+        div { h3 "Landing Page"; p "Modern UI page" }
+
+        div { h3 "Blog"; p "Static blog system" }
+
+        div { h3 "Dashboard"; p "Admin panel UI" }
+
+        div { h3 "Portfolio"; p "Developer portfolio" }
+
+    }
+
+}

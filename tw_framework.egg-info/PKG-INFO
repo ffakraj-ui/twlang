@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: tw-framework
+Version: 0.2.3
+Summary: TW framework CLI with create, dev, build, and deploy commands
+Author: TW Framework
+Requires-Python: >=3.9
+Provides-Extra: dev
+Requires-Dist: pytest>=7; extra == "dev"

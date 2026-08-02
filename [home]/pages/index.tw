@@ -1,0 +1,1070 @@
+page {
+    title "TWMODS | Premium APK Catalog"
+    layout "main"
+    render static
+}
+
+load "@./style/twmods-home.tss"
+
+head {
+    seo {
+        description "TWMODS style premium APK catalog ka twlang homepage port with hero, hot apps, popular downloads, categories aur request CTA."
+        og_title "TWMODS | Premium APK Catalog"
+        og_description "Browse premium app cards, top picks, category blocks and mobile friendly homepage sections built on twlang."
+    }
+}
+
+BODY {
+    main {
+        class "twmods-home twmods-page"
+
+        section {
+            id "home"
+            class "home-hero"
+
+            div {
+                class "container hero-shell"
+
+                div {
+                    class "hero-copy"
+
+                    span "Premium APK hub" {
+                        class "eyebrow"
+                    }
+
+                    h1 "Premium APK Downloads, Apps, Games and Mod Catalog."
+                    p "Search aur browse premium-style APK listings with categories, ratings, version info, file size aur clean download-focused app cards. Homepage ko original app catalog flow ke closer redesign kiya gaya hai."
+
+                    div {
+                        class "hero-actions"
+
+                        a "Search Now" {
+                            href "/#search"
+                            class "btn btn-primary"
+                        }
+
+                        a "Browse Apps" {
+                            href "/#hot-apps"
+                            class "btn btn-secondary"
+                        }
+                    }
+                }
+
+                div {
+                    class "hero-surface"
+
+                    article {
+                        class "hero-card hero-card-large"
+
+                        div {
+                            class "hero-topline"
+
+                            span "Trending now"
+                            span {
+                                class "live-dot"
+                            }
+                        }
+
+                        h2 "Spotify Premium"
+                        p {
+                            class "card-copy"
+                            text "Music streaming app card with premium catalog styling, highlighted rating, quick metadata aur bold CTA treatment."
+                        }
+
+                        div {
+                            class "hero-pill-row"
+
+                            span "4.9 rating" { class "pill" }
+                            span "98 MB" { class "pill" }
+                            span "Music" { class "pill" }
+                        }
+                    }
+                }
+            }
+        }
+
+        section {
+            id "hot-apps"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head section-head-row"
+
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Hot Apps" {
+                            class "section-title section-title-small"
+                        }
+                    }
+
+                    a "More" {
+                        href "/#latest"
+                        class "section-more"
+                    }
+                }
+
+                div {
+                    class "catalog-grid"
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-emerald"
+
+                            span "SP" {
+                                class "app-icon"
+                            }
+
+                            span "Premium" {
+                                class "app-badge"
+                            }
+
+                            span "Hot" {
+                                class "app-hot"
+                            }
+
+                            span "98 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Spotify Premium"
+                            p {
+                                class "app-subtitle"
+                                text "Spotify Ltd"
+                            }
+
+                            p {
+                                class "app-copy"
+                                text "Premium music streaming card with strong visuals, trimmed description aur quick scan metadata."
+                            }
+
+                            div {
+                                class "app-meta"
+
+                                span "4.9 ★"
+                                span "1.9M"
+                                span "Music"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-cyan"
+
+                            span "CC" {
+                                class "app-icon"
+                            }
+
+                            span "Editor" {
+                                class "app-badge"
+                            }
+
+                            span "Hot" {
+                                class "app-hot"
+                            }
+
+                            span "124 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "CapCut Pro"
+                            p {
+                                class "app-subtitle"
+                                text "Bytedance"
+                            }
+
+                            p {
+                                class "app-copy"
+                                text "Video editing focused card with bright cover surface, compact copy aur premium utility feel."
+                            }
+
+                            div {
+                                class "app-meta"
+
+                                span "4.8 ★"
+                                span "1.5M"
+                                span "Video"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-purple"
+
+                            span "AM" {
+                                class "app-icon"
+                            }
+
+                            span "Motion" {
+                                class "app-badge"
+                            }
+
+                            span "New" {
+                                class "app-hot app-hot-blue"
+                            }
+
+                            span "146 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Alight Motion"
+                            p {
+                                class "app-subtitle"
+                                text "Alight Creative"
+                            }
+
+                            p {
+                                class "app-copy"
+                                text "Motion design listing with vibrant gradient cover aur high-contrast app presentation."
+                            }
+
+                            div {
+                                class "app-meta"
+
+                                span "4.7 ★"
+                                span "912K"
+                                span "Design"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-orange"
+
+                            span "TC" {
+                                class "app-icon"
+                            }
+
+                            span "Utility" {
+                                class "app-badge"
+                            }
+
+                            span "Hot" {
+                                class "app-hot"
+                            }
+
+                            span "82 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Truecaller Gold"
+                            p {
+                                class "app-subtitle"
+                                text "True Software"
+                            }
+
+                            p {
+                                class "app-copy"
+                                text "Utility app listing with tighter spacing, clear title hierarchy aur bold ranking surface."
+                            }
+
+                            div {
+                                class "app-meta"
+
+                                span "4.8 ★"
+                                span "2.2M"
+                                span "Tools"
+                            }
+                        }
+                    }
+                }
+
+                a "More apps" {
+                    href "/#latest"
+                    class "section-button"
+                }
+            }
+        }
+
+        section {
+            id "popular"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head section-head-row"
+
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Popular Downloads" {
+                            class "section-title section-title-small"
+                        }
+                    }
+
+                    a "More" {
+                        href "/#new"
+                        class "section-more"
+                    }
+                }
+
+                div {
+                    class "wide-grid"
+
+                    article {
+                        class "wide-card"
+
+                        div {
+                            class "app-cover app-cover-red wide-cover"
+
+                            span "YT" {
+                                class "app-icon"
+                            }
+
+                            span "Top" {
+                                class "app-badge"
+                            }
+                        }
+
+                        div {
+                            class "wide-body"
+
+                            h3 "YouTube Premium"
+                            p {
+                                class "app-subtitle"
+                                text "Google LLC"
+                            }
+                            p {
+                                class "app-copy"
+                                text "High interest media app card with stronger copy block, larger cover panel aur top download emphasis."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.9 ★"
+                                span "2.4M"
+                                span "Entertainment"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "wide-card"
+
+                        div {
+                            class "app-cover app-cover-pink wide-cover"
+
+                            span "PA" {
+                                class "app-icon"
+                            }
+
+                            span "Popular" {
+                                class "app-badge"
+                            }
+                        }
+
+                        div {
+                            class "wide-body"
+
+                            h3 "PicsArt Gold"
+                            p {
+                                class "app-subtitle"
+                                text "PicsArt Inc"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Creative utility listing with broader body copy aur balanced metadata layout just like original wide cards."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "1.9M"
+                                span "Photography"
+                            }
+                        }
+                    }
+                }
+
+                a "More apps" {
+                    href "/#new"
+                    class "section-button"
+                }
+            }
+        }
+
+        section {
+            id "latest"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head section-head-row"
+
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Latest Premium APKs" {
+                            class "section-title section-title-small"
+                        }
+                    }
+
+                    a "More" {
+                        href "/#recommended"
+                        class "section-more"
+                    }
+                }
+
+                div {
+                    class "catalog-grid"
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-sky"
+
+                            span "MC" {
+                                class "app-icon"
+                            }
+
+                            span "Game" {
+                                class "app-badge"
+                            }
+
+                            span "New" {
+                                class "app-hot app-hot-blue"
+                            }
+
+                            span "210 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Minecraft PE"
+                            p {
+                                class "app-subtitle"
+                                text "Mojang"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Gaming category ke liye bold cover, shorter text aur clearer metadata balance."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "1.7M"
+                                span "Games"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-indigo"
+
+                            span "NP" {
+                                class "app-icon"
+                            }
+
+                            span "Tool" {
+                                class "app-badge"
+                            }
+
+                            span "New" {
+                                class "app-hot app-hot-blue"
+                            }
+
+                            span "44 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Netflix Premium"
+                            p {
+                                class "app-subtitle"
+                                text "Netflix Inc"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Streaming app entry with premium look, compact subtitle aur strong surface contrast."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.7 ★"
+                                span "884K"
+                                span "Entertainment"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-amber"
+
+                            span "VS" {
+                                class "app-icon"
+                            }
+
+                            span "Creator" {
+                                class "app-badge"
+                            }
+
+                            span "New" {
+                                class "app-hot app-hot-blue"
+                            }
+
+                            span "118 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "VN Video Editor"
+                            p {
+                                class "app-subtitle"
+                                text "VN Studio"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Creator tools card styled to mirror the original latest APK grid rhythm."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "1.1M"
+                                span "Video"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-green"
+
+                            span "SC" {
+                                class "app-icon"
+                            }
+
+                            span "Social" {
+                                class "app-badge"
+                            }
+
+                            span "New" {
+                                class "app-hot app-hot-blue"
+                            }
+
+                            span "76 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Snapchat Plus"
+                            p {
+                                class "app-subtitle"
+                                text "Snap Inc"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Fast moving social listing with lighter copy and compact app info row."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.6 ★"
+                                span "694K"
+                                span "Social"
+                            }
+                        }
+                    }
+                }
+
+                a "More apps" {
+                    href "/#recommended"
+                    class "section-button"
+                }
+            }
+        }
+
+        section {
+            id "recommended"
+            class "section section-soft"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head section-head-row"
+
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Recommended For You" {
+                            class "section-title section-title-small"
+                        }
+                    }
+
+                    a "More" {
+                        href "/#new"
+                        class "section-more"
+                    }
+                }
+
+                div {
+                    class "catalog-grid"
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-violet"
+
+                            span "KP" {
+                                class "app-icon"
+                            }
+
+                            span "Design" {
+                                class "app-badge"
+                            }
+
+                            span "Hot" {
+                                class "app-hot"
+                            }
+
+                            span "68 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "KineMaster Pro"
+                            p {
+                                class "app-subtitle"
+                                text "KineMaster Corp"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Creative editing app with highly recommended card styling and cleaner body ratio."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "1.2M"
+                                span "Video"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-rose"
+
+                            span "PP" {
+                                class "app-icon"
+                            }
+
+                            span "Photo" {
+                                class "app-badge"
+                            }
+
+                            span "Hot" {
+                                class "app-hot"
+                            }
+
+                            span "72 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "PixelLab Premium"
+                            p {
+                                class "app-subtitle"
+                                text "PixelLab"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Photo utility card with premium feel, trimmed copy and balanced metadata chips."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.7 ★"
+                                span "807K"
+                                span "Photography"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-cyan"
+
+                            span "AM" {
+                                class "app-icon"
+                            }
+
+                            span "Music" {
+                                class "app-badge"
+                            }
+
+                            span "Top" {
+                                class "app-hot"
+                            }
+
+                            span "36 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "Apple Music Mod"
+                            p {
+                                class "app-subtitle"
+                                text "Apple Inc"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Recommended music utility block with softer surface and bright cyan cover treatment."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.6 ★"
+                                span "568K"
+                                span "Music"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "app-card"
+
+                        div {
+                            class "app-cover app-cover-orange"
+
+                            span "WA" {
+                                class "app-icon"
+                            }
+
+                            span "Chat" {
+                                class "app-badge"
+                            }
+
+                            span "Top" {
+                                class "app-hot"
+                            }
+
+                            span "61 MB" {
+                                class "app-size"
+                            }
+                        }
+
+                        div {
+                            class "app-body"
+
+                            h3 "WhatsApp Gold"
+                            p {
+                                class "app-subtitle"
+                                text "Meta"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Communication card that keeps the original recommendation grid dense and fast-scannable."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.5 ★"
+                                span "1.4M"
+                                span "Communication"
+                            }
+                        }
+                    }
+                }
+
+                a "More apps" {
+                    href "/#new"
+                    class "section-button"
+                }
+            }
+        }
+
+        section {
+            id "new"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head section-head-row"
+
+                    div {
+                        class "section-head-copy"
+
+                        h2 "New" {
+                            class "section-title section-title-small"
+                        }
+                    }
+
+                    a "More" {
+                        href "/#categories"
+                        class "section-more"
+                    }
+                }
+
+                div {
+                    class "wide-grid"
+
+                    article {
+                        class "wide-card"
+
+                        div {
+                            class "app-cover app-cover-lime wide-cover"
+
+                            span "TB" {
+                                class "app-icon"
+                            }
+
+                            span "Fresh" {
+                                class "app-badge"
+                            }
+                        }
+
+                        div {
+                            class "wide-body"
+
+                            h3 "Telegram Beta"
+                            p {
+                                class "app-subtitle"
+                                text "Telegram LLC"
+                            }
+                            p {
+                                class "app-copy"
+                                text "Fresh app row inspired by the original New section, using wide layout and concise metadata treatment."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.7 ★"
+                                span "468K"
+                                span "Communication"
+                            }
+                        }
+                    }
+
+                    article {
+                        class "wide-card"
+
+                        div {
+                            class "app-cover app-cover-purple wide-cover"
+
+                            span "LR" {
+                                class "app-icon"
+                            }
+
+                            span "Fresh" {
+                                class "app-badge"
+                            }
+                        }
+
+                        div {
+                            class "wide-body"
+
+                            h3 "Lightroom Premium"
+                            p {
+                                class "app-subtitle"
+                                text "Adobe"
+                            }
+                            p {
+                                class "app-copy"
+                                text "New uploads style row matching the original homepage flow with broader body copy and clear app emphasis."
+                            }
+                            div {
+                                class "app-meta"
+                                span "4.8 ★"
+                                span "752K"
+                                span "Photography"
+                            }
+                        }
+                    }
+                }
+
+                a "More apps" {
+                    href "/#categories"
+                    class "section-button"
+                }
+            }
+        }
+
+        section {
+            id "categories"
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "section-head section-head-row"
+
+                    div {
+                        class "section-head-copy"
+
+                        h2 "Browse categories" {
+                            class "section-title section-title-small"
+                        }
+                    }
+
+                    a "More" {
+                        href "/#request"
+                        class "section-more"
+                    }
+                }
+
+                div {
+                    class "category-grid"
+
+                    article {
+                        class "category-card"
+                        span "A" { class "category-icon" }
+                        h3 "Apps"
+                    }
+
+                    article {
+                        class "category-card"
+                        span "G" { class "category-icon" }
+                        h3 "Games"
+                    }
+
+                    article {
+                        class "category-card"
+                        span "T" { class "category-icon" }
+                        h3 "Tools"
+                    }
+
+                    article {
+                        class "category-card"
+                        span "S" { class "category-icon" }
+                        h3 "Social"
+                    }
+
+                    article {
+                        class "category-card"
+                        span "P" { class "category-icon" }
+                        h3 "Photography"
+                    }
+
+                    article {
+                        class "category-card"
+                        span "V" { class "category-icon" }
+                        h3 "Video"
+                    }
+                }
+            }
+        }
+
+        section {
+            id "search"
+            class "section section-soft"
+
+            div {
+                class "container"
+
+                article {
+                    class "search-bar-shell"
+
+                    div {
+                        class "search-bar"
+                        text "Search APK, app, category..."
+                    }
+
+                    span "Search route next phase me connect ho sakta hai." {
+                        class "search-note"
+                    }
+                }
+            }
+        }
+
+        section {
+            id "request"
+            class "section"
+
+            div {
+                class "container"
+
+                article {
+                    class "request-banner"
+
+                    h2 "Can't find an app?"
+                    p "Request an app upload and we'll add it to the catalog."
+
+                    a "Request Upload" {
+                        href "mailto:hello@twmods.in?subject=App%20Request"
+                        class "btn btn-primary"
+                    }
+                }
+            }
+        }
+    }
+}
+page {
+  title "TW Framework - Home"
+  layout "default"
+}
+
+head {
+  meta { name "description" content "TW Framework starter project" }
+}
+
+import "Button"
+
+body {
+  h1 { text "Welcome to TW Framework" }
+  p { text "This is the official starter project." }
+  Button { label "Get Started" link "/docs" }
+}

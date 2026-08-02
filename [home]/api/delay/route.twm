@@ -1,0 +1,16 @@
+async fn get(request) {
+  const query = request.query || {};
+  const rawSeconds = Number(query.seconds || 1);
+  const seconds = Math.min(Math.max(rawSeconds, 0), 5);
+  const startedAt = new Date().toISOString();
+  await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+  return {
+    status: 200,
+    json: {
+      ok: true,
+      delaySeconds: seconds,
+      startedAt,
+      finishedAt: new Date().toISOString()
+    }
+  };
+}

@@ -1,0 +1,19 @@
+{
+  "dependencies": [
+    "/home/claude/twlangv1/twlang-main/[home]/components/Footer.tw",
+    "/home/claude/twlangv1/twlang-main/[home]/components/Header.tw",
+    "/home/claude/twlangv1/twlang-main/[home]/components/TwmodsSidebar.tw",
+    "/home/claude/twlangv1/twlang-main/[home]/hooks/modern_middleware.py",
+    "/home/claude/twlangv1/twlang-main/[home]/layouts/main.tw",
+    "/home/claude/twlangv1/twlang-main/[home]/pages/contact.tw",
+    "/home/claude/twlangv1/twlang-main/[home]/style.tss",
+    "/home/claude/twlangv1/twlang-main/[home]/style/footer.tss",
+    "/home/claude/twlangv1/twlang-main/[home]/style/header.tss",
+    "/home/claude/twlangv1/twlang-main/[home]/style/site.tss",
+    "/home/claude/twlangv1/twlang-main/tw.config"
+  ],
+  "outputs": [
+    "/home/claude/twlangv1/twlang-main/dist/contact/index.html"
+  ],
+  "signature": "c1d8a66cc5aeda566b76855212fc173974d18818"
+}

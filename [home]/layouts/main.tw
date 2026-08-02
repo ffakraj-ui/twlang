@@ -1,0 +1,29 @@
+tw@responsive true
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<title>{title}</title>
+{head}
+{styles}
+
+</head>
+
+<body>
+
+load @./components/Header.tw
+
+{slot}
+
+load @./components/TwmodsSidebar.tw
+
+load @./components/Footer.tw
+
+{scripts}
+
+</body>
+
+</html>

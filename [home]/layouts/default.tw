@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  {head}
+  <title>{title}</title>
+  {styles}
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+  </nav>
+  <main>
+    {slot}
+  </main>
+  {scripts}
+</body>
+</html>

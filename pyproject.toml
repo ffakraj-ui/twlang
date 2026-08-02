@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tw-framework"
+version = "0.2.3"
+description = "TW framework CLI with create, dev, build, and deploy commands"
+requires-python = ">=3.9"
+authors = [
+  { name = "TW Framework" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+# Dev / contributor tooling (not required to use the framework)
+dev = [
+  "pytest>=7",
+]
+
+[project.scripts]
+tw = "tw_framework.cli:main"
+
+[tool.setuptools]
+packages = ["tw_framework"]

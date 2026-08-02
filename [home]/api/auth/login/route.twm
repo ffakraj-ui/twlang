@@ -1,0 +1,35 @@
+fn post(request) {
+  const validUsers = {
+    admin: { password: "password123", role: "admin", token: "test-token-admin" },
+    tester: { password: "test123", role: "tester", token: "test-token-tester" }
+  };
+
+  const payload = request.body || {};
+  const username = String(payload.username || "").trim();
+  const password = String(payload.password || "").trim();
+
+  if (!username || !password) {
+    return { status: 400, json: { error: "username and password required" } };
+  }
+
+  const user = validUsers[username];
+  if (!user || user.password !== password) {
+    return {
+      status: 401,
+      headers: { "WWW-Authenticate": "Bearer realm=test-api" },
+      json: { error: "Invalid credentials" }
+    };
+  }
+
+  return {
+    status: 200,
+    headers: { "X-Demo-Token": user.token },
+    json: {
+      ok: true,
+      message: "Login success",
+      token: user.token,
+      tokenType: "Bearer",
+      user: { username, role: user.role }
+    }
+  };
+}

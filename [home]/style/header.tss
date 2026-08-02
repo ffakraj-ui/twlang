@@ -1,0 +1,227 @@
+.site-header {
+  position sticky
+  top 0
+  z-index 500
+  width 100%
+  background rgba(255,255,255,.82)
+  backdrop-filter blur(20)
+  border-bottom 1 solid rgba(15,23,42,.08)
+  box-shadow 0 14 36 rgba(15,23,42,.08)
+}
+
+:root[data-theme="dark"] .site-header {
+  background rgba(2,8,23,.82)
+  border-bottom 1 solid rgba(148,163,184,.14)
+  box-shadow 0 14 36 rgba(2,6,23,.22)
+}
+
+.header-shell {
+  display flex
+  align-items center
+  justify-content space-between
+  gap 22
+  min-height 78
+}
+
+.brand-link {
+  display inline-flex
+  align-items center
+  gap 14
+  text-decoration none
+  color inherit
+}
+
+.brand-mark {
+  width 46
+  height 46
+  border-radius 16
+  display grid
+  place-items center
+  background linear-gradient(135deg, #34d399 0%, #10b981 52%, #0891b2 100%)
+  box-shadow 0 20 50 rgba(16,185,129,.24)
+  flex-shrink 0
+  position relative
+  overflow hidden
+}
+
+.brand-mark-core {
+  color white
+  font-size 15
+  font-weight 900
+  letter-spacing .12em
+  position relative
+  z-index 1
+}
+
+.brand-mark-accent {
+  position absolute
+  top 8
+  right 9
+  width 10
+  height 10
+  border-radius 999
+  background rgba(255,255,255,.36)
+  color transparent
+}
+
+.brand-copy {
+  display flex
+  flex-direction column
+  gap 2
+}
+
+.brand-copy strong {
+  font-size 16
+  line-height 1.1
+}
+
+.brand-copy small {
+  font-size 12
+  color var(--muted-color)
+}
+
+.desktop-nav {
+  display flex
+  align-items center
+  gap 8
+}
+
+.nav-link {
+  text-decoration none
+  color var(--muted-color)
+  font-weight 700
+  font-size 14
+  min-height 40
+  padding 0 14
+  border-radius 12
+  display inline-flex
+  align-items center
+  justify-content center
+  gap 8
+  transition color .2s ease, background .2s ease, transform .2s ease
+}
+
+.nav-ic {
+  width 22
+  height 22
+  border-radius 10
+  display inline-flex
+  align-items center
+  justify-content center
+  background rgba(16,185,129,.10)
+  font-size 12
+}
+
+.nav-link:hover {
+  background rgba(255,255,255,.06)
+  color var(--text-color)
+  transform translateY(-1)
+}
+
+:root[data-theme="light"] .nav-link:hover {
+  background rgba(15,23,42,.04)
+}
+
+.nav-link-active {
+  background rgba(16,185,129,.14)
+  color #6ee7b7
+}
+
+:root[data-theme="light"] .nav-link-active {
+  color #047857
+}
+
+.header-actions {
+  display flex
+  align-items center
+  gap 12
+}
+
+.theme-toggle,
+.header-ghost {
+  min-height 44
+  padding 0 16
+  border-radius 12
+  border 1 solid var(--border-color)
+  background rgba(255,255,255,.65)
+  color var(--text-color)
+  font-weight 700
+  transition transform .2s ease, border-color .2s ease, background .2s ease
+}
+
+.theme-toggle {
+  width 44
+  padding 0
+  font-size 16
+}
+
+:root[data-theme="dark"] .theme-toggle,
+:root[data-theme="dark"] .header-ghost {
+  background rgba(15,23,42,.52)
+}
+
+.theme-toggle {
+  cursor pointer
+}
+
+.header-ghost {
+  text-decoration none
+  display inline-flex
+  align-items center
+  justify-content center
+}
+
+.theme-toggle:hover,
+.header-ghost:hover {
+  transform translateY(-1)
+  border-color rgba(16,185,129,.34)
+}
+
+.header-cta {
+  display inline-flex
+  align-items center
+  justify-content center
+  min-height 46
+  padding 0 20
+  border-radius 12
+  text-decoration none
+  background linear-gradient(135deg, #0ea5e9 0%, #10b981 100%)
+  color white
+  font-weight 800
+  box-shadow 0 18 45 rgba(14,165,233,.18)
+}
+
+@media (max-width:1024) {
+  .desktop-nav {
+    gap 6
+  }
+}
+
+@media (max-width:768) {
+  .header-shell {
+    min-height 70
+  }
+
+  .desktop-nav {
+    display none
+  }
+
+  .brand-copy small {
+    display none
+  }
+
+  .theme-toggle {
+    min-height 42
+    padding 0 14
+    font-size 13
+    border-radius 10
+  }
+
+  .header-ghost {
+    display none
+  }
+
+  .header-cta {
+    display none
+  }
+}

@@ -1,0 +1,111 @@
+load "@../style/showcase.tss"
+
+section {
+
+    class "showcase"
+
+    div {
+
+        class "section-header"
+
+        span {
+
+            class "badge"
+
+            text "Showcase"
+        }
+
+        h2 "What You Can Build with TW"
+
+        p {
+
+            text "Real examples of applications built using TW Language and its ecosystem."
+        }
+
+    }
+
+    div {
+
+        class "showcase-grid"
+
+        div {
+
+            class "showcase-card"
+
+            h3 "Landing Pages"
+
+            p {
+
+                text "High converting modern landing pages with animations and SEO optimization."
+            }
+
+        }
+
+        div {
+
+            class "showcase-card"
+
+            h3 "Blogs"
+
+            p {
+
+                text "Fast static blogs with markdown-like simplicity and instant loading."
+            }
+
+        }
+
+        div {
+
+            class "showcase-card"
+
+            h3 "Dashboards"
+
+            p {
+
+                text "Admin dashboards with charts, analytics and real-time data UI."
+            }
+
+        }
+
+        div {
+
+            class "showcase-card"
+
+            h3 "E-Commerce"
+
+            p {
+
+                text "Full online stores with product pages, cart and checkout flow."
+            }
+
+        }
+
+        div {
+
+            class "showcase-card"
+
+            h3 "Portfolio Sites"
+
+            p {
+
+                text "Developer and designer portfolios with modern UI and animations."
+            }
+
+        }
+
+        div {
+
+            class "showcase-card"
+
+            h3 "Documentation Sites"
+
+            p {
+
+                text "Fast documentation portals like this TW Language site itself."
+            }
+
+        }
+
+    }
+
+}

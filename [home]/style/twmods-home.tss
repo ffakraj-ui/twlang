@@ -1,0 +1,707 @@
+:root {
+  --bg-color #f5f8fb
+  --surface-color rgba(255,255,255,.94)
+  --surface-soft rgba(248,250,252,.96)
+  --text-color #0f172a
+  --muted-color #64748b
+  --border-color rgba(15,23,42,.08)
+  --primary-color #10b981
+  --primary-soft rgba(16,185,129,.12)
+  --shadow-soft 0 18 48 rgba(15,23,42,.08)
+}
+
+:root[data-theme="dark"] {
+  --bg-color #020817
+  --surface-color rgba(15,23,42,.94)
+  --surface-soft rgba(30,41,59,.80)
+  --text-color #f8fafc
+  --muted-color #94a3b8
+  --border-color rgba(148,163,184,.16)
+  --primary-color #34d399
+  --primary-soft rgba(52,211,153,.14)
+  --shadow-soft 0 20 60 rgba(2,6,23,.36)
+}
+
+html {
+  scroll-behavior smooth
+}
+
+body {
+  margin 0
+  background var(--bg-color)
+  color var(--text-color)
+  font-family Inter, system-ui, sans-serif
+  line-height 1.6
+}
+
+main,
+section,
+div,
+article,
+span,
+a,
+button {
+  box-sizing border-box
+}
+
+a,
+button {
+  font inherit
+}
+
+.container {
+  max-width 1200
+  margin 0 auto
+  padding 0 16
+}
+
+.twmods-home {
+  overflow-x hidden
+}
+
+.twmods-sidebar {
+  display none
+}
+
+.twmods-page ~ .twmods-sidebar {
+  display none
+}
+
+.twmods-sidebar-inner {
+  display grid
+  gap 18
+  padding 16
+}
+
+.sidebar-card {
+  border 1 solid var(--border-color)
+  background var(--surface-color)
+  box-shadow var(--shadow-soft)
+  border-radius 18
+  padding 16
+  display grid
+  gap 10
+}
+
+.sidebar-card-head {
+  display flex
+  align-items center
+  gap 10
+}
+
+.sidebar-icon {
+  width 28
+  height 28
+  border-radius 12
+  display inline-flex
+  align-items center
+  justify-content center
+  background var(--primary-soft)
+}
+
+.sidebar-card h3,
+.sidebar-title {
+  margin 0
+  font-size 14
+  font-weight 900
+}
+
+.sidebar-search {
+  display grid
+  gap 10
+}
+
+.sidebar-input {
+  width 100%
+  min-height 42
+  border-radius 14
+  border 1 solid var(--border-color)
+  background var(--surface-soft)
+  padding 0 14
+  outline none
+  color var(--text-color)
+}
+
+.sidebar-input:focus {
+  border-color rgba(16,185,129,.55)
+  box-shadow 0 0 0 4 rgba(16,185,129,.12)
+}
+
+.sidebar-note {
+  margin 0
+  font-size 11
+  color var(--muted-color)
+}
+
+.sidebar-nav {
+  display grid
+  gap 6
+}
+
+.sidebar-link {
+  min-height 42
+  padding 0 12
+  border-radius 14
+  text-decoration none
+  color var(--muted-color)
+  font-weight 800
+  display flex
+  align-items center
+  gap 10
+}
+
+.sidebar-link:hover {
+  background var(--surface-soft)
+  color var(--text-color)
+}
+
+.sidebar-link-active {
+  background rgba(16,185,129,.12)
+  color #047857
+}
+
+:root[data-theme="dark"] .sidebar-link-active {
+  color #a7f3d0
+}
+
+.sidebar-link-ic {
+  width 24
+  height 24
+  border-radius 12
+  display inline-flex
+  align-items center
+  justify-content center
+  background rgba(16,185,129,.12)
+}
+
+.sidebar-grid {
+  display grid
+  grid-template-columns repeat(2, 1fr)
+  gap 6
+}
+
+.sidebar-chip {
+  min-height 34
+  padding 0 12
+  border-radius 14
+  border 1 solid var(--border-color)
+  background var(--surface-soft)
+  text-decoration none
+  color var(--muted-color)
+  font-size 12
+  font-weight 800
+  display inline-flex
+  align-items center
+  justify-content flex-start
+}
+
+.sidebar-chip:hover {
+  color var(--text-color)
+  border-color rgba(16,185,129,.34)
+}
+
+.section {
+  padding 38 0 0
+}
+
+.section-soft {
+  margin-top 38
+}
+
+.home-hero {
+  padding 24 0 0
+}
+
+.hero-shell {
+  display grid
+  grid-template-columns 1.1fr .9fr
+  gap 24
+  padding 28 30
+  border-radius 28
+  background linear-gradient(135deg, #10b981 0%, #0f766e 52%, #0891b2 100%)
+  position relative
+  overflow hidden
+}
+
+.hero-shell::before {
+  content ""
+  position absolute
+  inset 0
+  opacity .2
+  background radial-gradient(circle at 20% 20%, white 0, transparent 46%), radial-gradient(circle at 80% 70%, white 0, transparent 44%)
+}
+
+.hero-copy,
+.hero-surface,
+.hero-card,
+.section-head-copy,
+.app-body,
+.wide-body,
+.request-banner {
+  display grid
+  gap 10
+  position relative
+  z-index 1
+}
+
+.eyebrow {
+  width fit-content
+  min-height 30
+  padding 0 12
+  border-radius 999
+  display inline-flex
+  align-items center
+  background rgba(255,255,255,.18)
+  color white
+  font-size 12
+  font-weight 700
+}
+
+.hero-copy h1 {
+  margin 0
+  color white
+  font-size 50
+  line-height 1.02
+  letter-spacing -0.04em
+  max-width 620
+}
+
+.hero-copy p {
+  margin 0
+  color rgba(240,253,250,.92)
+  font-size 18
+  max-width 620
+}
+
+.hero-actions,
+.hero-pill-row,
+.app-meta {
+  display flex
+  flex-wrap wrap
+  gap 10
+}
+
+.btn {
+  min-height 46
+  padding 0 18
+  border-radius 14
+  border 1 solid transparent
+  display inline-flex
+  align-items center
+  justify-content center
+  text-decoration none
+  font-weight 800
+}
+
+.btn-primary {
+  background #ffffff
+  color #047857
+  box-shadow 0 12 30 rgba(15,23,42,.16)
+}
+
+.btn-secondary {
+  background rgba(15,23,42,.14)
+  color #ffffff
+  border-color rgba(255,255,255,.26)
+  backdrop-filter blur(10)
+}
+
+.pill {
+  min-height 32
+  padding 0 12
+  border-radius 999
+  border 1 solid rgba(255,255,255,.20)
+  background rgba(255,255,255,.12)
+  color white
+  font-size 12
+  font-weight 700
+  display inline-flex
+  align-items center
+}
+
+.hero-card {
+  min-height 100%
+  padding 22
+  border-radius 24
+  background rgba(255,255,255,.16)
+  border 1 solid rgba(255,255,255,.18)
+  backdrop-filter blur(14)
+}
+
+.hero-card-large {
+  align-content center
+}
+
+.hero-topline {
+  display flex
+  align-items center
+  justify-content space-between
+  gap 12
+  color rgba(240,253,250,.84)
+  font-size 12
+  font-weight 700
+  letter-spacing .06em
+  text-transform uppercase
+}
+
+.live-dot {
+  width 10
+  height 10
+  border-radius 999
+  background #22c55e
+  box-shadow 0 0 0 7 rgba(34,197,94,.16)
+}
+
+.hero-card h2 {
+  margin 0
+  color white
+  font-size 30
+  line-height 1.1
+}
+
+.card-copy {
+  margin 0
+  color rgba(240,253,250,.92)
+}
+
+.section-head {
+  margin-bottom 16
+}
+
+.section-head-row {
+  display flex
+  align-items center
+  justify-content space-between
+  gap 14
+}
+
+.section-title {
+  margin 0
+  font-size 34
+  line-height 1.08
+}
+
+.section-title-small {
+  font-size 22
+  font-weight 800
+}
+
+.section-more,
+.section-button {
+  text-decoration none
+  font-weight 700
+}
+
+.section-more {
+  color #059669
+  font-size 14
+}
+
+.section-button {
+  margin-top 16
+  min-height 48
+  border-radius 18
+  border 1 solid var(--border-color)
+  background var(--surface-color)
+  color var(--text-color)
+  display flex
+  align-items center
+  justify-content center
+  box-shadow var(--shadow-soft)
+}
+
+.catalog-grid,
+.wide-grid,
+.category-grid {
+  display grid
+  gap 16
+}
+
+.catalog-grid {
+  grid-template-columns repeat(4, 1fr)
+}
+
+.wide-grid {
+  grid-template-columns repeat(2, 1fr)
+}
+
+.category-grid {
+  grid-template-columns repeat(6, 1fr)
+}
+
+.app-card,
+.wide-card,
+.category-card,
+.search-bar-shell,
+.request-banner {
+  border 1 solid var(--border-color)
+  background var(--surface-color)
+  box-shadow var(--shadow-soft)
+}
+
+.app-card,
+.wide-card {
+  overflow hidden
+  border-radius 20
+}
+
+.wide-card {
+  display grid
+  grid-template-columns 220 1fr
+}
+
+.app-cover {
+  min-height 126
+  position relative
+  overflow hidden
+  padding 12
+  display flex
+  align-items flex-end
+}
+
+.wide-cover {
+  min-height 100%
+}
+
+.app-cover::before {
+  content ""
+  position absolute
+  inset 0
+  opacity .28
+  background radial-gradient(circle at 28% 28%, white 0, transparent 44%)
+}
+
+.app-cover-emerald { background linear-gradient(135deg, #34d399 0%, #059669 100%) }
+.app-cover-cyan { background linear-gradient(135deg, #22d3ee 0%, #2563eb 100%) }
+.app-cover-purple { background linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%) }
+.app-cover-orange { background linear-gradient(135deg, #fb923c 0%, #ea580c 100%) }
+.app-cover-red { background linear-gradient(135deg, #fb7185 0%, #e11d48 100%) }
+.app-cover-pink { background linear-gradient(135deg, #f472b6 0%, #db2777 100%) }
+.app-cover-sky { background linear-gradient(135deg, #38bdf8 0%, #0284c7 100%) }
+.app-cover-indigo { background linear-gradient(135deg, #818cf8 0%, #4338ca 100%) }
+.app-cover-amber { background linear-gradient(135deg, #fbbf24 0%, #d97706 100%) }
+.app-cover-green { background linear-gradient(135deg, #4ade80 0%, #16a34a 100%) }
+.app-cover-violet { background linear-gradient(135deg, #c084fc 0%, #7c3aed 100%) }
+.app-cover-rose { background linear-gradient(135deg, #fb7185 0%, #be185d 100%) }
+.app-cover-lime { background linear-gradient(135deg, #a3e635 0%, #4d7c0f 100%) }
+
+.app-icon,
+.category-icon {
+  width 56
+  height 56
+  border-radius 16
+  display inline-flex
+  align-items center
+  justify-content center
+  background rgba(255,255,255,.18)
+  color white
+  font-size 18
+  font-weight 900
+  letter-spacing .08em
+  position relative
+  z-index 1
+}
+
+.app-badge,
+.app-hot,
+.app-size {
+  position absolute
+  z-index 1
+  min-height 24
+  padding 0 10
+  border-radius 999
+  display inline-flex
+  align-items center
+  justify-content center
+  font-size 11
+  font-weight 700
+}
+
+.app-badge {
+  top 10
+  left 10
+  background rgba(15,23,42,.30)
+  color white
+}
+
+.app-hot {
+  top 10
+  right 10
+  background #ef4444
+  color white
+}
+
+.app-hot-blue {
+  background #0ea5e9
+}
+
+.app-size {
+  right 10
+  bottom 10
+  background rgba(255,255,255,.92)
+  color #334155
+}
+
+.app-body,
+.wide-body {
+  padding 14 14 16
+}
+
+.app-card h3,
+.wide-card h3,
+.category-card h3 {
+  margin 0
+  font-size 17
+  line-height 1.2
+}
+
+.app-subtitle {
+  margin 0
+  font-size 13
+  color var(--muted-color)
+}
+
+.app-copy {
+  margin 0
+  font-size 13
+  color var(--muted-color)
+}
+
+.app-meta span {
+  min-height 28
+  padding 0 10
+  border-radius 999
+  background var(--surface-soft)
+  color var(--muted-color)
+  border 1 solid var(--border-color)
+  font-size 11
+  font-weight 700
+  display inline-flex
+  align-items center
+}
+
+.category-card {
+  padding 18
+  border-radius 18
+  text-align center
+  display grid
+  gap 12
+  justify-items center
+}
+
+:root[data-theme="light"] .category-icon {
+  color #ffffff
+  background linear-gradient(135deg, #34d399 0%, #0ea5e9 100%)
+}
+
+.search-bar-shell {
+  padding 18
+  border-radius 20
+  display grid
+  gap 10
+}
+
+.search-bar {
+  min-height 58
+  border-radius 18
+  border 1 solid var(--border-color)
+  background var(--surface-soft)
+  display flex
+  align-items center
+  padding 0 18
+  color var(--muted-color)
+}
+
+.search-note {
+  color var(--muted-color)
+  font-size 13
+}
+
+.request-banner {
+  padding 34
+  border-radius 24
+  text-align center
+  background linear-gradient(180deg, var(--surface-color) 0%, var(--primary-soft) 100%)
+}
+
+.request-banner h2 {
+  margin 0
+  font-size 28
+}
+
+.request-banner p {
+  margin 0 0 16
+  color var(--muted-color)
+}
+
+@media (max-width:1024) {
+  .hero-shell,
+  .catalog-grid,
+  .wide-grid {
+    grid-template-columns 1fr 1fr
+  }
+
+  .hero-shell {
+    grid-template-columns 1fr
+  }
+
+  .category-grid {
+    grid-template-columns repeat(3, 1fr)
+  }
+}
+
+@media (max-width:768) {
+  .container {
+    padding 0 14
+  }
+
+  .hero-shell {
+    padding 22
+  }
+
+  .hero-copy h1 {
+    font-size 36
+  }
+
+  .hero-copy p {
+    font-size 15
+  }
+
+  .catalog-grid,
+  .wide-grid,
+  .category-grid {
+    grid-template-columns 1fr
+  }
+
+  .wide-card {
+    grid-template-columns 1fr
+  }
+
+  .section-title-small {
+    font-size 20
+  }
+}
+
+@media (min-width:768) {
+  .twmods-page {
+    padding-right 288
+  }
+
+  .twmods-page ~ .twmods-sidebar {
+    display block
+    position fixed
+    right 0
+    top 78
+    bottom 0
+    width 288
+    border-left 1 solid var(--border-color)
+    background rgba(255,255,255,.92)
+    backdrop-filter blur(18)
+    overflow-y auto
+    z-index 200
+  }
+
+  :root[data-theme="dark"] .twmods-page ~ .twmods-sidebar {
+    background rgba(2,8,23,.92)
+  }
+}

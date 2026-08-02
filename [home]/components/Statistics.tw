@@ -1,0 +1,21 @@
+load "@../style/statistics.tss"
+
+section {
+
+    class "stats"
+
+    div {
+
+        class "stat-grid"
+
+        div { class "stat"; h2 "10+"; p "Modules" }
+
+        div { class "stat"; h2 "50+"; p "Components" }
+
+        div { class "stat"; h2 "100%"; p "Open Source" }
+
+        div { class "stat"; h2 "0.2.3"; p "Version" }
+
+    }
+
+}

@@ -1,0 +1,177 @@
+page {
+    title "Services | Veridian Systems"
+    layout "main"
+    render static
+}
+
+load "@../style/site.tss"
+
+head {
+    seo {
+        description "Explore the service structure of Veridian Systems across strategy, design, delivery, and support."
+        og_title "Services | Veridian Systems"
+        og_description "Professional services page for an official business website."
+    }
+}
+
+BODY {
+    main {
+        section {
+            class "page-hero"
+
+            div {
+                class "container page-hero-copy"
+
+                span "Services" {
+                    class "eyebrow"
+                }
+
+                h1 "Clear offers. Serious positioning."
+                p "This page is structured like a modern company website: strong business categories, clean explanations, and direct paths to contact. It avoids the random demo feel and instead reads like an official service presentation."
+
+                div {
+                    class "button-row"
+
+                    a "Request Proposal" {
+                        href "/contact"
+                        class "btn btn-primary"
+                    }
+
+                    a "See Work Examples" {
+                        href "/work"
+                        class "btn btn-secondary"
+                    }
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "card-grid"
+
+                    article {
+                        class "service-card"
+                        h3 "Brand-ready web design"
+                        p "Professional page systems, polished layout hierarchy, and modern UI design that helps your business look trustworthy."
+                        ul {
+                            class "bullet-list"
+                            li "Homepage, inner pages, and CTA flow"
+                            li "Desktop and mobile responsive layout"
+                            li "Consistent design language across the site"
+                        }
+                    }
+
+                    article {
+                        class "service-card"
+                        h3 "Business content structure"
+                        p "We organize your offers, proof, company story, and enquiry flow into sections that make sense to real clients."
+                        ul {
+                            class "bullet-list"
+                            li "Service positioning"
+                            li "Case-study style messaging"
+                            li "Clear action hierarchy"
+                        }
+                    }
+
+                    article {
+                        class "service-card"
+                        h3 "Launch-ready build quality"
+                        p "The website is designed to stay stable inside the existing framework without breaking the routing or build setup."
+                        ul {
+                            class "bullet-list"
+                            li "Framework-safe page structure"
+                            li "Reusable components"
+                            li "Maintainable page separation"
+                        }
+                    }
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container split-grid"
+
+                div {
+                    span "Delivery model" {
+                        class "eyebrow"
+                    }
+
+                    h2 "How the service story is presented." {
+                        class "section-title"
+                    }
+
+                    p "Each block is written to support official use. The language is simple, premium, and useful whether you are positioning an agency, consultant, startup, or service company." {
+                        class "section-copy"
+                    }
+                }
+
+                div {
+                    class "timeline"
+
+                    div {
+                        class "timeline-item"
+                        strong "Discovery and alignment"
+                        p "Use this section to explain what you understand before starting any work."
+                    }
+
+                    div {
+                        class "timeline-item"
+                        strong "Design and structure"
+                        p "Show how you turn business goals into a clean presentation and a better visitor journey."
+                    }
+
+                    div {
+                        class "timeline-item"
+                        strong "Execution and refinement"
+                        p "Communicate that the work moves from concept to delivery with clarity and speed."
+                    }
+
+                    div {
+                        class "timeline-item"
+                        strong "Support after launch"
+                        p "End with ongoing support, updates, and scale options to complete the official impression."
+                    }
+                }
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container"
+
+                div {
+                    class "cta-banner"
+
+                    div {
+                        h2 "Want this services page to lead into enquiries?"
+                        p "Open the contact page and use the project enquiry form or direct email and phone actions."
+                    }
+
+                    div {
+                        class "button-row"
+
+                        a "Go to Contact" {
+                            href "/contact"
+                            class "btn btn-primary"
+                        }
+
+                        a "Back Home" {
+                            href "/"
+                            class "btn btn-secondary"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

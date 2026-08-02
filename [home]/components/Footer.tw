@@ -1,0 +1,114 @@
+load "@../style/footer.tss"
+
+footer {
+    class "site-footer"
+
+    div {
+        class "container footer-shell"
+
+        div {
+            class "footer-brand"
+
+            div {
+                class "footer-brand-top"
+
+                span {
+                    class "footer-brand-mark"
+
+                    span {
+                        class "footer-brand-mark-core"
+                        text "TW"
+                    }
+
+                    span {
+                        class "footer-brand-mark-accent"
+                        text "•"
+                    }
+                }
+
+                div {
+                    class "footer-brand-copy"
+
+                    h3 "TWMODS"
+                    p "Premium APK hub"
+                }
+            }
+
+            p "Browse premium-style app listings, fast category shortcuts aur direct request actions in a cleaner beta-style catalog footer."
+
+            div {
+                class "footer-cta-row"
+
+                a "Open Telegram" {
+                    href "https://t.me/twmodstore"
+                    class "footer-cta"
+                }
+
+                a "Request App" {
+                    href "/#request"
+                    class "footer-ghost"
+                }
+            }
+        }
+
+        div {
+            class "footer-links"
+
+            h4 "Explore"
+            a "Home" { href "/#home" }
+            a "Apps" { href "/#hot-apps" }
+            a "Popular" { href "/#popular" }
+            a "Search" { href "/#search" }
+        }
+
+        div {
+            class "footer-links"
+
+            h4 "Categories"
+            a "Games" { href "/#categories" }
+            a "Tools" { href "/#categories" }
+            a "Music" { href "/#categories" }
+            a "Video" { href "/#categories" }
+        }
+
+        div {
+            class "footer-links"
+
+            h4 "Quick links"
+            a "Popular" { href "/#popular" }
+            a "Latest" { href "/#latest" }
+            a "Request App" { href "/#request" }
+            a "Telegram" { href "https://t.me/twmodstore" }
+            a "Search" { href "/#search" }
+        }
+    }
+
+    div {
+        class "container footer-bottom"
+
+        p "© 2026 TWMODS. Twlang homepage ko beta site ke visual style ke closer header aur footer ke saath tune kiya gaya hai."
+
+        div {
+            class "footer-powered"
+
+            span {
+                class "footer-powered-mark"
+                text "TW"
+            }
+
+            span "Powered by TW" {
+                class "footer-powered-text"
+            }
+        }
+    }
+}
+
+nav {
+    class "mobile-footer-nav"
+
+    a "Home" { href "/#home" }
+    a "Apps" { href "/#hot-apps" }
+    a "Search" { href "/#search" }
+    a "Cats" { href "/#categories" }
+    a "Ask" { href "/#request" }
+}

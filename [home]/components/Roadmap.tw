@@ -1,0 +1,23 @@
+load "@../style/roadmap.tss"
+
+section {
+
+    class "roadmap"
+
+    h2 "Roadmap"
+
+    div {
+
+        class "steps"
+
+        div { h3 "Phase 1"; p "Core Language + Compiler" }
+
+        div { h3 "Phase 2"; p "Framework + Components" }
+
+        div { h3 "Phase 3"; p "CLI + Tools" }
+
+        div { h3 "Phase 4"; p "Plugins + Ecosystem" }
+
+    }
+
+}

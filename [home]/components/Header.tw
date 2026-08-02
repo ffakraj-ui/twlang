@@ -1,0 +1,82 @@
+load "@../style/header.tss"
+
+header {
+    class "site-header"
+
+    div {
+        class "container header-shell"
+
+        a {
+            href "/#home"
+            class "brand-link"
+
+            span {
+                class "brand-mark"
+
+                span {
+                    class "brand-mark-core"
+                    text "TW"
+                }
+
+                span {
+                    class "brand-mark-accent"
+                    text "•"
+                }
+            }
+
+            span {
+                class "brand-copy"
+
+                strong "TWMODS"
+                small "premium apps • games • tools"
+            }
+        }
+
+        nav {
+            class "desktop-nav"
+
+            a {
+                href "/#home"
+                class "nav-link nav-link-active"
+                span { class "nav-ic"; text "⌂" }
+                text "Home"
+            }
+
+            a {
+                href "/#hot-apps"
+                class "nav-link"
+                span { class "nav-ic"; text "🏷" }
+                text "Apps"
+            }
+
+            a {
+                href "/#search"
+                class "nav-link"
+                span { class "nav-ic"; text "🔎" }
+                text "Search"
+            }
+        }
+
+        div {
+            class "header-actions"
+
+            button {
+                type "button"
+                class "theme-toggle"
+                click "__twToggleTheme"
+                title "Toggle theme"
+                text "🌙"
+            }
+
+            a "Request App" {
+                href "/#request"
+                class "header-ghost"
+            }
+
+            a "Join Telegram" {
+                href "https://t.me/twmodstore"
+                class "header-cta"
+            }
+        }
+    }
+}

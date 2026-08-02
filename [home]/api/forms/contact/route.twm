@@ -1,0 +1,38 @@
+fn post(request) {
+  const payload = request.body || {};
+  const name = String(payload.name || "").trim();
+  const email = String(payload.email || "").trim();
+  const message = String(payload.message || "").trim();
+  const errors = {};
+
+  if (!name) {
+    errors.name = "name required";
+  }
+  if (!email.includes("@")) {
+    errors.email = "valid email required";
+  }
+  if (message.length < 10) {
+    errors.message = "message minimum 10 characters";
+  }
+
+  if (Object.keys(errors).length) {
+    return {
+      status: 422,
+      json: {
+        ok: false,
+        message: "Validation failed",
+        errors,
+        received: payload
+      }
+    };
+  }
+
+  return {
+    status: 201,
+    json: {
+      ok: true,
+      message: "Form submitted successfully",
+      received: payload
+    }
+  };
+}

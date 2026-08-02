@@ -1,0 +1,33 @@
+.hero {
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.hero h1 {
+    font-size: 48px;
+    font-weight: 700;
+}
+
+.hero p {
+    margin-top: 12px;
+    font-size: 18px;
+    color: #6b7280;
+}
+
+.hero-actions {
+    margin-top: 20px;
+}
+
+.primary {
+    background: #2563eb;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+}
+
+.secondary {
+    margin-left: 10px;
+    border: 1px solid #d1d5db;
+    padding: 10px 18px;
+    border-radius: 8px;
+}

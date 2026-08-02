@@ -1,0 +1,14 @@
+fn get(request) {
+  const q = request && request.query ? request.query : {};
+  const a = Number(q.a || 0);
+  const b = Number(q.b || 0);
+  return {
+    status: 200,
+    json: {
+      ok: true,
+      a,
+      b,
+      sum: a + b
+    }
+  };
+}

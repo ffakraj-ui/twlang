@@ -1,0 +1,1031 @@
+:root {
+  --bg-color #07101e
+  --bg-soft #0f172a
+  --surface-color rgba(15,23,42,.78)
+  --surface-strong #111c33
+  --surface-frost rgba(255,255,255,.06)
+  --surface-glow rgba(96,165,250,.16)
+  --text-color #f8fafc
+  --muted-color #b9c6dc
+  --border-color rgba(148,163,184,.18)
+  --primary-color #60a5fa
+  --primary-strong #2563eb
+  --primary-soft rgba(96,165,250,.12)
+  --accent-soft rgba(167,139,250,.18)
+  --accent-color #a78bfa
+  --success-color #22c55e
+  --footer-bg #08111d
+  --shadow-soft 0 24 80 rgba(2,6,23,.34)
+  --shadow-glow 0 24 80 rgba(37,99,235,.18)
+}
+
+:root[data-theme="light"] {
+  --bg-color #f3f7ff
+  --bg-soft #e9f0ff
+  --surface-color rgba(255,255,255,.82)
+  --surface-strong #ffffff
+  --surface-frost rgba(37,99,235,.06)
+  --surface-glow rgba(37,99,235,.10)
+  --text-color #0f172a
+  --muted-color #475569
+  --border-color rgba(15,23,42,.08)
+  --primary-color #2563eb
+  --primary-strong #1d4ed8
+  --primary-soft rgba(37,99,235,.12)
+  --accent-soft rgba(124,58,237,.12)
+  --accent-color #7c3aed
+  --success-color #16a34a
+  --footer-bg #eaf1ff
+  --shadow-soft 0 20 60 rgba(15,23,42,.10)
+  --shadow-glow 0 24 80 rgba(37,99,235,.12)
+}
+
+html {
+  scroll-behavior smooth
+}
+
+body {
+  margin 0
+  background radial-gradient(circle at top left, rgba(59,130,246,.18) 0%, transparent 32%), radial-gradient(circle at top right, rgba(167,139,250,.16) 0%, transparent 28%), var(--bg-color)
+  color var(--text-color)
+  font-family Inter, system-ui, sans-serif
+  line-height 1.6
+  overflow-x hidden
+}
+
+main,
+section,
+div,
+article,
+nav,
+header,
+footer {
+  box-sizing border-box
+}
+
+a,
+button,
+input,
+textarea {
+  font inherit
+}
+
+code,
+pre {
+  font-family "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace
+}
+
+.container {
+  max-width 1240
+  margin 0 auto
+  padding 0 24
+  position relative
+  z-index 2
+}
+
+.section {
+  padding 96 0
+}
+
+.section-compact {
+  padding 56 0 88
+}
+
+.section-muted {
+  background rgba(255,255,255,.03)
+}
+
+:root[data-theme="light"] .section-muted {
+  background rgba(37,99,235,.04)
+}
+
+.hero-section {
+  padding 60 0 28
+  position relative
+  overflow hidden
+}
+
+.hero-grid,
+.signal-grid,
+.syntax-grid,
+.pipeline-grid,
+.feature-grid,
+.split-layout,
+.surface-grid {
+  display grid
+  gap 24
+}
+
+.hero-grid {
+  grid-template-columns 1.05fr .95fr
+  align-items center
+  padding 34
+  border-radius 36
+  background linear-gradient(135deg, #081120 0%, #102142 52%, #0f172a 100%)
+  border 1 solid rgba(148,163,184,.14)
+  box-shadow 0 34 100 rgba(2,6,23,.34), inset 0 1 0 rgba(255,255,255,.06)
+  animation ambientShift 12s ease-in-out infinite alternate
+}
+
+.hero-copy,
+.stack-panel {
+  display grid
+  gap 18
+}
+
+.hero-copy {
+  padding-right 10
+}
+
+.home-shell {
+  position relative
+}
+
+.home-shell section {
+  position relative
+}
+
+.hero-copy h1 {
+  margin 0 0 18
+  font-size 66
+  line-height 1.02
+  letter-spacing -0.05em
+  max-width 720
+  background linear-gradient(135deg, #ffffff 0%, #dbeafe 36%, #93c5fd 66%, #c4b5fd 100%)
+  color transparent
+  background-clip text
+  -webkit-text-fill-color transparent
+  animation heroRise .9s ease both
+  text-shadow 0 8 40 rgba(96,165,250,.12)
+}
+
+.hero-copy p,
+.section-copy {
+  margin 0
+  color var(--muted-color)
+  font-size 18
+}
+
+.hero-copy p {
+  max-width 680
+  color rgba(226,232,240,.82)
+  animation fadeLift 1s ease .12s both
+}
+
+.eyebrow {
+  display inline-flex
+  align-items center
+  min-height 36
+  padding 0 14
+  border-radius 999
+  border 1 solid rgba(96,165,250,.18)
+  background var(--primary-soft)
+  color var(--primary-color)
+  font-size 13
+  font-weight 800
+  letter-spacing .08em
+  text-transform uppercase
+  box-shadow inset 0 0 0 1 rgba(255,255,255,.04), 0 12 30 rgba(37,99,235,.12)
+  animation fadeLift .8s ease .04s both
+}
+
+.button-row,
+.pill-row {
+  display flex
+  flex-wrap wrap
+  gap 14
+}
+
+.button-row {
+  margin-top 30
+}
+
+.pill-row {
+  margin-top 24
+}
+
+.btn {
+  min-height 50
+  padding 0 22
+  border-radius 999
+  border 1 solid transparent
+  display inline-flex
+  align-items center
+  justify-content center
+  text-decoration none
+  font-weight 700
+  position relative
+  overflow hidden
+  transition transform .28s ease, box-shadow .28s ease, border-color .28s ease, background .28s ease
+  will-change transform
+}
+
+.btn:hover {
+  transform translateY(-4)
+  box-shadow 0 18 36 rgba(15,23,42,.18)
+}
+
+.btn-primary {
+  background linear-gradient(135deg, #38bdf8 0%, #2563eb 58%, #7c3aed 100%)
+  background-size 180% 180%
+  color white
+  box-shadow 0 20 50 rgba(37,99,235,.24)
+  animation gradientShift 6s ease infinite
+}
+
+.btn-secondary {
+  background linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.03) 100%)
+  color #f8fafc
+  border-color rgba(255,255,255,.16)
+  backdrop-filter blur(18)
+}
+
+.btn-ghost {
+  background transparent
+  color rgba(226,232,240,.92)
+  border-color rgba(255,255,255,.16)
+}
+
+.pill {
+  min-height 36
+  padding 0 14
+  border-radius 999
+  border 1 solid var(--border-color)
+  background rgba(255,255,255,.04)
+  color var(--muted-color)
+  display inline-flex
+  align-items center
+  justify-content center
+  font-size 13
+  font-weight 700
+  transition transform .25s ease, border-color .25s ease, background .25s ease
+  animation fadeLift .9s ease both
+}
+
+:root[data-theme="light"] .pill {
+  background rgba(255,255,255,.08)
+  color rgba(226,232,240,.84)
+}
+
+.pill:hover {
+  transform translateY(-2)
+  border-color rgba(96,165,250,.4)
+  background rgba(96,165,250,.08)
+}
+
+.hero-surface,
+.signal-card,
+.code-card,
+.pipeline-step,
+.feature-card,
+.stack-panel,
+.command-card,
+.cta-panel {
+  border 1 solid var(--border-color)
+  background var(--surface-color)
+  border-radius 30
+  box-shadow var(--shadow-soft)
+  backdrop-filter blur(18)
+  transition transform .35s ease, box-shadow .35s ease, border-color .35s ease, background .35s ease
+}
+
+.hero-surface {
+  padding 28
+  overflow hidden
+  position relative
+  background linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(15,23,42,.72) 100%)
+  box-shadow var(--shadow-soft), var(--shadow-glow)
+  animation floatPanel 6s ease-in-out infinite
+}
+
+.surface-bar,
+.code-head {
+  display flex
+  align-items center
+  justify-content space-between
+  gap 16
+  margin-bottom 18
+}
+
+.surface-title,
+.surface-kicker {
+  display inline-flex
+  align-items center
+}
+
+.surface-title {
+  font-size 14
+  font-weight 800
+  color #f8fafc
+}
+
+.surface-kicker {
+  min-height 30
+  padding 0 12
+  border-radius 999
+  background rgba(34,197,94,.12)
+  color var(--success-color)
+  font-size 12
+  font-weight 800
+  box-shadow 0 0 0 1 rgba(34,197,94,.15)
+  animation pulseLive 2.4s ease-in-out infinite
+}
+
+.surface-grid {
+  grid-template-columns repeat(2, 1fr)
+}
+
+.surface-card {
+  min-height 180
+  height 100%
+  padding 22
+  border-radius 24
+  background linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.03) 100%)
+  border 1 solid rgba(148,163,184,.12)
+  position relative
+  overflow hidden
+}
+
+.surface-card-primary {
+  background linear-gradient(135deg, rgba(56,189,248,.18) 0%, rgba(37,99,235,.12) 54%, rgba(124,58,237,.16) 100%)
+}
+
+.card-label,
+.code-tag,
+.step-index {
+  display inline-flex
+  align-items center
+  justify-content center
+  min-height 30
+  padding 0 12
+  border-radius 999
+  background var(--primary-soft)
+  color var(--primary-color)
+  font-size 12
+  font-weight 800
+  letter-spacing .06em
+  text-transform uppercase
+}
+
+.surface-card h2,
+.surface-card h3,
+.pipeline-step h3,
+.feature-card h3,
+.cta-panel h2 {
+  margin 12 0 12
+  line-height 1.15
+}
+
+.surface-card h2 {
+  font-size 30
+}
+
+.surface-card h3,
+.pipeline-step h3,
+.feature-card h3 {
+  font-size 24
+}
+
+.surface-card p,
+.pipeline-step p,
+.feature-card p,
+.command-card p,
+.cta-panel p {
+  margin 0
+  color var(--muted-color)
+}
+
+.hero-surface .surface-card p,
+.hero-surface .status-pill span,
+.hero-surface .console-meta span {
+  color rgba(226,232,240,.72)
+}
+
+.surface-card:hover,
+.signal-card:hover,
+.code-card:hover,
+.pipeline-step:hover,
+.feature-card:hover,
+.stack-panel:hover,
+.command-card:hover,
+.cta-panel:hover {
+  transform translateY(-8)
+  border-color rgba(96,165,250,.3)
+  box-shadow var(--shadow-soft), 0 24 60 rgba(37,99,235,.14)
+}
+
+.signal-section {
+  padding 18 0 18
+}
+
+.signal-grid {
+  grid-template-columns repeat(4, 1fr)
+}
+
+.signal-card {
+  padding 24 22
+  height 100%
+}
+
+.signal-card strong {
+  display block
+  margin-bottom 8
+  font-size 28
+  line-height 1
+  background linear-gradient(135deg, #ffffff 0%, #93c5fd 100%)
+  color transparent
+  background-clip text
+  -webkit-text-fill-color transparent
+}
+
+:root[data-theme="light"] .signal-card strong {
+  background linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)
+  color transparent
+  background-clip text
+  -webkit-text-fill-color transparent
+}
+
+.signal-card span {
+  color var(--muted-color)
+  font-size 14
+}
+
+.section-head {
+  margin-bottom 28
+  display grid
+  gap 18
+}
+
+.section-title {
+  margin 0
+  max-width 800
+  font-size 46
+  line-height 1.08
+  letter-spacing -0.04em
+  animation fadeLift .8s ease both
+}
+
+.section-copy {
+  max-width 760
+  animation fadeLift 1s ease .08s both
+}
+
+.syntax-grid {
+  grid-template-columns repeat(3, 1fr)
+}
+
+.code-card,
+.stack-panel {
+  padding 24
+}
+
+.code-card,
+.pipeline-step,
+.feature-card,
+.command-card {
+  height 100%
+}
+
+.code-head strong {
+  font-size 16
+}
+
+.code-frame {
+  margin 0
+  padding 20
+  border-radius 24
+  border 1 solid rgba(148,163,184,.12)
+  background rgba(2,6,23,.52)
+  color #dbeafe
+  overflow auto
+  box-shadow inset 0 1 0 rgba(255,255,255,.04)
+}
+
+:root[data-theme="light"] .code-frame {
+  background #0f172a
+  color #dbeafe
+}
+
+.code-frame code {
+  display block
+  font-size 13
+  line-height 1.7
+  white-space pre-wrap
+}
+
+.pipeline-grid {
+  grid-template-columns repeat(3, 1fr)
+}
+
+.pipeline-step,
+.feature-card {
+  padding 26
+}
+
+.pipeline-step {
+  background linear-gradient(180deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.03) 100%)
+}
+
+.feature-grid {
+  grid-template-columns repeat(3, 1fr)
+}
+
+.split-layout {
+  grid-template-columns 1fr 1fr
+  align-items start
+}
+
+.command-list {
+  display grid
+  gap 16
+  margin-top 24
+}
+
+.command-card {
+  padding 22
+  background linear-gradient(180deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,.025) 100%)
+}
+
+.command-card strong {
+  display block
+  margin-bottom 10
+  font-size 18
+}
+
+.command-card code {
+  display block
+  margin-bottom 10
+  padding 12 14
+  border-radius 18
+  background rgba(2,6,23,.52)
+  color #dbeafe
+  overflow auto
+  border 1 solid rgba(148,163,184,.12)
+}
+
+.cta-panel {
+  padding 32
+  display flex
+  align-items center
+  justify-content space-between
+  gap 24
+  background linear-gradient(135deg, rgba(37,99,235,.18) 0%, rgba(124,58,237,.14) 100%)
+}
+
+.cta-panel .button-row {
+  margin-top 0
+}
+
+.cta-panel h2 {
+  font-size 34
+}
+
+.hero-inline-stats {
+  display grid
+  grid-template-columns repeat(2, minmax(0, 1fr))
+  gap 14
+  margin-top 8
+  animation fadeLift 1s ease .18s both
+}
+
+.mini-stat,
+.status-pill {
+  border 1 solid var(--border-color)
+  border-radius 22
+  background linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.03) 100%)
+  backdrop-filter blur(18)
+}
+
+.mini-stat {
+  padding 16 18
+  display grid
+  gap 4
+  box-shadow 0 18 40 rgba(2,6,23,.16)
+}
+
+.mini-stat strong,
+.status-pill strong {
+  font-size 16
+  line-height 1.1
+}
+
+.mini-stat span,
+.status-pill span {
+  color var(--muted-color)
+  font-size 13
+}
+
+.hero-backdrop {
+  position absolute
+  inset 0
+  pointer-events none
+}
+
+.hero-orb {
+  position absolute
+  border-radius 999
+  filter blur(12)
+  opacity .85
+}
+
+.hero-orb-one {
+  top -20
+  right 24
+  width 170
+  height 170
+  background radial-gradient(circle, rgba(56,189,248,.55) 0%, rgba(37,99,235,.12) 60%, transparent 100%)
+  animation floatOrb 8s ease-in-out infinite
+}
+
+.hero-orb-two {
+  bottom 18
+  left -24
+  width 150
+  height 150
+  background radial-gradient(circle, rgba(167,139,250,.45) 0%, rgba(124,58,237,.10) 60%, transparent 100%)
+  animation floatOrb 10s ease-in-out infinite reverse
+}
+
+.hero-grid-lines {
+  position absolute
+  inset 18
+  border-radius 26
+  border 1 solid rgba(148,163,184,.08)
+  background linear-gradient(rgba(255,255,255,.04) 1, transparent 1), linear-gradient(90deg, rgba(255,255,255,.04) 1, transparent 1)
+  background-size 36 36
+  mask-image linear-gradient(180deg, rgba(0,0,0,.9), transparent)
+  opacity .35
+}
+
+.surface-status-row {
+  display grid
+  grid-template-columns repeat(3, 1fr)
+  gap 12
+  margin-top 18
+  position relative
+  z-index 2
+}
+
+.surface-console {
+  margin-top 16
+  padding 18
+  border-radius 22
+  border 1 solid rgba(148,163,184,.14)
+  background linear-gradient(180deg, rgba(2,6,23,.52) 0%, rgba(15,23,42,.34) 100%)
+  position relative
+  z-index 2
+  box-shadow inset 0 1 0 rgba(255,255,255,.04)
+}
+
+.console-top {
+  display flex
+  align-items center
+  justify-content space-between
+  gap 12
+  margin-bottom 14
+}
+
+.console-top strong {
+  color #f8fafc
+  font-size 15
+  letter-spacing .01em
+}
+
+.console-live {
+  min-height 26
+  padding 0 10
+  border-radius 999
+  background rgba(34,197,94,.14)
+  color #86efac
+  border 1 solid rgba(34,197,94,.24)
+  font-size 11
+  font-weight 800
+  letter-spacing .08em
+  text-transform uppercase
+  animation pulseLive 2s ease-in-out infinite
+}
+
+.console-list {
+  display grid
+  gap 12
+}
+
+.console-row {
+  display grid
+  gap 10
+}
+
+.console-meta {
+  display flex
+  align-items center
+  justify-content space-between
+  gap 14
+}
+
+.console-meta strong {
+  color #f8fafc
+  font-size 14
+}
+
+.console-meta span {
+  font-size 12
+  letter-spacing .04em
+  text-transform uppercase
+}
+
+.meter {
+  height 12
+  border-radius 999
+  background rgba(255,255,255,.08)
+  overflow hidden
+  position relative
+}
+
+.meter-fill {
+  display block
+  height 100%
+  border-radius 999
+  background-size 200% 100%
+  animation flowMeter 3.2s linear infinite
+}
+
+.meter-fill-primary {
+  width 84%
+  background linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #2563eb 100%)
+}
+
+.meter-fill-accent {
+  width 91%
+  background linear-gradient(90deg, #60a5fa 0%, #7c3aed 55%, #c084fc 100%)
+}
+
+.meter-fill-success {
+  width 76%
+  background linear-gradient(90deg, #22c55e 0%, #4ade80 50%, #86efac 100%)
+}
+
+.status-pill {
+  padding 14 16
+  display grid
+  gap 3
+  position relative
+  overflow hidden
+}
+
+.status-pill strong {
+  text-transform uppercase
+  letter-spacing .06em
+  color #f8fafc
+}
+
+.hero-copy .button-row .btn:nth-child(1) {
+  animation fadeLift .9s ease .18s both
+}
+
+.hero-copy .button-row .btn:nth-child(2) {
+  animation fadeLift .9s ease .24s both
+}
+
+.hero-copy .button-row .btn:nth-child(3) {
+  animation fadeLift .9s ease .3s both
+}
+
+.pill-row .pill:nth-child(1) {
+  animation-delay .28s
+}
+
+.pill-row .pill:nth-child(2) {
+  animation-delay .34s
+}
+
+.pill-row .pill:nth-child(3) {
+  animation-delay .4s
+}
+
+@keyframes heroRise {
+  0% {
+    opacity 0
+    transform translateY(24)
+  }
+
+  100% {
+    opacity 1
+    transform translateY(0)
+  }
+}
+
+@keyframes fadeLift {
+  0% {
+    opacity 0
+    transform translateY(18)
+  }
+
+  100% {
+    opacity 1
+    transform translateY(0)
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position 0% 50%
+  }
+
+  50% {
+    background-position 100% 50%
+  }
+
+  100% {
+    background-position 0% 50%
+  }
+}
+
+@keyframes floatPanel {
+  0% {
+    transform translateY(0)
+  }
+
+  50% {
+    transform translateY(-8)
+  }
+
+  100% {
+    transform translateY(0)
+  }
+}
+
+@keyframes floatOrb {
+  0% {
+    transform translate3d(0, 0, 0) scale(1)
+  }
+
+  50% {
+    transform translate3d(12, -18, 0) scale(1.06)
+  }
+
+  100% {
+    transform translate3d(0, 0, 0) scale(1)
+  }
+}
+
+@keyframes flowMeter {
+  0% {
+    background-position 0% 50%
+    filter saturate(1)
+  }
+
+  50% {
+    background-position 100% 50%
+    filter saturate(1.18)
+  }
+
+  100% {
+    background-position 0% 50%
+    filter saturate(1)
+  }
+}
+
+@keyframes pulseLive {
+  0% {
+    box-shadow 0 0 0 0 rgba(34,197,94,.18)
+    transform scale(1)
+  }
+
+  50% {
+    box-shadow 0 0 0 10 rgba(34,197,94,0)
+    transform scale(1.03)
+  }
+
+  100% {
+    box-shadow 0 0 0 0 rgba(34,197,94,0)
+    transform scale(1)
+  }
+}
+
+@keyframes ambientShift {
+  0% {
+    box-shadow 0 34 100 rgba(2,6,23,.34), inset 0 1 0 rgba(255,255,255,.06)
+    transform translateY(0)
+  }
+
+  100% {
+    box-shadow 0 40 110 rgba(37,99,235,.18), inset 0 1 0 rgba(255,255,255,.08)
+    transform translateY(-2)
+  }
+}
+
+@media (max-width:1100) {
+  .hero-grid,
+  .split-layout {
+    grid-template-columns 1fr
+  }
+
+  .signal-grid,
+  .pipeline-grid,
+  .feature-grid {
+    grid-template-columns repeat(2, 1fr)
+  }
+
+  .syntax-grid {
+    grid-template-columns 1fr
+  }
+
+  .hero-copy h1 {
+    font-size 56
+  }
+
+  .section-title {
+    font-size 40
+  }
+
+  .hero-inline-stats,
+  .surface-status-row {
+    grid-template-columns 1fr
+  }
+
+  .hero-grid {
+    padding 28
+  }
+}
+
+@media (max-width:768) {
+  .container {
+    padding 0 18
+  }
+
+  .section {
+    padding 76 0
+  }
+
+  .section-compact {
+    padding 46 0 82
+  }
+
+  .hero-section {
+    padding-top 36
+  }
+
+  .hero-grid {
+    padding 20
+    border-radius 28
+    gap 20
+  }
+
+  .hero-copy h1 {
+    font-size 40
+  }
+
+  .hero-copy p,
+  .section-copy {
+    font-size 17
+  }
+
+  .section-title {
+    font-size 34
+  }
+
+  .surface-grid,
+  .signal-grid,
+  .pipeline-grid,
+  .feature-grid {
+    grid-template-columns 1fr
+  }
+
+  .button-row {
+    flex-direction column
+  }
+
+  .hero-inline-stats {
+    grid-template-columns 1fr
+  }
+
+  .surface-console {
+    padding 14
+  }
+
+  .console-meta {
+    flex-direction column
+    align-items flex-start
+    gap 4
+  }
+
+  .btn {
+    width 100%
+  }
+
+  .cta-panel {
+    flex-direction column
+    align-items flex-start
+  }
+
+  .hero-surface,
+  .signal-card,
+  .code-card,
+  .pipeline-step,
+  .feature-card,
+  .stack-panel,
+  .command-card,
+  .cta-panel {
+    border-radius 24
+  }
+}

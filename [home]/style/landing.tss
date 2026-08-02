@@ -1,0 +1,482 @@
+body {
+
+  margin 0
+  padding 0
+
+  background linear-gradient(135deg,#0B1020,#162448,#233B73)
+
+  color white
+
+  font-family system-ui,sans-serif
+
+  overflow-x hidden
+
+  scroll-behavior smooth
+
+}
+
+/* HERO */
+
+.hero {
+
+  max-width 1200
+
+  margin 0 auto
+
+  min-height 85vh
+
+  padding 40 24
+
+  display flex
+
+  flex-direction column
+
+  justify-content center
+
+  align-items center
+
+  text-align center
+
+  animation heroFade .8s
+
+}
+
+.hero h1 {
+
+  font-size 72
+
+  font-weight bold
+
+  margin-bottom 20
+
+  line-height 1.2
+
+}
+
+.hero p {
+
+  max-width 760
+
+  color #D4DDFF
+
+  font-size 20
+
+  line-height 1.8
+
+  margin-bottom 10
+
+}
+
+.go-btn {
+
+  display inline-block
+
+  margin-top 40
+
+  padding 18 48
+
+  background linear-gradient(90deg,#4F7CFF,#6E9FFF)
+
+  color white
+
+  border-radius 16
+
+  text-decoration none
+
+  font-size 18
+
+  font-weight bold
+
+  transition .35s
+
+  box-shadow 0 0 25 rgba(79,124,255,.45)
+
+  animation pulse 2.8s infinite
+
+}
+
+.go-btn:hover {
+
+  transform translateY(-5) scale(1.03)
+
+  box-shadow 0 0 45 rgba(79,124,255,.8)
+
+}
+
+/* TICKER */
+
+.ticker {
+
+  overflow hidden
+
+  padding 18 0
+
+  background rgba(255,255,255,.05)
+
+  border-top 1 solid rgba(255,255,255,.08)
+
+  border-bottom 1 solid rgba(255,255,255,.08)
+
+}
+
+.ticker-track {
+
+  display flex
+
+  width max-content
+
+  gap 70
+
+  animation marquee 22s linear infinite
+
+}
+
+.ticker-track span {
+
+  white-space nowrap
+
+  font-size 18
+
+  color #8CB5FF
+
+  font-weight 600
+
+}
+
+/* FEATURES */
+
+.features {
+
+  max-width 1200
+
+  margin 0 auto
+
+  padding 100 24
+
+}
+
+.features h2 {
+
+  text-align center
+
+  font-size 42
+
+  margin-bottom 60
+
+}
+
+.feature-grid {
+
+  display grid
+
+  grid-template-columns repeat(3,1fr)
+
+  gap 28
+
+}
+
+.card {
+
+  background rgba(255,255,255,.06)
+
+  border 1 solid rgba(255,255,255,.08)
+
+  backdrop-filter blur(16)
+
+  border-radius 20
+
+  padding 32
+
+  transition .35s
+
+  cursor pointer
+
+}
+
+.card:hover {
+
+  transform translateY(-10) scale(1.03)
+
+  background rgba(255,255,255,.1)
+
+  box-shadow 0 18 45 rgba(0,0,0,.35)
+
+}
+
+.card h3 {
+
+  font-size 24
+
+  margin-bottom 16
+
+}
+
+.card p {
+
+  color #CBD5FF
+
+  line-height 1.8
+
+}
+
+/* STATS */
+
+.stats {
+
+  max-width 1200
+
+  margin 0 auto
+
+  padding 100 24
+
+}
+
+.stats h2 {
+
+  text-align center
+
+  font-size 42
+
+  margin-bottom 50
+
+}
+
+.stats-grid {
+
+  display grid
+
+  grid-template-columns repeat(4,1fr)
+
+  gap 24
+
+}
+
+.stat {
+
+  padding 34
+
+  border-radius 18
+
+  background rgba(255,255,255,.05)
+
+  text-align center
+
+  transition .35s
+
+}
+
+.stat:hover {
+
+  transform scale(1.05)
+
+}
+
+.stat h3 {
+
+  color #6EA0FF
+
+  font-size 46
+
+}
+
+.stat p {
+
+  margin-top 12
+
+  color #CCD5FF
+
+}
+
+/* ROADMAP */
+
+.roadmap{
+
+  max-width 900
+
+  margin 0 auto
+
+  padding 90 24
+
+}
+
+.roadmap h2{
+
+  text-align center
+
+  font-size 40
+
+  margin-bottom 50
+
+}
+
+.step{
+
+  margin-bottom 20
+
+  padding 24
+
+  border-left 5 solid #4F7CFF
+
+  background rgba(255,255,255,.05)
+
+  border-radius 12
+
+}
+
+.step h3{
+
+  margin-bottom 10
+
+}
+
+/* ANIMATIONS */
+
+@keyframes heroFade{
+
+0%{
+
+opacity 0
+
+transform translateY(40)
+
+}
+
+100%{
+
+opacity 1
+
+transform translateY(0)
+
+}
+
+}
+
+@keyframes marquee{
+
+0%{
+
+transform translateX(100%)
+
+}
+
+100%{
+
+transform translateX(-100%)
+
+}
+
+}
+
+@keyframes pulse{
+
+0%{
+
+transform scale(1)
+
+}
+
+50%{
+
+transform scale(1.04)
+
+}
+
+100%{
+
+transform scale(1)
+
+}
+
+}
+
+/* MOBILE */
+
+@media (max-width:768){
+
+.hero{
+
+min-height 75vh
+
+padding 24
+
+}
+
+.hero h1{
+
+font-size 42
+
+}
+
+.hero p{
+
+font-size 16
+
+}
+
+.go-btn{
+
+width 100%
+
+max-width 320
+
+padding 18
+
+}
+
+.ticker-track{
+
+gap 36
+
+}
+
+.ticker-track span{
+
+font-size 16
+
+}
+
+.feature-grid{
+
+grid-template-columns 1fr
+
+}
+
+.stats-grid{
+
+grid-template-columns 1fr
+
+}
+
+.features{
+
+padding 70 20
+
+}
+
+.stats{
+
+padding 70 20
+
+}
+
+.roadmap{
+
+padding 70 20
+
+}
+
+.features h2,
+.stats h2,
+.roadmap h2{
+
+font-size 32
+
+}
+
+.card{
+
+padding 24
+
+}
+
+}
