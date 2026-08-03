@@ -2609,10 +2609,16 @@ def parse_property_value(tokens, i):
     if tok.type == "BRACE" and tok.value == "}":
         return True, i
 
-    # Fast path: single token value
-    nxt = peek(tokens, i + 1)
-    if tok.type == "STRING" and (not nxt or nxt.type in {"NL"} or (nxt.type == "BRACE" and nxt.value == "}")):
+    # Fast path: single token value.
+    # A quoted STRING value is always complete on its own — its boundaries
+    # are the quote marks, so it never needs line-greedy collection. This
+    # matters for single-line elements with multiple properties, e.g.
+    # `a { href "/" target "_blank" text "Home" }` — without this, `href`
+    # would swallow every token through the rest of the line.
+    if tok.type == "STRING":
         return tok.value, i + 1
+
+    nxt = peek(tokens, i + 1)
     if tok.type == "WORD" and (not nxt or nxt.type in {"NL"} or (nxt.type == "BRACE" and nxt.value == "}")):
         return tok.value, i + 1
 
