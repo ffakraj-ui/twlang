@@ -2095,6 +2095,11 @@ def finalize_css_value(css_prop, raw_value, context):
         return _append_px_if_numeric(value)
     if isinstance(value, str):
         stripped = value.strip()
+        if len(stripped) >= 2 and (
+            (stripped[0] == '"' and stripped[-1] == '"')
+            or (stripped[0] == "'" and stripped[-1] == "'")
+        ):
+            stripped = stripped[1:-1]
         stripped = _normalize_css_function_args(stripped)
         if css_prop == "line-height" and NUM_RE.match(stripped):
             return stripped
