@@ -2526,13 +2526,13 @@ def write_route_artifacts(output_dir: str):
 
 def strip_html_to_text(html_text: str) -> str:
     # Remove script/style blocks
-    html_text = re.sub(r"<script[\\s\\S]*?</script>", " ", html_text, flags=re.I)
-    html_text = re.sub(r"<style[\\s\\S]*?</style>", " ", html_text, flags=re.I)
+    html_text = re.sub(r"<script[\s\S]*?</script>", " ", html_text, flags=re.I)
+    html_text = re.sub(r"<style[\s\S]*?</style>", " ", html_text, flags=re.I)
     # Remove tags
     html_text = re.sub(r"<[^>]+>", " ", html_text)
     # Decode entities + normalize whitespace
     html_text = html.unescape(html_text)
-    html_text = re.sub(r"\\s+", " ", html_text).strip()
+    html_text = re.sub(r"\s+", " ", html_text).strip()
     return html_text
 
 
