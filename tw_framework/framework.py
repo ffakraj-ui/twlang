@@ -2775,7 +2775,7 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
 
                     # Check incremental cache
                     cached = cache.get(compiler.page_cache_key(page_info))
-                    if cached is not None:
+                    if cached is not None and isinstance(cached, dict):
                         cached_sig = cached.get("signature")
                         current_sig = compiler.compute_dependency_signature(dependencies)
                         if cached_sig == current_sig:
