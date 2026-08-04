@@ -690,12 +690,12 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
             elif key == "json":
                 response["json"], index = parse_object_block(index)
             elif key == "header":
-                header_name, index = parse_value_token(tokens, index)
-                header_value, index = parse_value_token(tokens, index)
+                header_name, index = parse_single_value_token(tokens, index)
+                header_value, index = parse_single_value_token(tokens, index)
                 response["headers"].append((str(header_name), str(header_value)))
             elif key == "cookie":
-                cookie_name, index = parse_value_token(tokens, index)
-                cookie_value, index = parse_value_token(tokens, index)
+                cookie_name, index = parse_single_value_token(tokens, index)
+                cookie_value, index = parse_single_value_token(tokens, index)
                 response["cookies"].append((str(cookie_name), str(cookie_value)))
             else:
                 raise RuntimeError(f"Unsupported response key: {key}")
