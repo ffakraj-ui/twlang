@@ -1,0 +1,48 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "TSS",
+  "scopeName": "source.tss",
+  "fileTypes": ["tss"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#at-rules" },
+    { "include": "#selectors" },
+    { "include": "#properties" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#colors" }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.block.tss",
+      "begin": "/\\*",
+      "end": "\\*/"
+    },
+    "at-rules": {
+      "name": "keyword.control.at-rule.tss",
+      "match": "@(keyframes|media|font-face)\\b"
+    },
+    "selectors": {
+      "name": "entity.name.tag.tss",
+      "match": "^\\s*[.#]?[a-zA-Z][a-zA-Z0-9_-]*(:[a-zA-Z-]+)?(?=\\s*\\{)"
+    },
+    "properties": {
+      "name": "support.type.property-name.tss",
+      "match": "\\b[a-zA-Z-]+(?=\\s+[\"'0-9#a-zA-Z])"
+    },
+    "strings": {
+      "name": "string.quoted.double.tss",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [{ "name": "constant.character.escape.tss", "match": "\\\\." }]
+    },
+    "numbers": {
+      "name": "constant.numeric.tss",
+      "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+    },
+    "colors": {
+      "name": "constant.other.color.tss",
+      "match": "#[0-9a-fA-F]{3,8}\\b"
+    }
+  }
+}

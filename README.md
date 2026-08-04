@@ -1,91 +1,91 @@
+<div align="center">
+
+<img src="./tw-logo.svg" alt="TW logo" width="100" height="100">
+
 # TW Framework
 
-TW is a custom language + framework for building websites with a Next.js‑like developer experience.
+**A custom language + framework for building websites — write `.tw` / `.tss`, ship a full site.**
 
-## Zero‑Config Deployment
+[![PyPI version](https://img.shields.io/pypi/v/tw-framework.svg?color=22c55e)](https://pypi.org/project/tw-framework/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/tw-framework.svg?color=3b82f6)](https://pypi.org/project/tw-framework/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/ffakraj-ui/twlang?style=social)](https://github.com/ffakraj-ui/twlang/stargazers)
 
-1. Create a GitHub repository with your TW project (containing `tw.config`, `pages/`, `components/`, `public/`).
-2. Connect the repository to Vercel or Netlify.
-3. The platform automatically detects `tw.config` and runs `tw build`.
-4. Your site goes live – no terminal commands required.
+[Getting Started](#getting-started) •
+[CLI Commands](#cli-commands) •
+[Features](#features) •
+[Deploying](#deploying) •
+[Contributing](#contributing)
 
-## Quick Start
+</div>
+
+---
+
+## What is TW?
+
+TW is both a **language** and a **framework**, in one package — comparable to TypeScript + Next.js combined:
+
+- **Language** — `.tw` files (markup + logic) and `.tss` files (styles) compile down to plain HTML, CSS, and JS. TW has its own lexer, parser, and compiler pipeline.
+- **Framework** — file-based routing, API routes, middleware, authentication helpers, a dev server with live reload, and one-command deploys to Vercel, Netlify, and Cloudflare Pages.
+
+```tw
+page {
+    title "Home"
+    layout "main"
+    render static
+}
+
+BODY {
+    h1 "Hello from TW"
+    p "Write .tw and .tss files. Run tw dev. Ship fast."
+}
+```
+
+## Getting Started
 
 ```bash
-# Create a new project
-tw init my-site
+pip install tw-framework
+
+tw create my-site
 cd my-site
-
-# Development server
 tw dev
-
-# Production build
-tw build
-
-# Preview the build
-tw preview
 ```
+
+Open `http://127.0.0.1:3000` — you now have a live-reloading dev server.
 
 ## CLI Commands
 
 | Command | Description |
-|---------|-------------|
-| `tw init [name]` | Create a new TW project in the current directory |
-| `tw dev` | Start the development server with live reload |
+|---|---|
+| `tw create <name>` | Scaffold a new TW project |
+| `tw dev` | Start the dev server with live reload |
 | `tw build` | Generate a production build |
-| `tw preview` | Preview the built output |
-| `tw export` | Generate a static export |
+| `tw preview` | Preview the production build locally |
+| `tw doctor` | Run project health checks |
 | `tw deploy` | Build and deploy to a hosting provider |
-| `tw doctor` | Run project health checks and deployment compatibility |
-| `tw ast file.tw` | Print the AST JSON for a TW source file |
-| `tw ir file.tw` | Print the IR JSON for a TW source file |
-| `tw run file.tw` | Interpret a TW file and output HTML |
-| `tw check file.tw` | Print diagnostics for a TW file |
-| `tw tokens file.tw` | Print the token stream JSON for a TW source file |
-| `tw clean` | Clean dist and hidden cache folders |
-| `tw info` | Show a project summary |
-| `tw login` | Save deploy provider configuration |
+| `tw check <file>` | Print diagnostics for a `.tw` file |
 
-## Deployment Metadata
+## Features
 
-After a build, the file `dist/tw.deploy.json` is automatically generated. It contains:
+- 📄 **File-based routing** — pages and dynamic routes (`[slug].tw`) from your folder structure
+- ⚡ **Reactive bindings** — `on:click`, `bind:value` for interactivity without writing raw JS
+- 🔌 **API routes** — `.twm` server functions for GET/POST/etc., colocated with your pages
+- 🛡️ **Middleware** — auth, rate limiting, origin checks, custom headers — all declarative
+- 🎨 **`.tss` stylesheets** — CSS with a friendlier syntax, animations, and variables
+- 🔍 **Built-in search** — automatic search index generation, no extra setup
+- 🚀 **Zero-config deploys** — Vercel, Netlify, and Cloudflare Pages adapters included
 
-```json
-{
-  "framework": "tw",
-  "version": "1.0.0",
-  "build": "tw build",
-  "output": "dist",
-  "runtime": "ssr"
-}
-```
+## Deploying
 
-Deployment platforms can read this file to detect the framework and configure the build.
+**Vercel** — connect your GitHub repo, TW's `vercel.json` handles the rest.
+**GitHub Pages** — enable Pages (Source → GitHub Actions) and push; the included workflow builds and deploys automatically.
 
-## Adapters
+See [Deploying](#deploying) in the docs for provider-specific notes.
 
-TW Framework includes built‑in adapters for Vercel and Netlify. They provide:
+## Contributing
 
-- Framework detection (`detect()` function)
-- Automatic generation of `vercel.json` / `netlify.toml` when missing
-- Build command, output directory, install command, and SSR handling
+Issues and pull requests are welcome. If you find a bug, please open an issue with a minimal reproduction.
 
-## Documentation
+## License
 
-- [Getting Started](docs/getting-started.md)
-- [Deployment to Vercel](docs/deployment/vercel.md)
-- [Deployment to Netlify](docs/deployment/netlify.md)
-
-## Testing
-
-```bash
-python3 -m unittest discover -s tests -q
-python3 run_tests.py
-```
-
-## Debug Flags
-
-- `TW_WARN_LITERAL_PARSE=1` – warn when literal parsing falls back to string
-- `TW_STRICT_EVAL=1` – re‑raise runtime expression errors instead of warning
-
-These flags are mainly useful while debugging parser/runtime edge cases or tightening CI checks around expression handling.
+[MIT](./LICENSE)

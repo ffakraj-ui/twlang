@@ -1,65 +1,79 @@
-# Getting Started with TW Framework
+# Getting Started
 
-## Prerequisites
-
-- Python 3.10 or later
-- Node.js 18+ (for `.twm` API routes)
-
-## Installation
+## Install
 
 ```bash
 pip install tw-framework
 ```
 
-## Create a New Project
+Requires Python 3.9+.
+
+## Create a project
 
 ```bash
-tw init my-site
+tw create my-site
 cd my-site
 ```
 
-This creates the following structure:
+This scaffolds a starter project with a home page, an about page, a reactive counter demo, a protected dashboard, search, and a couple of API routes — so you can see most of TW's features working immediately.
 
-```
-my-site/
-├── pages/
-│   └── index.tw
-├── components/
-├── public/
-├── tw.config
-└── README.md
-```
-
-## Development
-
-Start the development server:
+## Run the dev server
 
 ```bash
 tw dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. Changes to `.tw`, `.tss`, or `.ts` files will automatically reload the page.
+Open `http://127.0.0.1:3000`. Edit any `.tw`, `.tss`, or `.ts` file and the browser reloads automatically.
 
-## Build for Production
+## Project structure
+
+```
+my-site/
+  tw.config              # project settings
+  middleware.tw           # route middleware (auth, headers, rate limits...)
+  [home]/
+    pages/                 # routes — one file per page
+      index.tw              # /
+      about.tw               # /about
+      blog/
+        [slug].tw             # /blog/:slug (dynamic route)
+        [slug].json            # list of valid slugs for the dynamic route
+    layouts/
+      main.tw                # shared page shell (<html>, <head>, {slot})
+    components/             # reusable .tw components
+    style/
+      site.tss              # stylesheets
+    api/
+      contact/
+        route.twm             # POST /api/contact
+```
+
+## Build for production
 
 ```bash
 tw build
 ```
 
-The output is placed in the `dist/` directory.
+Output goes to `dist/`. Preview it locally with:
+
+```bash
+tw preview
+```
 
 ## Deploy
 
-Connect your GitHub repository to Vercel or Netlify. The platform will automatically detect `tw.config` and run `tw build`.
+**Vercel** — push to GitHub, import the repo on vercel.com. A `vercel.json` in your project root tells Vercel how to build it:
 
-For manual deployment:
-
-```bash
-tw deploy --provider vercel --prod
+```json
+{
+  "buildCommand": "pip install tw-framework && tw build --adapter vercel",
+  "outputDirectory": "dist"
+}
 ```
 
-## Next Steps
+**GitHub Pages** — enable Pages in your repo (Settings → Pages → Source → GitHub Actions), then add a workflow that runs `tw build` and uploads `dist/` as the Pages artifact.
 
-- Read the [language specification](docs/spec/)
-- Explore the [deployment guides](docs/deployment/)
-- Check the [API reference](docs/api/)
+## Next steps
+
+- [Syntax Reference](./syntax-reference.md) — full `.tw` / `.tss` language guide
+- Run `tw doctor` any time to check your project for common issues

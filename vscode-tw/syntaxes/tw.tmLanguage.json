@@ -1,0 +1,80 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "TW",
+  "scopeName": "source.tw",
+  "fileTypes": ["tw", "twm"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#reactive-directives" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#interpolation" },
+    { "include": "#tags" },
+    { "include": "#load" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.double-slash.tw", "match": "//.*$" },
+        { "name": "comment.block.tw", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.tw",
+          "match": "\\b(page|layout|render|revalidate|title|import|export|let|const|fn|return|if|else|for|BODY|head|seo|middleware|use|match|auth|header|cookie|response|status|json|origin|allow|require|rate_limit|requests|window)\\b"
+        },
+        {
+          "name": "constant.language.tw",
+          "match": "\\b(true|false|null|static|server|edge)\\b"
+        }
+      ]
+    },
+    "reactive-directives": {
+      "patterns": [
+        {
+          "name": "entity.other.attribute-name.tw",
+          "match": "\\b(on:[a-zA-Z]+|bind:[a-zA-Z]+|show:[a-zA-Z]+|tw-[a-zA-Z-]+)\\b"
+        }
+      ]
+    },
+    "load": {
+      "patterns": [
+        {
+          "name": "keyword.control.import.tw",
+          "match": "\\bload\\b"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.tw",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "name": "constant.character.escape.tw", "match": "\\\\." },
+        {
+          "name": "meta.interpolation.tw",
+          "match": "\\{[a-zA-Z_][a-zA-Z0-9_.]*\\}"
+        }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.tw",
+      "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+    },
+    "interpolation": {
+      "name": "meta.interpolation.tw",
+      "match": "\\{[a-zA-Z_][a-zA-Z0-9_.]*\\}"
+    },
+    "tags": {
+      "patterns": [
+        {
+          "name": "entity.name.tag.tw",
+          "match": "\\b(html|head|body|div|span|section|article|nav|header|footer|main|aside|h1|h2|h3|h4|h5|h6|p|a|button|input|form|label|img|video|audio|source|iframe|ul|ol|li|table|tr|td|th|br|hr|script|style|select|option|textarea)\\b(?=\\s*\\{)"
+        }
+      ]
+    }
+  }
+}

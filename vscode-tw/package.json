@@ -1,0 +1,39 @@
+{
+  "name": "tw-language",
+  "displayName": "TW Language Support",
+  "description": "Syntax highlighting for TW Framework (.tw and .tss files)",
+  "version": "0.1.0",
+  "publisher": "twframework",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "tw",
+        "aliases": ["TW", "tw"],
+        "extensions": [".tw", ".twm"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "tss",
+        "aliases": ["TSS", "tss"],
+        "extensions": [".tss"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "tw",
+        "scopeName": "source.tw",
+        "path": "./syntaxes/tw.tmLanguage.json"
+      },
+      {
+        "language": "tss",
+        "scopeName": "source.tss",
+        "path": "./syntaxes/tss.tmLanguage.json"
+      }
+    ]
+  }
+}
