@@ -1161,6 +1161,15 @@ def tokenize(code, allow_inline_scripts=False):
                 ):
                     word.append(advance_one())
                     continue
+                if (
+                    ch == "."
+                    and word
+                    and word[-1].isdigit()
+                    and i + 1 < n
+                    and code[i + 1].isdigit()
+                ):
+                    word.append(advance_one())
+                    continue
                 break
             word.append(advance_one())
         word = "".join(word)
@@ -3227,6 +3236,8 @@ def render_value(value, context):
 
 
 def html_escape(value):
+    if isinstance(value, bool):
+        value = "true" if value else "false"
     s = "" if value is None else str(value)
     return (
         s.replace("&", "&amp;")
@@ -3259,7 +3270,10 @@ def render_attrs(attrs, context):
         logger.exception("transform_reactive_attrs failed; continuing without reactive directives")
     parts = []
     for name, raw_value in attrs:
-        value = render_value(raw_value, context)
+        if name.startswith("data-tw-"):
+            value = raw_value
+        else:
+            value = render_value(raw_value, context)
         if name in {"src", "href", "poster"}:
             value = resolve_static_asset_url(value)
         elif name == "srcset" and isinstance(value, str):
