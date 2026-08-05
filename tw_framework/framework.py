@@ -338,6 +338,12 @@ def inject_dev_client(html_text: str) -> str:
 
 
 def render_error_html(title: str, message: str, status_code: int = 500) -> bytes:
+    if status_code == 404:
+        label = "TW Not Found"
+    elif 400 <= status_code < 500:
+        label = "TW Client Error"
+    else:
+        label = "TW Compile Error"
     doc = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -360,7 +366,7 @@ def render_error_html(title: str, message: str, status_code: int = 500) -> bytes
   <div class="overlay">
     <div class="card">
       <div class="header">
-        <div class="status">TW Compile Error · HTTP {status_code}</div>
+        <div class="status">{label} · HTTP {status_code}</div>
         <h1>{html.escape(title)}</h1>
       </div>
       <pre>{html.escape(message)}</pre>
