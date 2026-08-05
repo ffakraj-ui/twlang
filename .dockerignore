@@ -1,0 +1,10 @@
+.git
+.github
+.tw
+dist
+__pycache__
+*.pyc
+node_modules
+.vscode
+*.md
+tests
