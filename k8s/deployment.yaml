@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-tw-site
+  labels:
+    app: my-tw-site
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-tw-site
+  template:
+    metadata:
+      labels:
+        app: my-tw-site
+    spec:
+      containers:
+        - name: web
+          image: my-tw-site:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: TW_HOST
+              value: "0.0.0.0"
+            - name: TW_PORT
+              value: "8000"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 20
