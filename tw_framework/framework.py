@@ -339,38 +339,50 @@ def inject_dev_client(html_text: str) -> str:
 
 def render_error_html(title: str, message: str, status_code: int = 500) -> bytes:
     if status_code == 404:
-        label = "TW Not Found"
-    elif 400 <= status_code < 500:
-        label = "TW Client Error"
+        doc = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{html.escape(title)}</title>
+  <style>
+    body {{ margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #000; }}
+    .wrap {{ text-align: center; padding: 0 24px; }}
+    h1 {{ display: inline-block; margin: 0 20px 0 0; padding-right: 20px; font-size: 24px; font-weight: 500; vertical-align: top; border-right: 1px solid rgba(0,0,0,0.3); }}
+    .msg {{ display: inline-block; text-align: left; line-height: 49px; height: 49px; }}
+    h2 {{ font-size: 14px; font-weight: 400; line-height: 49px; margin: 0; }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>{status_code}</h1>
+    <div class="msg"><h2>{html.escape(message)}</h2></div>
+  </div>
+</body>
+</html>"""
+        return doc.encode("utf-8")
+
+    if 400 <= status_code < 500:
+        accent = "#b45309"
     else:
-        label = "TW Compile Error"
+        accent = "#b91c1c"
     doc = f"""<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>{html.escape(title)}</title>
   <style>
-    body {{ margin: 0; font-family: Inter, system-ui, sans-serif; background: #0b1020; color: #f9fafb; }}
-    .overlay {{ min-height: 100vh; padding: 32px; background:
-      radial-gradient(circle at top left, rgba(220, 38, 38, 0.25), transparent 35%),
-      linear-gradient(180deg, #130d14 0%, #0b1020 100%);
-    }}
-    .card {{ max-width: 1100px; margin: 0 auto; border: 1px solid rgba(248,113,113,0.35); background: rgba(17,24,39,0.88); border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,0.45); overflow: hidden; }}
-    .header {{ padding: 18px 22px; border-bottom: 1px solid rgba(248,113,113,0.18); background: rgba(127,29,29,0.22); }}
-    .status {{ color: #fca5a5; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }}
-    h1 {{ margin: 0; font-size: 28px; }}
-    pre {{ margin: 0; white-space: pre-wrap; background: #020617; padding: 22px; overflow: auto; line-height: 1.55; }}
+    body {{ margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fafafa; color: #111; padding: 24px; box-sizing: border-box; }}
+    .card {{ max-width: 720px; width: 100%; }}
+    .status {{ color: {accent}; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 10px; }}
+    h1 {{ margin: 0 0 16px; font-size: 24px; font-weight: 600; }}
+    pre {{ margin: 0; white-space: pre-wrap; background: #111; color: #f5f5f5; padding: 20px; border-radius: 8px; overflow: auto; line-height: 1.55; font-size: 13px; }}
   </style>
 </head>
 <body>
-  <div class="overlay">
-    <div class="card">
-      <div class="header">
-        <div class="status">{label} · HTTP {status_code}</div>
-        <h1>{html.escape(title)}</h1>
-      </div>
-      <pre>{html.escape(message)}</pre>
-    </div>
+  <div class="card">
+    <div class="status">HTTP {status_code}</div>
+    <h1>{html.escape(title)}</h1>
+    <pre>{html.escape(message)}</pre>
   </div>
 </body>
 </html>"""
