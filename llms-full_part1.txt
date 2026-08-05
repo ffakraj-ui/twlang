@@ -1,0 +1,1502 @@
+================================================================================
+TW Framework — Complete Reference for AI Coding Assistants (llms-full.txt)
+================================================================================
+
+Source of truth: github.com/ffakraj-ui/twlang (default branch: main)
+Generated from: README.md, DOCUMENTATION.md, IMPLEMENTED_FEATURES.md, CHANGELOG.md,
+API_TESTING_GUIDE.md, CONTRIBUTING.md, tw.config, vercel.json, netlify.toml,
+middleware.tw, docs/**, tests/**, [home]/** sample files, and the actual
+tw_framework/ source (lexer.py, compiler.py, cli.py, twm_parser.py,
+reactivity.py, render_html.py).
+
+Where the README and the source code/tests disagree, this document follows the
+source code and tests (the README is a simplified marketing surface). Such
+discrepancies are explicitly called out below as "NOTE (discrepancy)".
+
+This document contains NO invented syntax. Anything that could not be confirmed
+from the repo is marked "not found in repo".
+
+================================================================================
+0. WHAT TW IS (AND IS NOT)
+================================================================================
+
+TW ("TW Framework", package name `tw-framework`, PyPI) is a custom language +
+framework in one package. It is NOT React, NOT Vue, NOT Svelte, and NOT
+TypeScript, although it borrows ideas from each.
+
+- Language: `.tw` files (markup + page logic) and `.tss` files (styles) compile
+  to plain HTML, CSS, and JS. TW has its own lexer, parser, and compiler
+  pipeline written in Python.
+- Framework: file-based routing, `.twm` API routes, middleware, a dev server
+  with live reload, and one-command deploys to Vercel / Netlify / Cloudflare
+  Pages / GitHub Pages / Docker.
+- Install: `pip install tw-framework` (Python package, NOT npm). Requires
+  Python 3.9+. Node.js 18+ is needed for `.twm` API routes at runtime.
+- Current version (pyproject.toml): 0.3.4.
+
+There are TWO AST representations in the codebase (documented in CONTRIBUTING.md):
+a legacy compiler AST in `compiler.py` (PageNode, ElementNode — the runtime path)
+and a newer structured AST in `ast_nodes.py` (Program, PageMeta — powers `tw ast`,
+semantic analysis, lowering, IR). The bridge lives in `parser.py`
+(`from_legacy_page()`, `_convert_node()`). For day-to-day authoring this does
+not matter, but it explains why `tw ast` output and runtime behavior can drift.
+
+================================================================================
+1. PROJECT STRUCTURE
+================================================================================
+
+A TW project uses a `[home]/` directory as the application root (the literal
+folder name is `[home]`, including the square brackets). Confirmed from the
+repo's own `[home]/` tree and docs/getting-started.md:
+
+    my-site/
+      tw.config              # project settings (custom DSL, NOT JSON/TOML)
+      middleware.tw          # route middleware (auth, rate limits, bot blocking)
+      package.json           # optional npm deps for .twm API routes
+      [home]/
+        pages/                # routes — one .tw file per page
+          index.tw             # -> /
+          about.tw              # -> /about
+          blog/
+            [slug].tw           # -> /blog/:slug (dynamic route)
+            [slug].json         # list of valid slugs for the dynamic route
+        layouts/              # .tw layout shells (raw HTML with placeholders)
+          main.tw
+          default.tw
+        components/           # reusable .tw components (PascalCase names)
+          Button.tw
+          Header.tw
+        style/               # .tss stylesheets (kebab-case names)
+          site.tss
+        api/                 # .twm API routes (folder-based, route.twm)
+          contact/
+            route.twm           # -> /api/contact
+          users/
+            route.twm           # -> /api/users
+        hooks/               # optional helper modules
+      dist/                  # build output (generated)
+
+NOTE: The README's structure section omits the `[home]/` convention; it is
+confirmed by the actual repo tree and by `docs/getting-started.md`.
+
+Naming conventions (from DOCUMENTATION.md §10.2, confirmed by repo):
+- Pages: kebab-case.tw (e.g. `about-us.tw`)
+- Components: PascalCase.tw (e.g. `Button.tw`)
+- API routes: the file MUST be named `route.twm` inside a folder
+- Stylesheets: kebab-case.tss (e.g. `button.tss`)
+
+================================================================================
+2. THE `page { }` BLOCK — PAGE METADATA
+================================================================================
+
+Every page starts with an optional `page { }` block. Confirmed keys (from
+`parse_page_block` in compiler.py, lines ~2927-2989, and docs/spec/tw-grammar.md):
+
+    page {
+        title "My Page"
+        layout "main"
+        render static
+        revalidate 60
+        cache_by "cookie:session_id"
+        cache_size 100
+        redirect "/new-path"
+        rewrite "/other-path"
+    }
+
+Valid keys (exactly these — the parser raises "Unknown key inside `page`" for
+anything else):
+
+  title       string            Page <title>.
+  layout      string_or_word    Layout name(s) in [home]/layouts/. Supports
+                                chaining with `>` or `,`: `layout "base > docs"`.
+                                Repeated `layout` keys also stack (outer -> inner).
+  render      "static" | "server" | "edge"
+                                Render mode. `static` is the default and the only
+                                mode that produces real static HTML in the build.
+                                `server`/`edge` are framework-level route metadata
+                                + dev behavior; static export still emits HTML.
+  revalidate  number            Seconds before a server/edge page re-renders.
+  cache_by    string_or_word    Cache key selector, e.g. `cache_by "cookie:session_id"`.
+  cache_size  number            Cache entry budget.
+  redirect    string            Page-level redirect (takes precedence).
+  rewrite    string            Page-level rewrite.
+
+Real example (from [home]/pages/index.tw):
+    page {
+        title "TWMODS | Premium APK Catalog"
+        layout "main"
+        render static
+    }
+
+A `layout` directive may also appear at the top level (outside `page {}`):
+    layout "main"
+This is parsed identically (compiler.py ~3035).
+
+NOTE (discrepancy): README shows `layout "main"` and `render static` inside
+`page {}`. DOCUMENTATION.md §2.2 shows a DIFFERENT body syntax
+(`h1 { text "Welcome" }` inside `body { ... }` with lowercase `body`). The
+actual repo pages use `BODY { ... }` (uppercase) for the main content and the
+shorthand `h1 "text"` form. Trust the repo files; see section 3.
+
+================================================================================
+3. THE `BODY { }` BLOCK — PAGE CONTENT
+================================================================================
+
+Page content goes inside a top-level `BODY { ... }` block. The token match is
+case-INSENSITIVE at the top level: the parser checks `token.value.upper() ==
+"BODY"` (compiler.py ~3098), so `body { }`, `Body { }`, and `BODY { }` all
+work. The repo conventionally writes `BODY { ... }`.
+
+NOTE (discrepancy): DOCUMENTATION.md §2.2 shows lowercase `body { h1 { text
+"..." } }`. The real pages use `BODY { ... }` and support the shorthand
+`h1 "text"`. Both forms parse; prefer `BODY` to match the repo.
+
+### Element syntax
+
+Elements are `tagname { properties... }`. A tag is any word matching
+`^[A-Za-z][A-Za-z0-9_-]*$` (TAG_NAME_RE). Confirmed from compiler.py.
+
+Multi-line element (real example, [home]/pages/about.tw):
+    a {
+        href "/about"
+        target "_blank"
+        class "button"
+        text "About us"
+    }
+
+Single-line element with multiple properties (fully supported after the 0.3.1
+fix; this is an extremely common form):
+    a { href "/" target "_blank" class "btn" text "Home" }
+
+Shorthand for a text-only element (the string directly follows the tag):
+    h1 "Welcome"
+    p "Some text"
+    span "01" {
+        class "team-role"
+    }
+The shorthand text + brace block is also valid (e.g. `span "01" { class "..." }`).
+
+### Valid property kinds (from `classify_known_prop` in compiler.py)
+
+Inside an element block, a WORD token is classified as one of:
+1. `text` — sets the element's text content. Example: `text "Hello"` or
+   `text "{count}"` (string interpolation).
+2. HTML attributes — any name in HTML_ATTRIBUTES (id, class, href, src, alt,
+   type, name, value, placeholder, action, method, target, rel, title, for,
+   rows, cols, tabindex, role, checked, disabled, hidden, width, height, etc.),
+   plus any `data-*` and `aria-*` name. Example: `class "btn"`, `href "/about"`,
+   `aria-label "Close"`, `data-testid "close-btn"`.
+3. CSS properties (inline style) — names in CSS_PROPERTIES/CSS_ALIASES become
+   `style="..."`. Example: `padding "16px"`.
+4. Events — bare event names (`click`, `change`, `submit`, `mouseover`, etc.)
+   OR `on<event>` forms (`onclick`, `oninput`). Both compile to `onclick="..."`.
+   Full EVENTS set: click, dblclick, change, input, submit, focus, blur,
+   keydown, keyup, keypress, mouseover, mouseout, mouseenter, mouseleave,
+   mousedown, mouseup, load, resize, scroll, contextmenu.
+5. Reactive directives — `on:click`, `bind:value`, `show:...`, `tw-text`,
+   `tw-html`, `tw-for`, `tw-class`, `tw-ref`, and the `tw:`/`tw-` prefixed
+   variants (see section 9).
+6. Router keys — `link` / `goto` (client-side navigation hints).
+
+Unknown property names raise a compiler error (not silently ignored).
+
+### Supported HTML tags
+
+Any standard HTML tag written without angle brackets: `div`, `section`,
+`header`, `footer`, `nav`, `main`, `article`, `aside`, `h1`-`h6`, `p`, `span`,
+`a`, `button`, `form`, `input`, `textarea`, `ul`, `ol`, `li`, `strong`, `small`,
+`code`, `pre`, `table`, `figure`, `blockquote`, etc. Capitalized tags that do
+NOT match an existing component file are auto-lowercased to HTML tags
+(e.g. `Section { ... }` -> `<section>`).
+
+### What is NOT allowed
+
+- HTML-like angle-bracket syntax: `<div>`, `<nav>`, `<a href>`. Writing a token
+  that starts with `<` and ends with `>` raises:
+  "HTML-like tag syntax not supported: `<div>`. Do not use angle brackets. In TW
+  write: `nav { ... }`, `section { ... }` (without `<` `>`)."
+- Self-closing JSX-style syntax (`<img />`). Use `img { src "..." alt "..." }`.
+
+### Control flow inside BODY / elements
+
+These can appear at the top level of BODY and as children inside element blocks:
+
+    let count = 0
+    let title "Hello"          # the `=` is optional
+
+    if count > 0 {
+        p "Positive"
+    } else {
+        p "Zero or less"
+    }
+
+    for item in items {
+        li "{item.name}"
+    }
+
+    each links as link {
+        a "{link.label}" { href "{link.url}" }
+    }
+
+Confirmed from `parse_let`, `parse_if`, `parse_for`, `parse_each` in compiler.py.
+`each X as Y { }` is sugar for `for Y in X { }`.
+
+### String interpolation
+
+`{expr}` inside a QUOTED string is replaced with the value of `expr` from the
+page's `let` variables or route params. Bare `{expr}` (not inside quotes) is
+NOT evaluated. Both `{name}` and `{{name}}` (moustache style) are supported.
+
+Real example (docs/syntax-reference.md):
+    let heroTitle = "Build fast"
+    h1 "{heroTitle}"
+
+For dynamic-route params, access them directly as `{slug}` (not `{params.slug}`).
+
+### Loading stylesheets and components
+
+Use `load` (NOT `import` for stylesheets; `import` declares a component
+dependency but `load` is the preferred, path-resolving directive):
+
+    load "@../style/site.tss"      # relative to the current file's folder
+    load @./components/Header.tw     # resolves relative to [home]
+    load "@../components/CTA"         # .tw extension optional
+
+Path alias resolution (docs/spec/tw-grammar.md):
+- `@./file`  -> resolve from `[home]`
+- `@../file` -> go up from the current file's folder, then resolve
+- `@file`    -> resolve from the project root
+- A bare quoted path `"foo.tss"` resolves from the current file's folder.
+
+`load` may appear in pages, components, and layouts. Loaded `.tss` files merge
+into rendered output; loaded `.tw` files are component dependencies; loaded
+`.twm` files compile into the page JS bundle and register into the TW module
+registry (no functions auto-run); loaded `.json` files are tracked as
+dependencies.
+
+`import "Header"` declares a component and makes `Header { }` usable in the
+body. `import "ui/Button"` supports nested component folders under
+`[home]/components/`.
+
+### `head { }` block — SEO / meta
+
+A top-level `head { ... }` block (distinct from the layout's raw HTML `<head>`)
+holds SEO metadata. Confirmed from `parse_head_block`:
+
+    head {
+        seo {
+            description "Page description for search engines."
+            og_title "Open Graph Title"
+            og_description "OG description"
+        }
+        meta { name "keywords" content "tw, framework" }
+        icon "/favicon.ico"
+    }
+
+- `seo { ... }` — arbitrary key/value pairs rendered as meta tags. Keys seen in
+  the repo: `description`, `og_title`, `og_description`. (The AST model
+  references `head.seo.json_ld` for JSON-LD in IMPLEMENTED_FEATURES.md, but no
+  sample file uses it.)
+- `meta { key value key value }` — renders a `<meta>` tag with the given attrs.
+- `icon` — sets the favicon.
+
+Real example ([home]/pages/contact.tw):
+    head {
+        seo {
+            description "Contact Veridian Systems through the enquiry form, email, or direct phone action."
+            og_title "Contact | Veridian Systems"
+            og_description "Professional contact page with direct actions and enquiry form."
+        }
+    }
+
+### `state { }` block — client-side reactive state
+
+A top-level `state { ... }` block seeds the client-side reactive store
+(confirmed from compiler.py ~3110 and reactivity.py):
+
+    state {
+        count 0
+        name "hello"
+        items []
+    }
+
+Values are parsed with `parse_literal_value`. These become `window.__twState`
+entries and are accessible client-side via `__tw.get('count')` /
+`__tw.set('count', value)`. NOTE: there is no type annotation on state vars —
+they are untyped key/value pairs (see section 5 for typed variables vs state).
+
+### `script { }` and `SCRIPT { }` blocks
+
+- `script { ... }` (lowercase) — inline raw JavaScript. DISABLED by default for
+  safety; requires `allow_raw_script: true` in `tw.config`. Used by the starter
+  search page.
+- `script { src "..." strategy afterInteractive }` — external script with a
+  loading strategy (Next.js `<Script>`-like). Strategies: `afterInteractive`,
+  `beforeInteractive`, `lazyOnload`.
+- `SCRIPT { ... }` (uppercase) — a local `.twm` module inline. Compiled exactly
+  like an external `.twm` file: functions register into `window.__twRegistry` and
+  do NOT auto-run. Reference them via `onclick handlerName`.
+
+Real example pattern (docs/spec/twm-grammar.md):
+    SCRIPT {
+      fn hello() { console.log("hello") }
+    }
+    BODY { button { onclick hello text "Hi" } }
+
+### `on load init <name>` lifecycle hook
+
+Registers an explicit client-side init call (like `useEffect(..., [])`):
+    on load init setupCounter
+Compiles to `window.__twInvoke("setupCounter")` after DOMContentLoaded.
+
+### Layout directive `tw@responsive`
+
+May appear in layout files as a raw-HTML-stripped directive:
+    tw@responsive true
+Enables responsive helper injection. Optional.
+
+================================================================================
+4. COMPONENTS (props + slots)
+================================================================================
+
+Components are `.tw` files in `[home]/components/` (PascalCase names). They are
+imported into pages via `import "ComponentName"` or `load @./components/Name.tw`
+and used as `ComponentName { ... }`.
+
+A component name must:
+- Start with an uppercase letter (else it's treated as an HTML tag).
+- Not contain null bytes or `..`.
+- Resolve relative to `[home]/components/` (nested folders supported via
+  `import "ui/Button"`).
+
+Component files use the SAME `.tw` syntax: they may have `load`, `let`, a body
+of elements, and (for components) no `page {}` block is required.
+
+### Props
+
+Props are passed as key/value pairs inside the component block, and received as
+`let` variables inside the component file.
+
+Real example — [home]/components/Button.tw:
+    let label "Button"
+    let link ""
+
+    a { href "{link}" text "{label}" }
+
+Usage in a page ([home]/pages/index.tw, starter section):
+    import "Button"
+    body {
+      Button { label "Get Started" link "/docs" }
+    }
+
+The props `label` and `link` are received as the component's `let` defaults and
+overridden by the attributes passed at the call site.
+
+Real example — [home]/components/CTA.tw (component with its own stylesheet):
+    load "@../style/cta.tss"
+    section {
+        class "cta"
+        div {
+            class "cta-box"
+            h2 "Ready to Build with TW?"
+            p "Start building modern apps with a powerful language and compiler."
+            div {
+                class "cta-actions"
+                a "Get Started" { href "/docs" class "primary" }
+                a "GitHub" { href "https://github.com/ffakraj-ui/twlang" class "secondary" }
+            }
+        }
+    }
+
+### Slots / text
+
+There is no explicit `<slot>` element. A component's body is its rendered
+output. If a component receives a `text` shorthand (e.g. `Button "Click me"`),
+it becomes a `("text", "Click me")` prop. Components are rendered inline where
+used; there is no wrapper `<div>` injected.
+
+### Recursive components
+
+Recursive component rendering throws a clear compiler error (prevents infinite
+recursion). Capitalized HTML tags like `Section {}` that do not match a
+`components/Section.tw` file are auto-treated as `<section>` (they do NOT cause
+a missing-component error).
+
+================================================================================
+5. TYPED VARIABLES / `let` SYNTAX
+================================================================================
+
+TW `let` variables are UNTYPED. There is no type annotation syntax (no `let x:
+int = 0`). The grammar (docs/spec/tw-grammar.md) is:
+
+    let_stmt := "let" identifier "="? value
+
+The `=` is optional. Both `let count = 0` and `let count 0` parse identically.
+
+Values can be: strings (quoted), numbers (int/decimal, e.g. `3.14`), booleans
+(`true`/`false`), words, or bare expressions collected to end-of-line.
+
+Real examples:
+    let heroTitle = "Build fast"
+    let count = 0
+    let label "Button"
+
+`let` variables are available for `{name}` string interpolation in the same
+page/component scope. They are compile-time / server-side values (used during
+SSG/SSR). For CLIENT-SIDE reactive variables, use `state { ... }` instead (see
+section 3), which are accessible via `__tw.get`/`__tw.set` in the browser.
+
+There is no TypeScript-style `const`, `var`, or type system in `.tw` files.
+Inside `.twm` files (which compile to JS), standard JS `const`/`let`/`var` work
+because the body is emitted as-is.
+
+================================================================================
+6. `.tss` STYLESHEETS
+================================================================================
+
+`.tss` (TW Style Sheets) is a CSS-like syntax. Confirmed from
+docs/spec/tss-grammar.md, docs/syntax-reference.md, the CHANGELOG fixes
+(0.3.0, 0.2.6-era), and the many real `.tss` files in `[home]/style/`.
+
+### Structure
+
+    stylesheet := rule*
+    rule       := selector "{" declaration* "}"
+    declaration := property value
+
+- Selectors are preserved as-is (`.class`, `#id`, `element`, `:hover`,
+  `::before`, `@media`, `@keyframes`, `:root[data-theme="dark"]`, etc.).
+- Property names are normalized to kebab-case.
+- Comments (`/* ... */` and `// ...`) are stripped before parsing.
+- Standard CSS with colons/semicolons ALSO works (the repo mixes both styles).
+
+### Variables (CSS custom properties)
+
+Defined in `:root` blocks, used via `var(--name)`:
+
+Real example ([home]/style/site.tss):
+    :root {
+      --bg-color #f6f8fc
+      --surface-color rgba(255,255,255,.82)
+      --text-color #0f172a
+      --primary-color #2563eb
+      --shadow-soft 0 20 60 rgba(15,23,42,.08)
+    }
+
+    :root[data-theme="dark"] {
+      --bg-color #081120
+      --text-color #e5eefb
+      --primary-color #60a5fa
+    }
+
+    body {
+      margin 0
+      background var(--bg-color)
+      color var(--text-color)
+      font-family Inter, system-ui, sans-serif
+    }
+
+### Numeric shorthand
+
+Bare numeric values get `px` appended automatically:
+    padding 16 24          ->  padding: 16px 24px;
+    max-width 1200         ->  max-width: 1200px;
+    gap 24                 ->  gap: 24px;
+    border-radius 28       ->  border-radius: 28px;
+
+Multi-word values that must stay together (animation, transform, box-shadow,
+transition, gradients) should be QUOTED so the parser treats them as one value:
+    transition "transform 0.3s ease, background 0.3s ease"
+    transform "translateY(-6px)"
+    animation "pulse 2s infinite"
+    background "linear-gradient(135deg, #34d399 0%, #059669 100%)"
+
+Without quotes, a value like `transform translateY(-6px)` would split on the
+spaces. (The 0.3.0 CHANGELOG fix ensures quoted values are unwrapped before
+output, so `animation "pulse 2s infinite"` becomes valid CSS
+`animation: pulse 2s infinite;`, not `animation: "pulse 2s infinite";`.)
+
+### Standard CSS syntax is also accepted
+
+The repo freely mixes colon/semicolon CSS inside `.tss` files:
+
+Real example ([home]/style/global.tss):
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    body {
+        font-family: Inter, Arial, sans-serif;
+        background: #ffffff;
+        color: #111827;
+    }
+
+### Animations (`@keyframes`)
+
+Real example ([home]/style/home-showcase.tss):
+    @keyframes heroRise {
+      0% {
+        opacity 0
+        transform translateY(24)
+      }
+      100% {
+        opacity 1
+        transform translateY(0)
+      }
+    }
+
+    @keyframes pulseLive {
+      0% {
+        box-shadow 0 0 0 0 rgba(34,197,94,.18)
+        transform scale(1)
+      }
+      50% {
+        box-shadow 0 0 0 10 rgba(34,197,94,0)
+        transform scale(1.03)
+      }
+      100% {
+        box-shadow 0 0 0 0 rgba(34,197,94,0)
+        transform scale(1)
+      }
+    }
+
+    @keyframes marquee {
+      0% { transform translateX(100%) }
+      100% { transform translateX(-100%) }
+    }
+
+Used as: `animation "marquee 22s linear infinite"` (quoted).
+
+### Selectors — all standard CSS selectors work
+
+Class, id, element, descendant, pseudo-class, pseudo-element, attribute,
+media queries, and theme-attribute selectors:
+
+Real examples ([home]/style/twmods-home.tss):
+    .twmods-page ~ .twmods-sidebar { ... }
+    :root[data-theme="dark"] .site-header { ... }
+    .app-cover::before { ... }
+    .hero-shell { ... }
+    @media (max-width:1024) {
+      .hero-shell, .catalog-grid, .wide-grid {
+        grid-template-columns 1fr 1fr
+      }
+    }
+    @media (min-width:768) {
+      .twmods-page { padding-right 288 }
+    }
+
+### Decimal numbers
+
+Decimal values like `3.14` or `0.04em` work (fixed in 0.3.2 — previously `.` was
+a standalone operator and `3.14` tokenized as `3 . 14`). Numeric shorthand adds
+`px` only to bare integers; values with units (`0.04em`, `1.6`) are preserved.
+
+================================================================================
+7. FILE-BASED ROUTING + DYNAMIC ROUTES
+================================================================================
+
+Routes come from the file system under `[home]/pages/`. Confirmed from
+DOCUMENTATION.md §2.3, IMPLEMENTED_FEATURES.md, and docs/spec/tw-grammar.md:
+
+    [home]/pages/index.tw          -> /
+    [home]/pages/about.tw          -> /about
+    [home]/pages/services.tw       -> /services
+    [home]/pages/contact.tw        -> /contact
+    [home]/pages/work.tw           -> /work
+    [home]/pages/blog/[slug].tw    -> /blog/:slug       (dynamic, single segment)
+    [home]/pages/blog/[...slug].tw -> /blog/*           (catch-all)
+    [home]/pages/blog/[[...slug]].tw -> /blog/*?        (optional catch-all)
+    [home]/pages/(marketing)/about.tw -> /about        (route group, folder ignored)
+
+Route groups via folders like `(marketing)` do not appear in the URL.
+Custom `404.tw` and `500.tw` are supported as error pages.
+
+### Dynamic routes need a sibling `.json` file
+
+A `[slug].tw` page needs `[slug].json` listing every value to pre-render
+(docs/syntax-reference.md):
+
+    [home]/pages/blog/[slug].tw
+    [home]/pages/blog/[slug].json
+
+The JSON is an array of objects, each with the param name as a key:
+    [
+      { "slug": "hello-world" },
+      { "slug": "second-post" }
+    ]
+
+Route params are merged directly into the page's top-level context — access them
+as `{slug}` (NOT `{params.slug}`):
+
+    h1 "Slug: {slug}"
+
+The regexes confirming this (compiler.py):
+    DYNAMIC_FILE_RE         = r"^\[(\w+)\]\.tw$"
+    CATCH_ALL_FILE_RE       = r"^\[\.\.\.(\w+)\]\.tw$"
+    OPTIONAL_CATCH_ALL_FILE_RE = r"^\[\[\.\.\.(\w+)\]\]\.tw$"
+
+NOTE: The `.tw.json` files beside the repo's non-dynamic pages
+(index.tw.json, about.tw.json, etc.) are NOT page data — they are build
+dependency manifests (with `dependencies`, `outputs`, `signature` keys) written
+by the incremental cache. Do not confuse them with dynamic-route data files.
+
+### Pretty URLs
+
+`pretty_urls: true` in `tw.config` makes `/about` output as
+`dist/about/index.html` (clean URLs on static hosts). The dev server also
+accepts `/about/index.html` requests.
+
+================================================================================
+8. API ROUTES (`.twm` FILES)
+================================================================================
+
+API routes are `.twm` files under `[home]/api/`. The file MUST be named
+`route.twm` (the only accepted filename). The folder path decides the URL.
+Confirmed from docs/api/twm-api.md, API_TESTING_GUIDE.md, docs/document/
+twlang-api-system-doc.html, and the many real `.twm` files.
+
+### Routing rule
+
+    [home]/api/route.twm                -> /api
+    [home]/api/health/route.twm         -> /api/health
+    [home]/api/users/route.twm          -> /api/users
+    [home]/api/auth/login/route.twm     -> /api/auth/login
+    [home]/api/forms/contact/route.twm  -> /api/forms/contact
+
+Only files named exactly `route.twm` are discovered. Legacy `.tw`/`.py`/`_py`
+API variants were removed; Python handlers are NOT supported in the API layer.
+
+### Handler functions
+
+Top-level of a `.twm` file may contain ONLY function declarations — no top-level
+statements (enforced by `parse_twm_functions`; raises "Top-level statements are
+not allowed in `.twm`"). Allowed forms:
+
+    fn get(request) { ... }
+    fn post(request) { ... }
+    fn put(request) { ... }
+    fn patch(request) { ... }
+    fn delete(request) { ... }
+    fn options(request) { ... }
+    async fn get(request) { ... }       # async supported
+    fn handler(request) { ... }          # generic fallback
+    export fn get(request) { ... }       # `export` is optional (all fns register)
+    export async function get(request) { ... }   # `function` keyword also works
+
+The method function name (lowercase) maps to the HTTP method. If the incoming
+method has no matching function, the server returns 405.
+
+### The `request` object (JS)
+
+    request.method       // "GET", "POST", etc. (uppercase)
+    request.path         // normalized URL path, e.g. "/api/users"
+    request.query        // parsed query params object
+    request.body         // JSON / form / raw body (already parsed — NOT request.json())
+    request.headers      // headers object (keys may be any case)
+    request.cookies      // parsed cookies object
+    request.env          // server env vars
+    request.project_root // project root path (for file access)
+
+IMPORTANT: the body is ALREADY parsed. Use `request.body`, never
+`request.json()` or `await request.json()`.
+
+### Response return formats
+
+A handler returns one of:
+
+(A) Simple string -> text response:
+    fn get(request) { return "ok"; }
+
+(B) Plain object -> auto JSON:
+    fn get(request) { return { ok: true, hello: "world" }; }
+
+(C) Explicit response object (supported keys: status, headers, cookies, json,
+    text, html, body + content_type):
+    fn get(request) {
+      return {
+        status: 201,
+        headers: { "X-Test": "1" },
+        json: { ok: true }
+      };
+    }
+
+(D) Tuple style [body, status, headers]:
+    fn get(request) { return [{ ok: true }, 200, { "X-Mode": "tuple" }]; }
+
+### Real example — minimal echo ([home]/api/echo/route.twm)
+
+    fn buildPayload(request) {
+      return {
+        ok: true,
+        method: request.method,
+        path: request.path,
+        timestamp: new Date().toISOString(),
+        query: request.query || {},
+        headers: request.headers || {},
+        cookies: request.cookies || {},
+        body: request.body || {}
+      };
+    }
+
+    fn get(request)  { return { status: 200, json: buildPayload(request) }; }
+    fn post(request) { return { status: 201, json: buildPayload(request) }; }
+    fn options(request) {
+      return {
+        status: 204,
+        headers: {
+          "Allow": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Test-Trace"
+        },
+        text: ""
+      };
+    }
+
+### Real example — async + delay ([home]/api/delay/route.twm)
+
+    async fn get(request) {
+      const query = request.query || {};
+      const rawSeconds = Number(query.seconds || 1);
+      const seconds = Math.min(Math.max(rawSeconds, 0), 5);
+      const startedAt = new Date().toISOString();
+      await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+      return {
+        status: 200,
+        json: {
+          ok: true,
+          delaySeconds: seconds,
+          startedAt,
+          finishedAt: new Date().toISOString()
+        }
+      };
+    }
+
+### Real example — CRUD with file persistence ([home]/api/users/route.twm)
+
+Uses `require("fs")` and `require("path")` (Node built-ins available inside
+`.twm`), writes to `[home]/api/_data/users.json`. Defines helper functions
+(`seedUsers`, `dataFile`, `ensureUsers`, `saveUsers`, `nextId`, `findUser`,
+`nowIso`) alongside the method handlers. Shows that `.twm` is real server-side
+JS, not just mocks. (See the file for the full implementation.)
+
+### Built-in runtime helpers (inside `.twm`)
+
+- `http.get/post/put/patch/delete(url, options?)` — async HTTP helpers (use with
+  `async fn`).
+- `env.KEY`, `env.get("KEY")`, `env.require("KEY")` — environment variables.
+- `secrets.KEY`, `secrets.get("KEY")`, `secrets.require("KEY")` — secrets.
+- `pkg.require("package-name")` — load a project-installed npm package (must be
+  in `package.json` dependencies + `npm install`).
+- `firebase.app()`, `firebase.firestore()`, `firebase.auth()` — Firebase Admin
+  helpers (requires `firebase-admin` npm package + credentials env).
+- Node built-ins `require("fs")`, `require("path")`, etc. are available.
+
+### Loading npm packages
+
+Add to `package.json` `dependencies`, run `npm install`, then in a `.twm`:
+    async fn post(request) {
+      const jwt = pkg.require("jsonwebtoken");
+      const token = jwt.sign({ sub: "123" }, secrets.require("JWT_SECRET"));
+      return { json: { ok: true, token } };
+    }
+
+### Running / testing API routes
+
+    python3 -m pip install -e . --break-system-packages
+    tw serve --host 0.0.0.0 --port 8787
+
+`tw preview` serves static files only — use `tw serve` to test API routes.
+
+### Sample endpoints in the repo
+
+    /api                  GET    API listing
+    /api/health           GET    health check
+    /api/echo             GET,POST,PUT,PATCH,DELETE,OPTIONS  request echo
+    /api/users            GET,POST,PUT,PATCH,DELETE  CRUD + file persistence
+    /api/products         GET    filter/sort/paginate
+    /api/auth/login       POST   demo login (admin/password123, tester/test123)
+    /api/auth/profile     GET    bearer-token protected
+    /api/forms/contact    POST   validation example
+    /api/meta             GET,OPTIONS  headers/cookies/CORS
+    /api/status           GET,POST  custom status codes
+    /api/delay            GET    delay simulation (?seconds=2)
+    /api/upload           POST   raw body testing
+    /api/webhooks/test    POST   webhook receiver
+    /api/math             GET    ?a=1&b=2 -> sum
+
+================================================================================
+9. REACTIVE BINDINGS
+================================================================================
+
+Reactive directives are compiled to `data-tw-*` HTML attributes consumed by a
+small vanilla-JS runtime (~2KB) injected per page that uses reactivity.
+Confirmed from `reactivity.py` and `classify_known_prop` in compiler.py. Both
+`tw-name` and `tw:name` forms work; both `on:click` and the bare `click` /
+`onclick` event forms work.
+
+### `on:click` (and other events)
+
+    button {
+        on:click "__tw.set('count', __tw.get('count') + 1)"
+        text "Increment"
+    }
+
+Compiles to `data-tw-on='{"click":"__tw.set('count', __tw.get('count') + 1)"}'`.
+The runtime calls `new Function(...state, 'event', '__twSet', '__twGet', expr)`.
+
+You may also use the shorthand event-name form (compiles to `onclick="..."`):
+    button { click "doSomething" text "Go" }
+    button { onclick "doSomething" text "Go" }
+
+### `bind:value` (two-way input binding)
+
+    input {
+        bind:value "name"
+        type "text"
+    }
+
+Compiles to `data-tw-bind="name"`. For checkboxes/selects the runtime listens
+on `change`; for text inputs on `input`. Use with a `state { name "" }` or
+`let name = ""` declaration.
+
+### `tw-text` (sync element text with state)
+
+    span { tw-text "count" }
+
+Keeps the element's `textContent` in sync with `__twState.count`. Compiles to
+`data-tw-text="count"`.
+
+### `tw-html` (sync innerHTML)
+
+    div { tw-html "renderedHtml" }
+
+### `show:` (conditional display)
+
+    div { show:visible "count > 0" text "Visible when count > 0" }
+
+Compiles to `data-tw-show="count > 0"`; runtime sets `display: none` when falsy.
+
+### `tw-class` (conditional classes)
+
+Expects a JSON object mapping class names to expressions:
+    div { tw-class "{\"active\": \"isActive\", \"hidden\": \"!show\"}" }
+
+### `tw-for` (client-side list rendering)
+
+    div { tw-for "items" }
+
+The container should contain a `[data-tw-for-template]` child that is cloned
+per item. `{item}` / `{item.name}` / `{index}` are interpolated in clones.
+
+### `tw-ref` (DOM refs)
+
+    input { tw-ref "myInput" }
+
+Accessible via `window.__tw.refs.myInput`.
+
+### Client-side reactive state API (`window.__tw`)
+
+    __tw.set('key', value)
+    __tw.get('key')
+    __tw.watch('key', fn)
+    __tw.sync()
+    __tw.refs.name
+    __tw.eval('expr')
+    __tw.fetch(url, options)   // returns { ok, status, data }
+
+### Important limitation
+
+`tw-text`, `on:`, `bind:`, `show:` are CLIENT-SIDE ONLY. They do NOT have access
+to server-only values like dynamic-route params. For server-side params, use
+plain `{param}` string interpolation instead.
+
+================================================================================
+10. MIDDLEWARE (`middleware.tw`)
+================================================================================
+
+`middleware.tw` lives in the project root (same level as `tw.config`). Rules
+run before matching requests, top-to-bottom; the first matching rule that
+triggers a violation returns its `response` and short-circuits. Confirmed from
+the repo's `middleware.tw` and docs/document/middleware_tw_documentation.html.
+
+Two block forms exist:
+- Modern (preferred): `rule "name" { ... }`
+- Legacy (still works): `use "name" { ... }`
+
+### Rule structure
+
+    rule "name" {
+        match "/api/**"
+        methods ["GET", "POST"]
+
+        # one or more condition blocks:
+        user_agent { ... }
+        path { ... }
+        origin { ... }
+        auth { ... }
+        rate_limit { ... }
+
+        # what to return if blocked:
+        response { ... }
+    }
+
+- `match` — path pattern: `"/**"`, `"/api/**"`, `"/admin/**"`.
+- `methods` — optional list of methods the rule applies to (e.g.
+  `["GET", "POST"]`). If omitted, applies to all methods.
+
+### Condition blocks
+
+`user_agent { ... }`:
+    allow ["googlebot", "bingbot", "gptbot"]
+    block ["curl/", "wget/", "python-requests", "scrapy"]
+    empty_is_blocked true
+
+`path { ... }`:
+    prefixes ["/wp-admin", "/wp-login", "/.env", "/.git"]
+    contains ["/phpmyadmin", "/xmlrpc"]
+    extensions [".php", ".env", ".bak", ".sql"]
+    single_segment_max 100
+    deny_traversal true
+    deny_null_bytes true
+
+`origin { ... }`:
+    allow ["https://twmods.in", "http://localhost:3000"]
+    require true
+    allow_referer true
+
+`auth { ... }` (HS256 JWT cookie auth):
+    cookie "admin_token"
+    jwt_secret_env "JWT_SECRET"
+
+`rate_limit { ... }`:
+    requests 60
+    window 60
+    identity "path"
+    bucket_segments 2
+
+### Response block
+
+    response {
+        status 403
+        html "<h1>403 Forbidden</h1>"
+        header "Content-Security-Policy" "default-src 'none'"
+        cookie "name" "value"
+    }
+
+Supported keys: `status` (number), `text` (string), `html` (string),
+`content_type` (string), `json { ... }` (object), `header "Name" "Value"`,
+`cookie "name" "value"`. Using `json { ... }` sets the default content-type to
+JSON unless overridden.
+
+### Real example (the repo's own middleware.tw)
+
+    rule "blocked-bots" {
+      match "/**"
+      user_agent {
+        allow ["googlebot", "bingbot", "gptbot"]
+        block ["curl/", "wget/", "python-requests", "scrapy"]
+        empty_is_blocked true
+      }
+      response { status 403 html "<h1>403 Forbidden</h1>" }
+    }
+
+    rule "scanner-paths" {
+      match "/**"
+      path {
+        prefixes ["/wp-admin", "/wp-login", "/.env", "/.git"]
+        contains ["/phpmyadmin", "/xmlrpc"]
+        extensions [".php", ".env", ".bak", ".sql"]
+        single_segment_max 100
+        deny_traversal true
+        deny_null_bytes true
+      }
+      response { status 404 text "Not Found" }
+    }
+
+    rule "admin-auth" {
+      match "/admin/**"
+      auth { cookie "admin_token" jwt_secret_env "JWT_SECRET" }
+      response { status 401 text "Unauthorized" }
+    }
+
+    rule "api-origin" {
+      match "/api/**"
+      methods ["GET", "POST"]
+      origin {
+        allow ["https://twmods.in", "http://localhost:3000"]
+        require true
+        allow_referer true
+      }
+      response { status 403 json { error "Access Denied" } }
+    }
+
+    rule "api-rate-limit" {
+      match "/api/**"
+      rate_limit { requests 60 window 60 identity "path" bucket_segments 2 }
+      response { status 429 json { error "Too many requests" } }
+    }
+
+NOTE (0.2.5/0.3.3 CHANGELOG fixes): two values on one line
+(`header "X" "Y"`, `auth "cookie" "redirect"`) now parse correctly. String
+values are unquoted at parse time (previously `match "/dashboard/**"` kept its
+literal quotes and never matched). Array keys like `allow` must use array syntax
+on ONE line (`allow ["a", "b"]`); repeating the key on separate lines overwrites
+rather than appends.
+
+================================================================================
+11. CLI COMMANDS
+================================================================================
+
+Confirmed from `tw_framework/cli.py` argparse registration (lines ~1109-1247).
+The entry point is `tw` (defined in pyproject.toml `[project.scripts]`).
+
+    tw create <name> [--directory <dir>]
+        Scaffold a new TW project. Creates the [home]/, pages/, components/,
+        layouts/, style/, api/ structure + tw.config + middleware.tw.
+
+    tw init [<name>]
+        Create a new TW project in the current directory.
+
+    tw dev [--host <h>] [--port <p>] [--no-open]
+        Start the local dev server with live reload (default 127.0.0.1:3000).
+
+    tw build [options]
+        Generate a production build to dist/.
+        Flags: --force, --workers N, --dev (non-minified), --prod,
+        --watch (rebuild on change), --analyze, --clean, --no-minify,
+        --fail-on-warnings, --strict, --adapter {vercel|netlify|cloudflare},
+        --debug, --report, --out-dir <dir>.
+
+    tw export [options]
+        Alias for static export. Flags: --out-dir, --workers, --no-minify,
+        --fail-on-warnings.
+
+    tw preview [--host] [--port] [--no-build] [--no-minify]
+        Preview the built dist/ output locally (default port differs from dev).
+
+    tw serve [--host <h>] [--port <p>] [--no-build]
+        Run the production server (SSR + API routes). Default host 0.0.0.0,
+        port 8000. Use THIS (not `tw preview`) to test .twm API routes.
+
+    tw clean
+        Remove dist/ and hidden cache folders (.tw/, .tw-cache/).
+
+    tw info
+        Show a project summary.
+
+    tw doctor
+        Run project health checks and deployment compatibility.
+
+    tw check <file> [--out <path>] [--include-ast] [--include-ir]
+        Print diagnostics for a .tw file.
+
+    tw ast <file> [--out <path>] [--diagnostics]
+        Print the AST JSON for a .tw source file (uses the newer Program AST).
+
+    tw ir <file> [--out <path>] [--diagnostics]
+        Print the IR JSON for a .tw source file.
+
+    tw run <file> [--out <path>] [--diagnostics]
+        Interpret a .tw file and output rendered HTML.
+
+    tw tokens <file> [--out <path>]
+        Print the token stream JSON for a .tw source file.
+
+    tw login [--provider {local|vercel|cloudflare|netlify|github-pages|docker}]
+             [--vercel-token <token>]
+        Save deploy provider configuration.
+
+    tw deploy [options]
+        Build and deploy. Flags: --provider, --vercel, --cloudflare, --prod,
+        --dry-run, --out-dir.
+
+NOTE (discrepancy): README's CLI table lists 7 commands and omits `init`,
+`export`, `serve`, `info`, `clean`, `ast`, `ir`, `run`, `tokens`, `login`. The
+full set above is what the CLI actually registers. The README also writes
+`tw check ` with a trailing space; the real command requires a `<file>` arg.
+
+================================================================================
+12. CONFIG (`tw.config`)
+================================================================================
+
+`tw.config` uses a custom DSL (NOT JSON/TOML/YAML). Confirmed from the repo's
+tw.config and DOCUMENTATION.md §9.1.
+
+Top-level scalar keys:
+    name: TWLang Site
+    pretty_urls: true
+    modular_pipeline: true
+    theme: system            # system | light | dark
+
+Sections (each `{ ... }` block):
+
+    server {
+      external_packages [
+        "firebase-admin", "firebase-admin/app", "google-auth-library",
+        "google-play-scraper"
+      ]
+    }
+
+    images {
+      remote_patterns [
+        { protocol: "https", hostname: "**" }
+      ]
+      unoptimized true
+    }
+
+    bundler {
+      client_externals [ "firebase-admin", ... ]
+      fallback {
+        fs false
+        net false
+        tls false
+        http false
+        https false
+        path false
+        stream false
+        crypto false
+        os false
+        zlib false
+      }
+    }
+
+    headers {
+      rule {
+        source "/api/download/**"
+        set "Cache-Control" "no-store, no-cache, private"
+        set "Pragma" "no-cache"
+      }
+      # ... more rules
+    }
+
+    redirects {
+      rule {
+        source "/app/:slug"
+        destination "/:slug"
+        permanent true
+      }
+    }
+
+    rewrites {
+      rule {
+        source "/games"
+        destination "/category/games"
+      }
+    }
+
+Other documented config keys (from IMPLEMENTED_FEATURES.md / DOCUMENTATION.md):
+- `search: true` — enables search index generation (outputs
+  `dist/_tw/search-index.json`, exposes `window.__twSearch(query)`).
+- `allow_raw_script: true` — enables inline `script { ... }` raw JS blocks
+  (disabled by default).
+
+`theme: system` adds `data-theme` on `<html>` and exposes
+`window.__twToggleTheme()` / `window.__twSetTheme(mode)`.
+
+### Environment variables
+
+    JWT_SECRET          Secret for JWT signing (middleware auth).
+    TW_CSRF_SECRET      CSRF token generation.
+    VERCEL_TOKEN        Vercel API token for deployment.
+    TW_WATCH_INTERVAL   File watcher polling interval (seconds).
+    TW_TWM_TIMEOUT      Timeout for API route execution (seconds).
+
+`.env`, `.env.local`, `.env.production` are loaded. Exposed in templates/API
+as `env.KEY`. In `.twm`: `env.get("KEY")`, `env.require("KEY")`,
+`secrets.get("KEY")`, `secrets.require("KEY")`.
+
+================================================================================
+13. LAYOUTS
+================================================================================
+
+Layouts are `.tw` files in `[home]/layouts/`. They are written as RAW HTML TEXT
+with placeholders, NOT as nested `.tw` element blocks. Confirmed from
+docs/syntax-reference.md and the repo's layouts/main.tw + layouts/default.tw.
+
+Placeholders (injected by the compiler):
+- `{title}` — page title
+- `{head}` — page head content (meta/seo)
+- `{styles}` — compiled CSS (auto-injected; do NOT `load` stylesheets from inside
+  the layout — load them from each page instead)
+- `{slot}` — where the page's `BODY { }` content is injected
+- `{scripts}` — compiled JS bundles (auto-injected)
+
+Real example — [home]/layouts/default.tw:
+    <!DOCTYPE html>
+    <html>
+    <head>
+      {head}
+      <title>{title}</title>
+      {styles}
+    </head>
+    <body>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+      </nav>
+      <main>
+        {slot}
+      </main>
+      {scripts}
+    </body>
+    </html>
+
+Real example — [home]/layouts/main.tw (uses `load` for components + a directive):
+    tw@responsive true
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <title>{title}</title>
+    {head}
+    {styles}
+    </head>
+    <body>
+    load @./components/Header.tw
+    {slot}
+    load @./components/TwmodsSidebar.tw
+    load @./components/Footer.tw
+    {scripts}
+    </body>
+    </html>
+
+### Nested layouts (multi-layer)
+
+`layout "base > docs"` or repeated `layout` directives stack: the first layout is
+the outer document, remaining layouts are inner wrappers (fragments around
+`{slot}`).
+
+================================================================================
+14. DEPLOYMENT
+================================================================================
+
+### Vercel (vercel.json)
+
+The repo's vercel.json (the EXACT working build command):
+    {
+      "buildCommand": "python3 -m venv .venv && .venv/bin/pip install . && .venv/bin/python -m tw_framework.cli build --prod",
+      "outputDirectory": "dist"
+    }
+
+This creates a venv, installs the framework from the repo, and builds. Zero-config
+detection also works: Vercel detects `tw.config` and uses build=`tw build`,
+output=`dist`.
+
+Manual vercel.json alternative (docs/deployment/vercel.md):
+    {
+      "framework": "tw",
+      "buildCommand": "tw build",
+      "outputDirectory": "dist",
+      "installCommand": "pip install tw-framework"
+    }
+
+API routes (`.twm`) become Vercel serverless functions automatically.
+
+### Netlify (netlify.toml)
+
+The repo's netlify.toml:
+    [build]
+    command = "tw build --prod"
+    publish = "dist"
+
+Zero-config detection works too. API routes become Netlify Functions.
+
+### Cloudflare Pages
+
+`tw build --adapter cloudflare` generates `_routes.json` and `_worker.js`.
+
+### GitHub Pages
+
+Enable Pages (Settings -> Pages -> Source -> GitHub Actions) and push. The
+included `.github/workflows/tw-pages.yml` builds and deploys.
+
+### Docker
+
+The repo's Dockerfile (serves the static dist/ via nginx):
+    FROM nginx:alpine
+    COPY dist /usr/share/nginx/html
+    EXPOSE 80
+    CMD ["nginx", "-g", "daemon off;"]
+
+`tw deploy --provider docker` builds the image.
+
+### Deploy commands
+
+    tw deploy --provider vercel --prod
+    tw deploy --provider netlify --prod
+    tw deploy --provider cloudflare --prod
+    tw deploy --provider github-pages
+    tw deploy --provider docker
+
+### Build output
+
+`tw build` produces `dist/` with:
+- `index.html`, `about/index.html`, etc. (or flat `.html` without pretty_urls)
+- `assets/` (fingerprinted copied assets)
+- `_tw/route-manifest.json` (route manifest)
+- `_tw/search-index.json` (if search enabled)
+- API manifest
+- `sitemap.xml`, `robots.txt`, `rss.xml`
+- gzip + brotli pre-compressed output (brotli if the `brotli` package is available)
+
+================================================================================
+15. SEO / META TAGS
+================================================================================
+
+SEO is handled via the `head { seo { ... } }` block in each page (see section 3
+and the real example). Canonical URLs are auto-generated when `site_url` exists
+in config. JSON-LD is referenced in IMPLEMENTED_FEATURES.md as
+`head.seo.json_ld` but no sample file uses it — treat as available but
+unverified by example.
+
+`sitemap.xml`, `robots.txt`, and `rss.xml` are generated automatically by
+`tw build`.
+
+================================================================================
+16. COMMON MISTAKES AN AI WOULD MAKE
+================================================================================
+
+(Each based on what the source/tests actually enforce.)
+
+1. Writing JSX / angle brackets. `<div>`, `<nav>`, `<a href>`, `<img />` all
+   fail. TW uses `div { ... }`, `nav { ... }`, `a { href "..." }`, `img { ... }`.
+   The tokenizer explicitly raises "HTML-like tag syntax not supported".
+
+2. Wrapping content in a `<div>` (or any wrapper) out of habit. TW has no
+   fragment syntax; the `BODY { }` children render directly. Extra wrappers
+   are unnecessary and change the DOM.
+
+3. Assuming npm instead of pip. TW is a Python package: `pip install
+   tw-framework`. `package.json` exists ONLY for `.twm` npm dependencies
+   (firebase-admin, jsonwebtoken, etc.) and the `tw *` script aliases — it is
+   not how you install the framework.
+
+4. Using `request.json()` or `await request.json()` in `.twm` handlers. The
+   body is already parsed into `request.body`. Use `request.body` directly.
+
+5. Writing top-level code in `.twm` files. Only function declarations
+   (`fn`/`function`, optional `export`/`async`) are allowed at the top level;
+   anything else raises "Top-level statements are not allowed in `.twm`".
+
+6. Naming an API file anything other than `route.twm`. `users.twm`,
+   `handler.twm`, `index.twm` are all ignored — discovery only matches the exact
+   filename `route.twm`.
+
+7. Using TypeScript-style typed variables (`let x: number = 0`). TW `let` is
+   untyped; `let x = 0` (or `let x 0`). There is no `: type` syntax.
+
+8. Using `{params.slug}` for dynamic route params. Params merge directly into
+   the page context: use `{slug}`.
+
+9. Forgetting that `tw-text` / `on:` / `bind:` are client-side only. They cannot
+   read server-side dynamic-route params — use `{param}` string interpolation
+   for those.
+
+10. Assuming `tw preview` runs APIs. It serves static files only. Use `tw serve`
+    to test `.twm` API routes.
+
+11. Writing CSS values that need to stay together (animation, transform,
+    box-shadow) WITHOUT quotes in `.tss`. `animation pulse 2s infinite` splits
+    into `pulse`, `2s`, `infinite`. Quote it: `animation "pulse 2s infinite"`.
+
+12. Repeating `allow` (or other list-valued keys) on separate lines in
+    middleware expecting append behavior. It overwrites. Use array syntax on
+    one line: `allow ["a", "b"]`.
+
+13. Writing `body { }` and expecting it to work identically to `BODY { }`. Both
+    parse (case-insensitive match at top level), but the repo convention is
+    uppercase `BODY`. DOCUMENTATION.md's lowercase `body` examples with nested
+    `h1 { text "..." }` are a simplified/older illustration; real pages use the
+    shorthand `h1 "text"`.
+
+14. Treating the `.tw.json` files beside non-dynamic pages as page data. They
+    are build dependency manifests (incremental cache), NOT data sources.
+    Dynamic-route `.json` files (like `[slug].json`) ARE data.
+
+15. Assuming a `<slot>` element for component composition. There is none;
+    component props are `let` variables, and `text` shorthand passes a text
+    prop. Components render their body inline.
+
+16. Using `import` for stylesheets. `import "Header"` declares a COMPONENT
+    dependency; `load "..."` / `load @...` is the directive that resolves and
+    merges `.tss`/`.tw`/`.twm`/`.json` paths.
+
+17. Forgetting that capitalized tags without a matching component file become
+    HTML tags (lowercased). `Section { ... }` -> `<section>`, not an error.
+
+18. Expecting `render server` / `render edge` to produce a running SSR server
+    in the static build. They are route metadata + dev behavior; `tw build`
+    still emits static HTML for compatibility. Dynamic APIs need a runtime host
+    (`tw serve` or a serverless adapter).
+
+================================================================================
+17. QUICK REFERENCE CHEAT SHEET
+================================================================================
+
+Install + start:
+    pip install tw-framework
+    tw create my-site
+    cd my-site
+    tw dev            # http://127.0.0.1:3000
+
+Minimal page ([home]/pages/index.tw):
+    page {
+        title "Home"
+        layout "main"
+        render static
+    }
+
+    load "@../style/site.tss"
+
+    head {
+        seo {
+            description "My site description"
+            og_title "Home"
+        }
+    }
+
+    BODY {
+        main {
+            h1 "Hello from TW"
+            p "Write .tw and .tss files. Run tw dev. Ship fast."
+            a "About" { href "/about" class "btn btn-primary" }
+        }
+    }
+
+Minimal API route ([home]/api/hello/route.twm):
+    fn get(request) {
+      return { status: 200, json: { message: "Hello from TW API" } }
+    }
+
+Minimal component ([home]/components/Button.tw):
+    let label "Button"
+    let link ""
+
+    a { href "{link}" text "{label}" }
+
+Minimal stylesheet ([home]/style/site.tss):
+    :root {
+      --primary-color #2563eb
+    }
+    body {
+      margin 0
+      font-family Inter, system-ui, sans-serif
+    }
+    .btn {
+      padding 10 18
+      border-radius 8
+      background var(--primary-color)
+      color white
+    }
+
+Build + deploy:
+    tw build --prod
+    tw serve --host 0.0.0.0 --port 8787   # test APIs
+    tw deploy --provider vercel --prod
+
+================================================================================
+END OF llms-full.txt
+================================================================================
