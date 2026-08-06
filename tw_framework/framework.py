@@ -617,33 +617,79 @@ def load_project_env(project_root: str, mode: str) -> Dict[str, str]:
     return env
 
 
+def _check_env_type(name: str, value: str, expected_type: str) -> Optional[str]:
+    expected_type = (expected_type or "").strip().lower()
+    if expected_type in ("", "string", "str"):
+        return None
+    if expected_type == "number":
+        try:
+            float(value)
+            return None
+        except (TypeError, ValueError):
+            return f"{name} (expected a number, got `{value}`)"
+    if expected_type in ("boolean", "bool"):
+        if str(value).strip().lower() in {"true", "false", "1", "0", "yes", "no"}:
+            return None
+        return f"{name} (expected a boolean like true/false, got `{value}`)"
+    if expected_type == "url":
+        if re.match(r"^https?://\S+", str(value).strip()):
+            return None
+        return f"{name} (expected a URL starting with http:// or https://, got `{value}`)"
+    return None
+
+
 def validate_env_schema(config: dict, env: Dict[str, str]) -> List[str]:
-    raw = compiler.get_config_value(config, "env", "required", default="")
-    if not raw:
-        return []
-    if isinstance(raw, str):
-        names = [part.strip() for part in raw.split(",") if part.strip()]
-    elif isinstance(raw, (list, tuple)):
-        names = [str(part).strip() for part in raw if str(part).strip()]
+    def get_value(name: str) -> Optional[str]:
+        value = env.get(name)
+        return value if value is not None else os.environ.get(name)
+
+    issues: List[str] = []
+
+    raw_required = compiler.get_config_value(config, "env", "required", default="")
+    if isinstance(raw_required, str):
+        required_names = [part.strip() for part in raw_required.split(",") if part.strip()]
+    elif isinstance(raw_required, (list, tuple)):
+        required_names = [str(part).strip() for part in raw_required if str(part).strip()]
     else:
-        return []
-    missing = []
-    for name in names:
-        value = env.get(name) if env.get(name) is not None else os.environ.get(name)
+        required_names = []
+
+    for name in required_names:
+        value = get_value(name)
         if value is None or str(value).strip() == "":
-            missing.append(name)
-    return missing
+            issues.append(f"{name} (missing)")
+
+    raw_types = compiler.get_config_value(config, "env", "types", default="")
+    type_map: Dict[str, str] = {}
+    if isinstance(raw_types, str):
+        for pair in raw_types.split(","):
+            pair = pair.strip()
+            if not pair or ":" not in pair:
+                continue
+            name, _, type_name = pair.partition(":")
+            type_map[name.strip()] = type_name.strip()
+    elif isinstance(raw_types, dict):
+        type_map = {str(k).strip(): str(v).strip() for k, v in raw_types.items()}
+
+    for name, type_name in type_map.items():
+        value = get_value(name)
+        if value is None or str(value).strip() == "":
+            continue
+        issue = _check_env_type(name, value, type_name)
+        if issue:
+            issues.append(issue)
+
+    return issues
 
 
-def warn_missing_env(missing: List[str]) -> None:
-    if not missing:
+def warn_missing_env(issues: List[str]) -> None:
+    if not issues:
         return
     log("", level="warning")
-    log("\u26a0 Missing required environment variable(s):", level="warning")
-    for name in missing:
-        log(f"   - {name}", level="warning")
+    log("\u26a0 Environment variable issue(s):", level="warning")
+    for issue in issues:
+        log(f"   - {issue}", level="warning")
     log("  Set these in `.env`, `.env.development`, or `.env.local` before relying on them.", level="warning")
-    log("  Declared in `tw.config` under `env: required:`.", level="warning")
+    log("  Declared in `tw.config` under `env: required:` / `env: types:`.", level="warning")
     log("", level="warning")
 
 
@@ -3240,12 +3286,15 @@ def doctor_project(project_root: str) -> List[dict]:
     # Env schema validation
     env = load_project_env(project_root, "development")
     config = compiler.load_config()
-    missing_env = validate_env_schema(config, env)
-    if compiler.get_config_value(config, "env", "required", default=""):
+    env_issues = validate_env_schema(config, env)
+    has_env_schema = bool(compiler.get_config_value(config, "env", "required", default="")) or bool(
+        compiler.get_config_value(config, "env", "types", default="")
+    )
+    if has_env_schema:
         add_check(
-            "Required env vars",
-            not missing_env,
-            "All declared vars present" if not missing_env else f"Missing: {', '.join(missing_env)}",
+            "Env schema (required/types)",
+            not env_issues,
+            "All declared vars present and well-formed" if not env_issues else "; ".join(env_issues),
         )
 
     # WebSocket routes
