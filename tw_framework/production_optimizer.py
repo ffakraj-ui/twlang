@@ -63,6 +63,7 @@ def optimize_for_production(output_dir: str):
                     gz.write(data)
 
     # Hash filenames for cache busting
+    rename_map = {}  # old basename -> new basename
     for root, _, files in os.walk(output_dir):
         for fname in files:
             if fname.endswith((".css", ".js")):
@@ -75,8 +76,22 @@ def optimize_for_production(output_dir: str):
                 hashed_path = os.path.join(root, hashed_name)
                 if not os.path.exists(hashed_path):
                     shutil.copy2(path, hashed_path)
+                rename_map[fname] = hashed_name
                 # Remove original file
                 os.remove(path)
+
+    # Update HTML references to use hashed filenames
+    if rename_map:
+        for root, _, files in os.walk(output_dir):
+            for fname in files:
+                if fname.endswith(".html"):
+                    path = os.path.join(root, fname)
+                    with open(path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    for old_name, new_name in rename_map.items():
+                        content = content.replace(old_name, new_name)
+                    with open(path, "w", encoding="utf-8") as f:
+                        f.write(content)
 
 
 __all__ = ["optimize_for_production"]
