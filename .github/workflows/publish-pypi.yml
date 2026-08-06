@@ -21,18 +21,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
+      - name: Install build tool
+        run: pip install build
 
       - name: Build package
         run: python -m build
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-
-      - name: Verify upload
-        run: pip install tw-framework==$(grep '^version' pyproject.toml | head -1 | grep -oP '[\d.]+') --dry-run
