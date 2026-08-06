@@ -28,7 +28,12 @@ def shake_project(project_root: str) -> Dict[str, List[str]]:
     used_components: Set[str] = set()
     for page in pages:
         raw = compiler.read_text_file(page["path"])
-        directives = compiler.extract_directives_from_source(raw, compiler.HOME_DIR)
+        page_dir = os.path.dirname(page["path"])
+        try:
+            directives = compiler.extract_directives_from_source(raw, page_dir)
+        except Exception as e:
+            logger.warning("Tree shaking: skipping %s (%s)", page["path"], e)
+            continue
         for comp_name in directives.get("imports", []):
             used_components.add(comp_name)
 

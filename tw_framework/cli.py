@@ -623,30 +623,6 @@ def command_init(args):
     create_project(project_name, os.getcwd())
 
 
-def command_doctor(args):
-    """Run project health checks and deployment compatibility."""
-    project_root = find_project_root(args.project_root)
-    checks = framework.doctor_project(project_root)
-    # Extra CLI-level checks (global deploy config)
-    config = load_global_config()
-    if os.path.exists(GLOBAL_CONFIG_FILE):
-        checks.append({"name": "Global deploy config", "ok": True, "detail": GLOBAL_CONFIG_FILE})
-    else:
-        checks.append({"name": "Global deploy config", "ok": False, "detail": f"Missing: {GLOBAL_CONFIG_FILE} (run `tw login` to create it)"})
-    # Provider token hints (best-effort)
-    if config.get("vercel_token") or os.environ.get("VERCEL_TOKEN"):
-        checks.append({"name": "Vercel token", "ok": True, "detail": "Token available"})
-    else:
-        checks.append({"name": "Vercel token", "ok": False, "detail": "Missing Vercel token (run `tw login --vercel-token ...` or set VERCEL_TOKEN)"})
-    failed = 0
-    for check in checks:
-        status = "OK" if check["ok"] else "WARN"
-        log(f"[{status}] {check['name']}: {check['detail']}", level="warning" if status == "WARN" else "info")
-        if not check["ok"] and check["name"] in {"tw.config", "[home]", "Route discovery"}:
-            failed += 1
-    return 1 if failed else 0
-
-
 def command_dev(args):
     project_root = find_project_root(args.project_root)
     host = args.host

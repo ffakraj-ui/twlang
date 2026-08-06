@@ -16,6 +16,7 @@ import re
 import secrets
 import shutil
 import socketserver
+import socket
 import subprocess
 import sys
 import threading
@@ -3235,6 +3236,58 @@ def doctor_project(project_root: str) -> List[dict]:
         "`[home]/pages/500.tw` detected" if project_info["has_500"] else "Add `[home]/pages/500.tw` for branded server error pages",
     )
     add_check("API routes", len(discover_api_routes()) >= 0, f"{len(discover_api_routes())} API route(s) discovered")
+
+    # Env schema validation
+    env = load_project_env(project_root, "development")
+    config = compiler.load_config()
+    missing_env = validate_env_schema(config, env)
+    if compiler.get_config_value(config, "env", "required", default=""):
+        add_check(
+            "Required env vars",
+            not missing_env,
+            "All declared vars present" if not missing_env else f"Missing: {', '.join(missing_env)}",
+        )
+
+    # WebSocket routes
+    ws_routes = discover_ws_routes(project_root)
+    add_check(
+        "WebSocket routes",
+        True,
+        f"{len(ws_routes)} route(s): {', '.join(sorted(ws_routes)) if ws_routes else 'none defined'}",
+    )
+
+    # .gitignore hygiene for auto-generated cache files
+    gitignore_path = os.path.join(project_root, ".gitignore")
+    gitignore_text = ""
+    if os.path.exists(gitignore_path):
+        try:
+            gitignore_text = compiler.read_text_file(gitignore_path)
+        except Exception:
+            gitignore_text = ""
+    add_check(
+        ".gitignore excludes build cache",
+        "*.tw.json" in gitignore_text,
+        "`*.tw.json` is ignored" if "*.tw.json" in gitignore_text
+        else "Add `*.tw.json` to `.gitignore` (these are auto-generated and will otherwise show as constantly modified)",
+    )
+
+    # Default dev port availability
+    default_port = 3000
+    port_free = True
+    try:
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.settimeout(0.3)
+        result = probe.connect_ex(("127.0.0.1", default_port))
+        port_free = result != 0
+        probe.close()
+    except OSError:
+        port_free = True
+    add_check(
+        f"Port {default_port} available",
+        port_free,
+        "Free" if port_free else f"In use — `tw dev` will need `--port` to pick a different one",
+    )
+
     return checks
 
 
