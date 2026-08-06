@@ -337,7 +337,31 @@ def inject_dev_client(html_text: str) -> str:
     return html_text + client
 
 
-def render_error_html(title: str, message: str, status_code: int = 500) -> bytes:
+def _mask_ip(ip: str) -> str:
+    if not ip:
+        return "unknown"
+    if ":" in ip:
+        parts = ip.split(":")
+        return parts[0] + ":****" if parts and parts[0] else "****"
+    parts = ip.split(".")
+    if len(parts) == 4:
+        return f"{parts[0]}.***.***.{parts[3]}"
+    return "***"
+
+
+def _ip_footer_html(ip: str) -> str:
+    if not ip:
+        return ""
+    masked = html.escape(_mask_ip(ip))
+    real = html.escape(ip)
+    return f"""
+  <div class="tw-ip-footer" style="position:fixed;left:0;right:0;bottom:0;padding:10px 16px;font-size:12px;color:#6b7280;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <span id="tw-ip-value" onclick="this.textContent = this.textContent.indexOf('*') === -1 ? '{masked}' : '{real}'; this.style.cursor='pointer';" style="cursor:pointer;" title="Click to toggle">Your IP: {masked}</span>
+  </div>"""
+
+
+def render_error_html(title: str, message: str, status_code: int = 500, ip: str = "") -> bytes:
+    ip_footer = _ip_footer_html(ip)
     if status_code == 404:
         doc = f"""<!DOCTYPE html>
 <html>
@@ -357,6 +381,7 @@ def render_error_html(title: str, message: str, status_code: int = 500) -> bytes
     <h1>{status_code}</h1>
     <div class="msg"><h2>{html.escape(message)}</h2></div>
   </div>
+  {ip_footer}
 </body>
 </html>"""
         return doc.encode("utf-8")
@@ -384,6 +409,7 @@ def render_error_html(title: str, message: str, status_code: int = 500) -> bytes
     <h1>{html.escape(title)}</h1>
     <pre>{html.escape(message)}</pre>
   </div>
+  {ip_footer}
 </body>
 </html>"""
     return doc.encode("utf-8")
@@ -2088,7 +2114,7 @@ def make_dev_handler(state: TWDevState):
                         )
                     except Exception as err:
                         logger.exception("Unhandled API route error (dev): %s %s -> %s", method, self.path, api_route)
-                        body = render_error_html("API route error", str(err), 500)
+                        body = render_error_html("API route error", str(err), 500, ip=self.client_address[0] if self.client_address else "")
                         self.respond_bytes(500, body, "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
                     return
 
@@ -2104,7 +2130,7 @@ def make_dev_handler(state: TWDevState):
                     if custom_404 is not None:
                         self.respond_bytes(404, custom_404.encode("utf-8"), "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
                         return
-                    body = render_error_html("Page not found", f"Route not found: {path}", 404)
+                    body = render_error_html("Page not found", f"Route not found: {path}", 404, ip=self.client_address[0] if self.client_address else "")
                     self.respond_bytes(404, body, "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
                     return
 
@@ -2126,7 +2152,7 @@ def make_dev_handler(state: TWDevState):
                     except Exception:
                         logger.exception("Failed to compile custom 500 page (dev)")
                     message = format_compiler_error(match.page_info["path"], err)
-                    body = render_error_html("Compile error", message, 500)
+                    body = render_error_html("Compile error", message, 500, ip=self.client_address[0] if self.client_address else "")
                     self.respond_bytes(500, body, "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
 
         def handle_events(self):
@@ -2257,7 +2283,7 @@ def make_preview_handler(output_dir: str):
                 self.respond_bytes(404, custom_404, "text/html; charset=utf-8")
                 return
 
-            body = render_error_html("Page not found", f"Route not found: {path}", 404)
+            body = render_error_html("Page not found", f"Route not found: {path}", 404, ip=self.client_address[0] if self.client_address else "")
             self.respond_bytes(404, body, "text/html; charset=utf-8")
 
         def respond_bytes(self, status: int, payload: bytes, content_type: str):
