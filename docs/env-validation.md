@@ -18,3 +18,13 @@ You can also validate the shape of a value, not just its presence:
       types: "PORT:number, API_URL:url, DEBUG_MODE:boolean"
 
 Supported types: number, url (must start with http:// or https://), boolean (true/false/1/0/yes/no). A var listed in types but not in required is only checked when it is actually set -- an absent optional var is not an error.
+
+## Types
+
+You can also validate the shape of a value, not just its presence:
+
+    env:
+      required: "API_TOKEN"
+      types: "PORT:number, API_URL:url, DEBUG_MODE:boolean"
+
+Supported types: number, url (must start with http:// or https://), boolean (true/false/1/0/yes/no). A var listed in types but not in required is only checked when it is actually set -- an absent optional var is not an error.
