@@ -23,6 +23,7 @@ import time
 import ctypes
 import select
 import struct
+import importlib.util
 import urllib.parse
 from email.utils import formatdate
 from dataclasses import dataclass
@@ -32,6 +33,7 @@ from . import compiler
 from .common import content_hash, log
 from .plugin_runtime import ExtensionManager
 from .twm_parser import compile_twm_module_to_cjs, parse_twm_functions
+from . import websocket as tw_websocket
 
 # Deployment adapter imports
 from .adapters.vercel import build_vercel_config, generate_vercel_output
@@ -612,6 +614,73 @@ def load_project_env(project_root: str, mode: str) -> Dict[str, str]:
     for key, value in env.items():
         os.environ[key] = value
     return env
+
+
+def validate_env_schema(config: dict, env: Dict[str, str]) -> List[str]:
+    raw = compiler.get_config_value(config, "env", "required", default="")
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        names = [part.strip() for part in raw.split(",") if part.strip()]
+    elif isinstance(raw, (list, tuple)):
+        names = [str(part).strip() for part in raw if str(part).strip()]
+    else:
+        return []
+    missing = []
+    for name in names:
+        value = env.get(name) if env.get(name) is not None else os.environ.get(name)
+        if value is None or str(value).strip() == "":
+            missing.append(name)
+    return missing
+
+
+def warn_missing_env(missing: List[str]) -> None:
+    if not missing:
+        return
+    log("", level="warning")
+    log("\u26a0 Missing required environment variable(s):", level="warning")
+    for name in missing:
+        log(f"   - {name}", level="warning")
+    log("  Set these in `.env`, `.env.development`, or `.env.local` before relying on them.", level="warning")
+    log("  Declared in `tw.config` under `env: required:`.", level="warning")
+    log("", level="warning")
+
+
+def discover_ws_routes(project_root: str) -> Dict[str, str]:
+    routes = {}
+    ws_dir = os.path.join(project_root, "[home]", "ws")
+    if not os.path.isdir(ws_dir):
+        return routes
+    for dirpath, _, filenames in os.walk(ws_dir):
+        for filename in sorted(filenames):
+            if not filename.endswith(".py") or filename.startswith("_"):
+                continue
+            full_path = os.path.join(dirpath, filename)
+            rel = os.path.relpath(full_path, ws_dir)
+            rel = rel[:-3] if rel.endswith(".py") else rel
+            rel = rel.replace(os.sep, "/")
+            if rel.endswith("/index"):
+                rel = rel[: -len("/index")]
+            elif rel == "index":
+                rel = ""
+            route = "/ws/" + rel if rel else "/ws"
+            routes[route] = full_path
+    return routes
+
+
+def load_ws_handler(path: str):
+    module_name = f"tw_ws_{os.path.splitext(os.path.basename(path))[0]}_{content_hash(path, length=10)}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        logger.exception("Failed to load WebSocket route: %s", path)
+        return None
+    handler = getattr(module, "on_connect", None)
+    return handler if callable(handler) else None
 
 
 def parse_cookie_header(raw_value: str) -> Dict[str, str]:
@@ -1269,6 +1338,7 @@ class TWProject:
         configure_compiler_paths(self.project_root)
         self.env = load_project_env(self.project_root, "development")
         self.config = compiler.load_config()
+        warn_missing_env(validate_env_schema(self.config, self.env))
         self.modular_pipeline = use_modular_pipeline(self.config)
         self.extensions = ExtensionManager(self.project_root, self.config, self.env).refresh()
         self._rate_limiters: Dict[str, TokenBucketRateLimiter] = {}
@@ -2029,6 +2099,11 @@ def make_dev_handler(state: TWDevState):
 
         def handle_request(self, method: str):
             path = normalize_url_path(self.path)
+
+            if tw_websocket.is_websocket_upgrade(self.headers):
+                self.handle_websocket(path)
+                return
+
             if path == "/__tw/events":
                 self.handle_events()
                 return
@@ -2154,6 +2229,44 @@ def make_dev_handler(state: TWDevState):
                     message = format_compiler_error(match.page_info["path"], err)
                     body = render_error_html("Compile error", message, 500, ip=self.client_address[0] if self.client_address else "")
                     self.respond_bytes(500, body, "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
+
+        def handle_websocket(self, path: str):
+            routes = discover_ws_routes(state.project.project_root)
+            handler_path = routes.get(path)
+            if handler_path is None:
+                self.send_response(404)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                try:
+                    self.wfile.write(b"No WebSocket route for this path")
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                return
+
+            on_connect = load_ws_handler(handler_path)
+            if on_connect is None:
+                self.send_response(500)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                try:
+                    self.wfile.write(b"WebSocket route failed to load (see server logs)")
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                return
+
+            if not tw_websocket.perform_handshake(self):
+                return
+
+            conn = tw_websocket.WebSocketConnection(
+                self.connection, path,
+                headers={key: value for key, value in self.headers.items()},
+            )
+            try:
+                on_connect(conn)
+            except Exception:
+                logger.exception("WebSocket handler raised an exception: %s", handler_path)
+            finally:
+                conn.close()
 
         def handle_events(self):
             self.send_response(200)
