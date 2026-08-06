@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 .aider*
 *.tw.json
+.git-credentials-local
