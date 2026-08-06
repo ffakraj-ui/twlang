@@ -35,7 +35,7 @@ page {
     render static
 }
 
-BODY {
+body {
     h1 "Hello from TW"
     p "Write .tw and .tss files. Run tw dev. Ship fast."
 }
@@ -53,6 +53,28 @@ tw dev
 
 Open `http://127.0.0.1:3000` — you now have a live-reloading dev server.
 
+## Project Structure
+
+A valid TW project must have this layout:
+
+```
+my-site/
+├── tw.config
+├── package.json
+├── vercel.json              (for Vercel deployments)
+├── [home]/
+│   ├── index.tw
+│   ├── style.tss
+│   ├── pages/
+│   ├── components/
+│   ├── layouts/
+│   └── api/
+```
+
+**Critical:** The `[home]` directory (with literal square brackets) is required. The `tw.config` file is required. Both must exist at the project root. Without `[home]/`, the build fails with: `RuntimeError: TW project root not found.`
+
+The root page must be `[home]/pages/index.tw` for the site to load at `/`.
+
 ## CLI Commands
 
 | Command | Description |
@@ -60,6 +82,7 @@ Open `http://127.0.0.1:3000` — you now have a live-reloading dev server.
 | `tw create <name>` | Scaffold a new TW project |
 | `tw dev` | Start the dev server with live reload |
 | `tw build` | Generate a production build |
+| `tw build --prod` | Production build with minification, compression, cache-busting |
 | `tw preview` | Preview the production build locally |
 | `tw doctor` | Run project health checks |
 | `tw deploy` | Build and deploy to a hosting provider |
@@ -77,10 +100,57 @@ Open `http://127.0.0.1:3000` — you now have a live-reloading dev server.
 
 ## Deploying
 
-**Vercel** — connect your GitHub repo, TW's `vercel.json` handles the rest.
-**GitHub Pages** — enable Pages (Source → GitHub Actions) and push; the included workflow builds and deploys automatically.
+### Vercel (recommended)
 
-See [Deploying](#deploying) in the docs for provider-specific notes.
+Create a `vercel.json` in your project root:
+
+```json
+{
+  "buildCommand": "pip install --break-system-packages tw-framework && python -m tw_framework.cli build --prod",
+  "outputDirectory": "dist"
+}
+```
+
+**Why each part:**
+- `--break-system-packages` — Vercel's Python is managed by `uv`; bare `pip install` is rejected without this.
+- `python -m tw_framework.cli` — the `tw` CLI entry-point is not always on PATH after install on Vercel. Using `python -m` is reliable.
+- `--prod` — enables minification, gzip/brotli precompression, and cache-busting (safe on v0.4.3+).
+
+Then connect your GitHub repo to Vercel — it reads `vercel.json` automatically and serves the `dist/` folder.
+
+### Netlify
+
+Create a `netlify.toml`:
+
+```toml
+[build]
+command = "pip install tw-framework && python -m tw_framework.cli build --prod"
+publish = "dist"
+```
+
+### Cloudflare Pages
+
+**Build command:** `pip install tw-framework && python -m tw_framework.cli build --prod`
+**Build output directory:** `dist`
+
+### GitHub Pages
+
+Enable Pages (Source → GitHub Actions) and push. The included workflow builds and deploys automatically.
+
+For full deployment details, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Important Version Notes
+
+### v0.4.3+ (current)
+
+- `--prod` flag is safe and recommended — HTML references are automatically updated after filename hashing.
+- Multi-line CSS values in `.tss` files work correctly.
+- Environment variables are only exposed to pages if explicitly allow-listed in `tw.config` via `env: public: "VAR_NAME"`.
+
+### Before v0.4.3
+
+- `--prod` has a bug: CSS/JS filenames are hashed but HTML `<link>`/`<script>` references are not updated, causing 404s and broken styles. Use `--dev` as a workaround.
+- Multi-line CSS values in `.tss` break — keep all property values on a single line.
 
 ## Contributing
 
