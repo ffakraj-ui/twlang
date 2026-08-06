@@ -1557,8 +1557,24 @@ def collect_page_metadata(page_info, page_ast=None, route_path=None, *, pipeline
     }
 
 
+def get_public_env(config=None) -> dict:
+    """Returns only the env vars explicitly allow-listed for client-facing
+    pages via `env: public: "A, B, C"` in tw.config. Everything else in
+    os.environ is server-only and never reaches page render context."""
+    if config is None:
+        config = load_config()
+    raw = get_config_value(config, "env", "public", default="")
+    if isinstance(raw, str):
+        names = [part.strip() for part in raw.split(",") if part.strip()]
+    elif isinstance(raw, (list, tuple)):
+        names = [str(part).strip() for part in raw if str(part).strip()]
+    else:
+        names = []
+    return {name: os.environ[name] for name in names if name in os.environ}
+
+
 def create_request_context(route_path, params=None):
-    return {"path": route_path or "/", "params": dict(params or {}), "env": dict(os.environ)}
+    return {"path": route_path or "/", "params": dict(params or {}), "env": get_public_env()}
 
 
 def build_page_context(page_info, page_ast=None, tw_path=None, *, item=None, route_path=None, request_params=None):
@@ -4416,7 +4432,7 @@ def create_base_context(page_ast, tw_path):
     config = load_config()
     context["config"] = config
     context["site"] = config
-    context["env"] = dict(os.environ)
+    context["env"] = get_public_env(config)
     return context
 
 
