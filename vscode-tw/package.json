@@ -1,13 +1,24 @@
 {
   "name": "tw-language",
   "displayName": "TW Language Support",
-  "description": "Syntax highlighting for TW Framework (.tw and .tss files)",
-  "version": "0.1.0",
+  "description": "Syntax highlighting, autocomplete, and live diagnostics for TW Framework (.tw and .tss files)",
+  "version": "0.2.0",
   "publisher": "twframework",
   "engines": {
     "vscode": "^1.60.0"
   },
-  "categories": ["Programming Languages"],
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:tw",
+    "onLanguage:tss"
+  ],
+  "main": "./extension.js",
+  "dependencies": {
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  },
   "contributes": {
     "languages": [
       {

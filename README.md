@@ -14,6 +14,7 @@
 [Getting Started](#getting-started) •
 [CLI Commands](#cli-commands) •
 [Features](#features) •
+[VS Code Extension](#vs-code-extension) •
 [Deploying](#deploying) •
 [Contributing](#contributing)
 
@@ -97,6 +98,59 @@ The root page must be `[home]/pages/index.tw` for the site to load at `/`.
 - 🎨 **`.tss` stylesheets** — CSS with a friendlier syntax, animations, and variables
 - 🔍 **Built-in search** — automatic search index generation, no extra setup
 - 🚀 **Zero-config deploys** — Vercel, Netlify, and Cloudflare Pages adapters included
+
+## VS Code Extension
+
+TW Framework includes a VS Code extension (`vscode-tw/`) that provides:
+
+- **Syntax highlighting** — `.tw`, `.twm`, and `.tss` files
+- **Autocomplete** — HTML tags, TW keywords, CSS properties, event handlers, render modes
+- **Live diagnostics** — real-time error checking as you type (unclosed braces, malformed strings, parser errors)
+- **Hover info** — documentation on hover for HTML tags, CSS properties, and TW keywords
+
+### Installation
+
+The extension is bundled in this repo under `vscode-tw/`. To install locally:
+
+1. Open VS Code
+2. Run the command **"Extensions: Install from VSIX"** (or build a `.vsix` from the `vscode-tw/` folder)
+3. Select the extension
+
+Or copy the `vscode-tw/` folder to your VS Code extensions directory:
+
+```bash
+# Linux / macOS
+cp -r vscode-tw ~/.vscode/extensions/tw-language
+
+# Windows
+copy vscode-tw %USERPROFILE%\.vscode\extensions\tw-language
+```
+
+### How it works
+
+The extension launches a **Python-based LSP (Language Server Protocol) server** (`tw_framework/lsp_server.py`) in the background. This server:
+
+- Tokenizes `.tw` files using TW's own lexer
+- Parses them using TW's compiler to detect errors in real time
+- Provides context-aware completions based on the file type (`.tw` → tags + keywords, `.tss` → CSS properties)
+- Warns about multi-line CSS values that could cause parsing issues
+
+**Requirements:** `tw-framework` must be installed in your Python environment (`pip install tw-framework`).
+
+```bash
+pip install tw-framework
+```
+
+The extension automatically finds `python3` (or `python`) on your PATH and launches the LSP server.
+
+### Features in detail
+
+| Feature | .tw files | .tss files |
+|---|---|---|
+| Syntax highlighting | ✅ | ✅ |
+| Autocomplete | HTML tags, TW keywords, event handlers, render modes | CSS properties, aliases, common values |
+| Live errors | Unclosed braces, parser errors, unterminated strings | Parser errors, multi-line value warnings |
+| Hover docs | HTML tags, TW keywords | CSS properties, aliases |
 
 ## Deploying
 
