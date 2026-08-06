@@ -3169,6 +3169,16 @@ def _attach_component_stylesheets(page, source):
 
 
 
+def _is_new_tss_declaration(item):
+    """Check if item starts a new CSS property or nested block."""
+    if "{" in item:
+        return True
+    parts = item.split(None, 1)
+    if parts and ":" in parts[0].rstrip(";"):
+        return True
+    return False
+
+
 def _split_tss_body_items(body):
     items = []
     start = 0
@@ -3181,14 +3191,20 @@ def _split_tss_body_items(body):
         elif ch == "\n" and depth == 0:
             item = body[start:i].strip()
             if item:
-                if item.endswith(","):
-                    continue
                 items.append(item)
             start = i + 1
     tail = body[start:].strip()
     if tail:
         items.append(tail)
-    return items
+    # Merge multi-line values: if an item doesn't end with ; or } and the
+    # next item doesn't look like a new declaration, merge them into one.
+    merged = []
+    for item in items:
+        if merged and not merged[-1].endswith(";") and not merged[-1].endswith("}") and not _is_new_tss_declaration(item):
+            merged[-1] = merged[-1] + " " + item
+        else:
+            merged.append(item)
+    return merged
 
 
 def _parse_tss_rule(selector, body):
