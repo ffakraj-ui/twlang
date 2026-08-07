@@ -4,13 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tw-framework"
-version = "0.4.4"
+version = "0.4.5"
 description = "TW framework CLI with create, dev, build, and deploy commands"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
-  { name = "TW Framework" }
+  { name = "KANISHK KUMAR", email = "mlkraj290@gmail.com" }
 ]
+maintainers = [
+  { name = "Kanishk Kumar", email = "mlkraj290@gmail.com" }
+]
+keywords = ["tw", "tw-framework", "twlang", "framework", "cli", "static-site"]
 dependencies = []
 
 [project.optional-dependencies]

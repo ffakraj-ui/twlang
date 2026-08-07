@@ -1,19 +1,16 @@
 """
 TW Language Server Protocol (LSP) Server
 
-Provides autocomplete and live diagnostics for .tw and .tss files in VS Code.
+Provides autocomplete and live diagnostics for .tw and .tss files in VS Code / ACode.
 
 Run standalone:
     python -m tw_framework.lsp_server
-
-The VS Code extension launches this automatically — no manual setup needed.
 """
 
 from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 import traceback
 from typing import Any, Dict, List, Optional
@@ -22,11 +19,16 @@ from typing import Any, Dict, List, Optional
 class LSPServer:
     """Minimal LSP server over stdio — JSON-RPC 2.0."""
 
+    # Valid page-block keys — these are NOT errors when used inside page {}
+    PAGE_KEYS = {
+        "title", "layout", "render", "revalidate", "cache_by",
+        "cache_size", "redirect", "rewrite",
+    }
+
     def __init__(self):
         self.root_uri: Optional[str] = None
         self.root_path: Optional[str] = None
         self.documents: Dict[str, str] = {}
-        # Defer imports so the module loads even if the full compiler isn't present
         self._compiler = None
         self._semantic = None
 
@@ -40,15 +42,6 @@ class LSPServer:
             except Exception:
                 self._compiler = False
         return self._compiler if self._compiler is not False else None
-
-    def _ensure_semantic(self):
-        if self._semantic is None:
-            try:
-                from . import semantic
-                self._semantic = semantic
-            except Exception:
-                self._semantic = False
-        return self._semantic if self._semantic is not False else None
 
     # ── JSON-RPC plumbing ────────────────────────────────────────────
 
@@ -112,7 +105,7 @@ class LSPServer:
                     if request_id is not None:
                         self._send_response(request_id, result)
                 elif method == "initialized":
-                    pass  # ack, no response needed
+                    pass
                 elif request_id is not None:
                     self._send_response(request_id, None)
             except Exception as e:
@@ -133,7 +126,7 @@ class LSPServer:
             self.root_path = self.root_uri.replace("file://", "") if self.root_uri.startswith("file://") else self.root_uri
         return {
             "capabilities": {
-                "textDocumentSync": 1,  # full document sync
+                "textDocumentSync": 1,
                 "completionProvider": {
                     "resolveProvider": False,
                     "triggerCharacters": [".", " ", "{"],
@@ -144,11 +137,10 @@ class LSPServer:
                 },
                 "hoverProvider": True,
                 "definitionProvider": True,
-                "documentFormattingProvider": False,
             },
             "serverInfo": {
                 "name": "tw-language-server",
-                "version": "0.1.0",
+                "version": "0.2.0",
             },
         }
 
@@ -164,7 +156,6 @@ class LSPServer:
         if not changes:
             return
         uri = params.get("textDocument", {}).get("uri", "")
-        # Full sync — last change wins
         text = changes[-1].get("text", "")
         self.documents[uri] = text
         self._publish_diagnostics(uri, text)
@@ -172,7 +163,6 @@ class LSPServer:
     def _on_textDocument_didClose(self, params: Dict) -> None:
         uri = params.get("textDocument", {}).get("uri", "")
         self.documents.pop(uri, None)
-        # Clear diagnostics
         self._send_notification("textDocument/publishDiagnostics", {
             "uri": uri,
             "diagnostics": [],
@@ -195,13 +185,10 @@ class LSPServer:
         char = pos.get("character", 0)
         hover_text = self._get_hover(text, line, char)
         if hover_text:
-            return {
-                "contents": {"kind": "markdown", "value": hover_text},
-            }
+            return {"contents": {"kind": "markdown", "value": hover_text}}
         return None
 
     def _on_textDocument_definition(self, params: Dict) -> Optional[Dict]:
-        # Placeholder — full go-to-definition requires project index
         return None
 
     # ── Diagnostic engine ──────────────────────────────────────────
@@ -226,54 +213,80 @@ class LSPServer:
             return []
 
         diagnostics: List[Dict] = []
+        lines = text.splitlines()
+
+        # Step 1: Tokenize — catches lexer-level errors
         try:
             tokens = compiler.tokenize(text, allow_inline_scripts=True)
         except compiler.CompilerError as e:
-            diagnostics.append(self._compiler_error_to_diagnostic(e, uri))
+            diagnostics.append(self._compiler_error_to_diagnostic(e, lines))
             return diagnostics
         except Exception:
             return diagnostics
 
-        # Check for unterminated strings
+        # Step 2: Check for unterminated strings
         for token in tokens:
             if token.type == "STRING" and not token.value:
                 diagnostics.append({
-                    "range": self._token_range(token),
+                    "range": self._token_range(token, lines),
                     "severity": 1,
                     "source": "tw",
-                    "message": "Empty or malformed string literal",
+                    "message": "Unterminated string literal",
                 })
 
-        # Try full parse for deeper diagnostics
+        # Step 3: Full parse via build_tw_ast (NOT build_elements — that doesn't
+        # understand page {} blocks and produces false positives like
+        # "Unknown property or invalid child start: `render`")
         try:
-            nodes, _ = compiler.build_elements(
-                compiler.tokenize(text, allow_inline_scripts=True),
-                0,
-                uri,
-                text,
-            )
+            base_dir = os.path.dirname(self.root_path or uri.replace("file://", ""))
+            page = compiler.build_tw_ast(tokens, base_dir, uri, text)
         except compiler.CompilerError as e:
-            diagnostics.append(self._compiler_error_to_diagnostic(e, uri))
+            msg = e.message if hasattr(e, "message") else str(e)
+            # Suppress file-resolution errors — LSP doesn't have full project
+            # context, so `load "..."` paths can't be resolved. These are NOT
+            # syntax errors, just missing-file-context warnings.
+            if "file not found" not in msg.lower() and "not found" not in msg.lower():
+                diagnostics.append(self._compiler_error_to_diagnostic(e, lines))
         except Exception:
             pass
 
-        # Check for unclosed braces
-        brace_count = 0
+        # Step 4: Check for unclosed braces — highlight the unmatched brace
+        brace_stack = []  # list of (token, line_idx)
         for token in tokens:
-            if token.type == "BRACE":
-                if token.value == "{":
-                    brace_count += 1
-                elif token.value == "}":
-                    brace_count -= 1
-        if brace_count != 0:
-            diagnostics.append({
-                "range": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 1}},
-                "severity": 1,
-                "source": "tw",
-                "message": f"Unmatched braces — {'open' if brace_count > 0 else 'close'} brace missing ({abs(brace_count)} unmatched)",
-            })
+            if token.type == "BRACE" and token.value == "{":
+                brace_stack.append(token)
+            elif token.type == "BRACE" and token.value == "}":
+                if brace_stack:
+                    brace_stack.pop()
+                else:
+                    # Extra closing brace
+                    diagnostics.append({
+                        "range": self._token_range(token, lines),
+                        "severity": 1,
+                        "source": "tw",
+                        "message": "Unexpected `}` — no matching opening brace",
+                    })
 
-        return diagnostics
+        if brace_stack:
+            # Unclosed opening braces — point to the last unclosed one
+            for tok in brace_stack:
+                diagnostics.append({
+                    "range": self._token_range(tok, lines),
+                    "severity": 1,
+                    "source": "tw",
+                    "message": "Unclosed `{` — missing matching `}`",
+                })
+
+        # Step 5: Deduplicate by (line, col, message)
+        seen = set()
+        unique = []
+        for d in diagnostics:
+            key = (d["range"]["start"]["line"], d["range"]["start"]["character"], d["message"][:50])
+            if key not in seen:
+                seen.add(key)
+                unique.append(d)
+
+        return unique
 
     def _diagnose_tss(self, text: str, uri: str) -> List[Dict]:
         compiler = self._ensure_compiler()
@@ -281,45 +294,68 @@ class LSPServer:
             return []
 
         diagnostics: List[Dict] = []
+        lines = text.splitlines()
+
         try:
             sheet = compiler.build_tss_ast_from_text(text)
             css = compiler.render_css(sheet, context={})
         except compiler.CompilerError as e:
-            diagnostics.append(self._compiler_error_to_diagnostic(e, uri))
+            diagnostics.append(self._compiler_error_to_diagnostic(e, lines))
         except Exception:
             pass
 
-        # Check for broken 'true' values (the v0.4.2 multi-line bug)
-        for i, line in enumerate(text.splitlines()):
+        # Check for property-only lines (value on next line)
+        for i, line in enumerate(lines):
             stripped = line.strip()
             if stripped.endswith(":") and not stripped.startswith("//") and not stripped.startswith("/*"):
                 diagnostics.append({
                     "range": {
-                        "start": {"line": i, "character": 0},
+                        "start": {"line": i, "character": max(0, len(line) - len(stripped))},
                         "end": {"line": i, "character": len(line)},
                     },
                     "severity": 2,
                     "source": "tw",
-                    "message": "Property value starts on next line — consider putting the value on the same line to avoid parsing issues",
+                    "message": "Property value starts on next line — put the value on the same line to avoid parsing issues",
                 })
 
         return diagnostics
 
-    def _compiler_error_to_diagnostic(self, err, uri: str) -> Dict:
+    def _compiler_error_to_diagnostic(self, err, lines: List[str]) -> Dict:
+        """Convert a CompilerError to an LSP diagnostic with proper range."""
         line = 0
         char = 0
+        end_char = 1
+        token = None
+
         if hasattr(err, "token") and err.token:
-            line = max(0, (err.token.line or 1) - 1)
-            char = max(0, (err.token.col or 1) - 1)
+            token = err.token
+            line = max(0, (token.line or 1) - 1)
+            char = max(0, (token.col or 1) - 1)
+            # Span the underline across the full token value
+            val_len = len(getattr(token, "value", "") or "")
+            if val_len > 0:
+                end_char = char + val_len
+            else:
+                end_char = char + 1
         elif hasattr(err, "line") and err.line:
             line = max(0, err.line - 1)
+
+        # Clamp end to line length
+        if line < len(lines):
+            end_char = min(end_char, len(lines[line]))
+        else:
+            end_char = char + 1
+
+        # If we have a token, underline just the token, not the whole line
+        # This gives the modern "wavy underline" effect under the exact word
         message = err.message if hasattr(err, "message") else str(err)
         if hasattr(err, "suggestion") and err.suggestion:
-            message += f"\n\nSuggestion: {err.suggestion}"
+            message += f"\n\n💡 Suggestion: {err.suggestion}"
+
         return {
             "range": {
                 "start": {"line": line, "character": char},
-                "end": {"line": line, "character": char + 1},
+                "end": {"line": line, "character": end_char},
             },
             "severity": 1,
             "source": "tw",
@@ -345,17 +381,16 @@ class LSPServer:
         stripped = current_line.strip()
         items: List[Dict] = []
 
-        # Top-level directives inside page {} block
+        # Page-block directives
         page_keywords = ["title", "layout", "render", "revalidate", "redirect", "rewrite"]
         if stripped and not stripped.startswith("{") and not stripped.startswith("}"):
-            # Check if we're typing a keyword
             word = stripped.split()[0].rstrip(":").lower() if stripped.split() else ""
             for kw in page_keywords:
                 if kw.startswith(word) or word == "":
                     items.append({
                         "label": kw,
-                        "kind": 14,  # Keyword
-                        "detail": f"page directive",
+                        "kind": 14,
+                        "detail": "page directive",
                         "insertText": f'{kw} ',
                     })
 
@@ -371,7 +406,7 @@ class LSPServer:
         for tag in html_tags:
             items.append({
                 "label": tag,
-                "kind": 7,  # Class — closest LSP kind for tags
+                "kind": 7,
                 "detail": "HTML element",
                 "insertText": tag,
             })
@@ -387,7 +422,7 @@ class LSPServer:
         for kw in tw_keywords:
             items.append({
                 "label": kw,
-                "kind": 14,  # Keyword
+                "kind": 14,
                 "detail": "TW keyword",
                 "insertText": kw,
             })
@@ -398,7 +433,7 @@ class LSPServer:
             for mode in render_modes:
                 items.append({
                     "label": mode,
-                    "kind": 21,  # Enum member
+                    "kind": 21,
                     "detail": "render mode",
                     "insertText": mode,
                 })
@@ -407,20 +442,17 @@ class LSPServer:
 
     def _tss_completions(self, current_line: str) -> List[Dict]:
         items: List[Dict] = []
-        stripped = current_line.strip()
 
-        # CSS property completions
         compiler = self._ensure_compiler()
         if compiler:
             for prop in sorted(compiler.CSS_PROPERTIES):
                 items.append({
                     "label": prop,
-                    "kind": 14,  # Keyword
+                    "kind": 14,
                     "detail": "CSS property",
                     "insertText": f"{prop}: ",
                 })
 
-            # CSS aliases
             for alias, real in compiler.CSS_ALIASES.items():
                 items.append({
                     "label": alias,
@@ -429,7 +461,6 @@ class LSPServer:
                     "insertText": f"{alias}: ",
                 })
 
-        # Common CSS values
         css_values = {
             "display": ["block", "flex", "grid", "inline", "inline-block", "none", "inline-flex"],
             "position": ["relative", "absolute", "fixed", "sticky", "static"],
@@ -445,7 +476,7 @@ class LSPServer:
                 for val in css_values[prop_name]:
                     items.append({
                         "label": val,
-                        "kind": 21,  # Enum member
+                        "kind": 21,
                         "detail": f"{prop_name} value",
                         "insertText": val,
                     })
@@ -467,7 +498,6 @@ class LSPServer:
         if not compiler:
             return None
 
-        # HTML tag hover
         html_descriptions = {
             "div": "Block-level container element",
             "span": "Inline container element",
@@ -491,13 +521,11 @@ class LSPServer:
         if word.lower() in html_descriptions:
             return f"**{word}** — {html_descriptions[word.lower()]}"
 
-        # CSS property hover
         if word in compiler.CSS_PROPERTIES:
             return f"**{word}** — CSS property"
         if word in compiler.CSS_ALIASES:
             return f"**{word}** — CSS alias for `{compiler.CSS_ALIASES[word]}`"
 
-        # TW keyword hover
         tw_descriptions = {
             "page": "Defines page metadata: title, layout, render mode",
             "layout": "Specifies which layout file to use (from [home]/layouts/)",
@@ -526,12 +554,20 @@ class LSPServer:
             right += 1
         return line[left:right]
 
-    def _token_range(self, token) -> Dict:
+    def _token_range(self, token, lines: List[str] = None) -> Dict:
+        """Build a proper LSP range for a token — underlines the exact token text."""
         line = max(0, (getattr(token, "line", 1) or 1) - 1)
         col = max(0, (getattr(token, "col", 1) or 1) - 1)
+        val = getattr(token, "value", "") or ""
+        end_col = col + max(1, len(val))
+
+        # Clamp to actual line length
+        if lines and line < len(lines):
+            end_col = min(end_col, len(lines[line]))
+
         return {
             "start": {"line": line, "character": col},
-            "end": {"line": line, "character": col + max(1, len(getattr(token, "value", "")))},
+            "end": {"line": line, "character": end_col},
         }
 
 

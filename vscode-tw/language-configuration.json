@@ -8,16 +8,9 @@
     ["[", "]"],
     ["(", ")"]
   ],
-  "autoClosingPairs": [
-    { "open": "{", "close": "}" },
-    { "open": "[", "close": "]" },
-    { "open": "(", "close": ")" },
-    { "open": "\"", "close": "\"" }
-  ],
+  "autoClosingPairs": [],
   "surroundingPairs": [
-    ["{", "}"],
-    ["[", "]"],
-    ["(", ")"],
-    ["\"", "\""]
+    ["\"", "\""],
+    ["'", "'"]
   ]
 }
