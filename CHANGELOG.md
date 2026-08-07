@@ -2,8 +2,7 @@
 
 All notable changes to TW Framework are documented here.
 
-
-## v0.4.5
+## v0.4.6
 
 - **Added: Type safety / type annotations** — `let` variables and `state` block entries now support optional TypeScript-style type annotations: `let count: number = 5`, `let name: string = "World"`, `state { count: number = 0 }`. The compiler validates values against declared types at parse time and during semantic analysis, raising clear errors like `Type error: count is annotated as number but got string.` on mismatch. Valid types: `string`, `number`, `boolean`, `array`, `object`, `null`, `any`. Annotations are optional — existing `.tw` files work unchanged.
 
