@@ -47,6 +47,22 @@ class SemanticAnalyzer:
             if isinstance(node, LetNode):
                 next_scope[node.name] = node.value
                 self._check_interpolations(node.value, next_scope, diagnostics, source_path, f"`let {node.name}`")
+                # Type-check annotated let bindings at semantic level too
+                type_ann = getattr(node, "type_annotation", None)
+                if type_ann and type_ann != "any":
+                    compiler = _legacy()
+                    actual = compiler.infer_value_type(node.value)
+                    if actual == "null" and type_ann in {"object", "array", "null"}:
+                        pass
+                    elif actual != type_ann:
+                        diagnostics.add(
+                            Diagnostic(
+                                severity="error",
+                                code="TW2301",
+                                message=f"Type error: `let {node.name}` is annotated as `{type_ann}` but got `{actual}`.",
+                                file_path=source_path,
+                            )
+                        )
                 continue
             if isinstance(node, IfNode):
                 self._check_expression(node.condition, next_scope, diagnostics, source_path, "`if` condition")

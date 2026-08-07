@@ -768,10 +768,11 @@ class IfNode:
 
 
 class LetNode:
-    def __init__(self, name, value) -> None:
+    def __init__(self, name, value, type_annotation=None) -> None:
         self.tag = "__let__"
         self.name = name
         self.value = value
+        self.type_annotation = type_annotation  # e.g. "number", "string", "boolean", "array", "object", "null", "any"
 
 
 class ScriptNode:
@@ -2433,6 +2434,46 @@ def _collect_used_component_names(nodes, found=None) -> Any:
     return found
 
 
+VALID_TYPES = {"string", "number", "boolean", "array", "object", "null", "any"}
+
+
+def infer_value_type(value) -> str:
+    """Map a Python value to a TW type name."""
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, (list, tuple)):
+        return "array"
+    if isinstance(value, dict):
+        return "object"
+    return "any"
+
+
+def check_type_annotation(type_annotation, value, token=None, name=None) -> None:
+    """Validate that `value` is compatible with `type_annotation`.
+
+    Raises CompilerError on mismatch. `any` always passes.
+    """
+    if type_annotation is None or type_annotation == "any":
+        return
+    actual = infer_value_type(value)
+    # `null` is compatible with `object`, `array`, `null`, and `any`
+    if actual == "null" and type_annotation in {"object", "array", "null", "any"}:
+        return
+    if actual != type_annotation:
+        label = f"`{name}`" if name else "value"
+        raise CompilerError(
+            f"Type error: {label} is annotated as `{type_annotation}` but got `{actual}`.",
+            token=token,
+            suggestion=f"Change the value to match `{type_annotation}`, or update the annotation.",
+        )
+
+
 def parse_let(tokens, i) -> Any:
     start = peek(tokens, i)
     i += 1
@@ -2440,10 +2481,32 @@ def parse_let(tokens, i) -> Any:
     if not name_token or name_token.type != "WORD":
         raise CompilerError("Expected variable name after `let`", token=start)
     i += 1
+
+    # Optional type annotation: `let name: type = value`
+    type_annotation = None
+    if peek(tokens, i) and peek(tokens, i).type == "WORD" and peek(tokens, i).value == ":":
+        i += 1  # consume ":"
+        type_token = peek(tokens, i)
+        if not type_token or type_token.type != "WORD":
+            raise CompilerError("Expected type name after `:`", token=peek(tokens, i - 1))
+        type_name = type_token.value.lower()
+        if type_name not in VALID_TYPES:
+            raise CompilerError(
+                f"Unknown type `{type_token.value}`. Valid types: {', '.join(sorted(VALID_TYPES))}",
+                token=type_token,
+            )
+        type_annotation = type_name
+        i += 1
+
     if peek(tokens, i) and peek(tokens, i).type == "WORD" and peek(tokens, i).value == "=":
         i += 1
     value, i = parse_value_token(tokens, i)
-    return LetNode(name_token.value, value), i
+
+    # Type-check the value against the annotation at parse time
+    if type_annotation:
+        check_type_annotation(type_annotation, value, name_token, name_token.value)
+
+    return LetNode(name_token.value, value, type_annotation=type_annotation), i
 
 
 def parse_if(tokens, i, file_path, source) -> Any:
@@ -3141,8 +3204,33 @@ def build_tw_ast(tokens, base_dir, file_path, source) -> Any:
                 if tok.type != "WORD":
                     raise CompilerError("Invalid state key", token=tok)
                 key = tok.value
+                key_tok = tok
                 i += 1
+
+                # Optional type annotation: `count: number = 0`
+                state_type = None
+                if peek(tokens, i) and peek(tokens, i).type == "WORD" and peek(tokens, i).value == ":":
+                    i += 1  # consume ":"
+                    type_token = peek(tokens, i)
+                    if not type_token or type_token.type != "WORD":
+                        raise CompilerError("Expected type name after `:`", token=peek(tokens, i - 1))
+                    type_name = type_token.value.lower()
+                    if type_name not in VALID_TYPES:
+                        raise CompilerError(
+                            f"Unknown type `{type_token.value}`. Valid types: {', '.join(sorted(VALID_TYPES))}",
+                            token=type_token,
+                        )
+                    state_type = type_name
+                    i += 1
+
+                if peek(tokens, i) and peek(tokens, i).type == "WORD" and peek(tokens, i).value == "=":
+                    i += 1
                 value, i = parse_value_token(tokens, i)
+
+                # Type-check at parse time
+                if state_type:
+                    check_type_annotation(state_type, value, key_tok, key)
+
                 page.state_vars[key] = value
             continue
 

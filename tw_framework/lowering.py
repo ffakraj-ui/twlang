@@ -10,7 +10,7 @@ def lower_node(node) -> Any:
     if isinstance(node, TextNode):
         return IRText(node.value)
     if isinstance(node, LetNode):
-        return IRLet(node.name, node.value)
+        return IRLet(node.name, node.value, getattr(node, "type_annotation", None))
     if isinstance(node, IfNode):
         return IRIf(
             condition=node.condition,

@@ -30,7 +30,7 @@ def _legacy() -> Any:
 def _convert_node(node: Any) -> Any:
     tag = getattr(node, "tag", "")
     if tag == "__let__":
-        return LetNode(node.name, node.value)
+        return LetNode(node.name, node.value, getattr(node, "type_annotation", None))
     if tag == "__if__":
         return IfNode(
             condition=node.condition,

@@ -205,6 +205,45 @@ Error: No config file found
 
 **Fix:** Create `tw.config` at project root with at least `name: My Site`.
 
+## Type Safety Errors
+
+### Unknown type `integer`
+
+```
+Error: Unknown type `integer`. Valid types: any, array, boolean, null, number, object, string
+```
+
+**Cause:** A type annotation used an unrecognized type name.
+
+**Fix:** Use one of the valid types — `string`, `number`, `boolean`, `array`, `object`, `null`, `any`.
+
+```tw
+// Wrong
+let x: integer = 5
+
+// Right
+let x: number = 5
+```
+
+### Type error: `count` is annotated as `number` but got `string`
+
+```
+Error: Type error: `count` is annotated as `number` but got `string`.
+```
+
+**Cause:** The value assigned to a `let` (or `state`) variable does not match its declared type annotation.
+
+**Fix:** Change the value to match the annotation, or update the annotation.
+
+```tw
+// Wrong
+let count: number = "hello"
+
+// Right
+let count: number = 5
+let count: string = "hello"
+```
+
 ## Vercel Deployment Errors
 
 ### externally-managed-environment

@@ -99,11 +99,13 @@ class TextNode(BaseNode):
 class LetNode(BaseNode):
     name: str
     value: Any
+    type_annotation: Optional[str] = None
 
-    def __init__(self, name: str, value: Any) -> None:
+    def __init__(self, name: str, value: Any, type_annotation: Optional[str] = None) -> None:
         super().__init__("let")
         self.name = name
         self.value = value
+        self.type_annotation = type_annotation
 
 
 @dataclass
@@ -226,7 +228,10 @@ def node_to_dict(node: BaseNode) -> Dict[str, Any]:
     if isinstance(node, TextNode):
         return {"kind": node.kind, "value": node.value}
     if isinstance(node, LetNode):
-        return {"kind": node.kind, "name": node.name, "value": serialize_value(node.value)}
+        result = {"kind": node.kind, "name": node.name, "value": serialize_value(node.value)}
+        if node.type_annotation:
+            result["type_annotation"] = node.type_annotation
+        return result
     if isinstance(node, IfNode):
         return {
             "kind": node.kind,

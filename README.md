@@ -173,6 +173,7 @@ Astro is close to TW's philosophy (zero JS by default), but it still lives in th
 - **`.tw` files** — markup + logic in one file. HTML-like syntax that compiles to clean HTML
 - **`.tss` files** — CSS with a friendlier syntax. No semicolons required. CSS aliases (`bg` → `background`, `radius` → `border-radius`)
 - **`.twm` modules** — server-side JavaScript modules for API routes and data fetching
+- **Type safety** — optional TypeScript-style type annotations on `let` and `state` variables: `let count: number = 5`. Validated at parse time. Types: `string`, `number`, `boolean`, `array`, `object`, `null`, `any`
 - **Custom lexer + parser** — TW has its own tokenizer, parser, AST, IR, and code generator. Not a wrapper around any existing framework
 
 ### Framework

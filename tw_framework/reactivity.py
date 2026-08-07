@@ -254,7 +254,8 @@ if (document.readyState === 'loading') {
 # ─── Compiler directive parsers ───────────────────────────────────────────────
 
 _STATE_BLOCK_RE = re.compile(r'\bstate\s*\{([^}]*)\}', re.DOTALL)
-_STATE_KV_RE = re.compile(r'(\w+)\s+(.+?)(?=\n\s*\w|\Z)', re.DOTALL)
+# Matches both `key value` (old) and `key: type = value` or `key: type value` (new typed)
+_STATE_KV_RE = re.compile(r'(\w+)(?:\s*:\s*\w+\s*=?\s*|\s+)(.+?)(?=\n\s*\w|\Z)', re.DOTALL)
 
 
 def parse_state_block(source: str) -> dict:
@@ -264,6 +265,12 @@ def parse_state_block(source: str) -> dict:
             count 0
             name "hello"
             items []
+        }
+    Also supports type annotations (which are stripped before parsing the value):
+        state {
+            count: number = 0
+            name: string = "hello"
+            items: array = []
         }
     Returns {"count": 0, "name": "hello", "items": []}
     """

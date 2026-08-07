@@ -22,11 +22,13 @@ class IRText(IRNode):
 class IRLet(IRNode):
     name: str
     value: Any
+    type_annotation: Optional[str] = None
 
-    def __init__(self, name: str, value: Any) -> None:
+    def __init__(self, name: str, value: Any, type_annotation: Optional[str] = None) -> None:
         super().__init__("let")
         self.name = name
         self.value = value
+        self.type_annotation = type_annotation
 
 
 @dataclass
@@ -120,7 +122,10 @@ def ir_node_to_dict(node: IRNode) -> Dict[str, Any]:
     if isinstance(node, IRText):
         return {"kind": node.kind, "value": node.value}
     if isinstance(node, IRLet):
-        return {"kind": node.kind, "name": node.name, "value": node.value}
+        result = {"kind": node.kind, "name": node.name, "value": node.value}
+        if node.type_annotation:
+            result["type_annotation"] = node.type_annotation
+        return result
     if isinstance(node, IRIf):
         return {
             "kind": node.kind,
