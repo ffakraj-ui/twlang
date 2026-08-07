@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./tw-logo.svg" alt="TW logo" width="100" height="100">
+<img src="./tw.png" alt="TW LANGUAGE" width="100" height="100">
 
 # TW Framework
 
