@@ -2,6 +2,111 @@
 
 All notable changes to TW Framework are documented here.
 
+
+## v0.4.4
+
+- **Added: LSP (Language Server Protocol) server** — `tw_framework/lsp_server.py` provides autocomplete and live diagnostics for `.tw` and `.tss` files.
+- **Added: VS Code extension updated** — `vscode-tw/` now launches the LSP server for autocomplete, hover info, and real-time error checking.
+- **Added: ACode (mobile editor) plugin** — registers `.tw`, `.twm`, `.tss` file extensions for syntax highlighting and LSP integration.
+- **Added: Deployment documentation** — `DEPLOYMENT.md` with platform-specific setup for Vercel, Netlify, Cloudflare Pages, and GitHub Pages.
+- **Updated: README** — added project structure, VS Code extension, and deployment guide sections.
+
+## v0.4.3
+
+- **Fixed: `--prod` build broken HTML references** — CSS/JS filenames were hashed but `<link>` and `<script>` references in HTML were not updated, causing 404s and broken styles on production builds.
+- **Fixed: Multi-line CSS values in `.tss`** — TSS parser was splitting on every newline, breaking multi-line values like `background-image: linear-gradient(...), linear-gradient(...);` into `true`.
+- **Security: `os.environ` no longer leaked to page render context** — only env vars explicitly allow-listed in `tw.config` via `env: public: "VAR_NAME"` reach generated HTML.
+- 
+## [0.4.1]
+
+### Security
+
+- **Env vars were fully exposed to every page render.** `context["env"]`
+  and `context["request"]["env"]` both dumped the entire `os.environ`
+  (every server secret — API keys, DB passwords, tokens) into the
+  interpolation context used to render `.tw` pages. Writing `{env.X}`
+  anywhere in a page — even by accident — would bake the real value into
+  the static HTML shipped to every visitor. Pages now only see vars
+  explicitly allow-listed via `env: public: "A, B, C"` in `tw.config`;
+  everything else stays server-side only. Default (nothing declared) now
+  exposes nothing, which is a breaking-but-necessary change for any
+  project that was relying on the old unrestricted behavior.
+
+## [0.4.0]
+
+### Added
+
+- **Typed env validation.** `env: types: "PORT:number, API_URL:url, DEBUG:boolean"`
+  in `tw.config` now validates the *shape* of a value, not just whether
+  it's present. Runs alongside `env: required:` at dev-server startup.
+
+## [0.3.9]
+
+### Fixed
+
+- **Tree-shaking false-positive "file not found" warning**, seen on
+  every build (`Tree shaking failed: load: file not found for
+  @../style/site.tss`). `shake_project` resolved every page's relative
+  `load @...` paths against the fixed `HOME_DIR` instead of each page's
+  own directory, so any page not sitting directly at the project root
+  resolved its relative imports one level off. Now resolves relative to
+  each page's actual directory, matching how the real compiler already
+  did it elsewhere. Also made one broken page's resolution failure no
+  longer abort tree-shaking for the whole project.
+- Removed a dead, byte-for-byte duplicate `command_doctor` definition in
+  `cli.py` (the second definition silently overwrote the first — ~20
+  lines of dead code).
+
+### Added
+
+- **`tw doctor` gained 4 new checks:** required/typed env vars, declared
+  WebSocket routes, whether `.gitignore` excludes auto-generated
+  `*.tw.json` cache files, and whether the default dev port (3000) is
+  free.
+
+## [0.3.8]
+
+### Added
+
+- **Native WebSocket support**, stdlib-only (no external dependency).
+  Full RFC 6455 handshake and frame encode/decode implemented from
+  scratch and verified against the spec's official test vector. Add a
+  Python file under `[home]/ws/<name>.py` exporting `on_connect(conn)`
+  and it's live at `/ws/<name>` — `conn.send_text()`, `conn.send_bytes()`,
+  `conn.close()`, and `for message in conn:` to receive.
+- **Env var presence validation.** `env: required: "A, B, C"` in
+  `tw.config` — `tw dev` warns clearly at startup if any are missing
+  from `.env`/`.env.development`/`.env.local`/the shell environment,
+  instead of failing silently later at runtime.
+
+## [0.3.7]
+
+### Added
+
+- Cloudflare-style click-to-reveal IP footer (`Your IP: X.***.***.Y`,
+  click to unmask) added to all error pages — 404s, client errors, and
+  compile errors alike.
+
+## [0.3.6]
+
+### Changed
+
+- Error pages redesigned to a minimal, centered, Vercel/Next.js-style
+  layout (plain background, no alarming red gradient) for 404s. Genuine
+  compile/client errors keep a cleaner light card with a dark code block
+  so the error detail is still easy to read.
+
+## [0.3.5]
+
+### Fixed
+
+- 404 pages displayed the label **"TW Compile Error"** — misleading,
+  since a normal "this route doesn't exist" case is not a compile error
+  and nothing is actually broken. `render_error_html` now derives the
+  label from the actual status code (`TW Not Found` for 404, `TW Client
+  Error` for other 4xx, `TW Compile Error` only for 5xx).
+
+
 ## [0.3.4]
 
 ### Fixed
