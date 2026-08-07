@@ -1,6 +1,22 @@
 # Changelog
 
 All notable changes to TW Framework are documented here.
+
+
+## v0.4.4
+
+- **Added: LSP (Language Server Protocol) server** — `tw_framework/lsp_server.py` provides autocomplete and live diagnostics for `.tw` and `.tss` files.
+- **Added: VS Code extension updated** — `vscode-tw/` now launches the LSP server for autocomplete, hover info, and real-time error checking.
+- **Added: ACode (mobile editor) plugin** — registers `.tw`, `.twm`, `.tss` file extensions for syntax highlighting and LSP integration.
+- **Added: Deployment documentation** — `DEPLOYMENT.md` with platform-specific setup for Vercel, Netlify, Cloudflare Pages, and GitHub Pages.
+- **Updated: README** — added project structure, VS Code extension, and deployment guide sections.
+
+## v0.4.3
+
+- **Fixed: `--prod` build broken HTML references** — CSS/JS filenames were hashed but `<link>` and `<script>` references in HTML were not updated, causing 404s and broken styles on production builds.
+- **Fixed: Multi-line CSS values in `.tss`** — TSS parser was splitting on every newline, breaking multi-line values like `background-image: linear-gradient(...), linear-gradient(...);` into `true`.
+- **Security: `os.environ` no longer leaked to page render context** — only env vars explicitly allow-listed in `tw.config` via `env: public: "VAR_NAME"` reach generated HTML.
+- 
 ## [0.4.1]
 
 ### Security
