@@ -20,13 +20,13 @@ GRAPH_FILE = "dependency-graph.json"
 class DependencyGraph:
     """Maintains a directed graph of project dependencies."""
 
-    def __init__(self, project_root: str):
+    def __init__(self, project_root: str) -> None:
         self.project_root = project_root
         self.graph: Dict[str, List[str]] = {}
         self.reverse: Dict[str, List[str]] = {}
         self._load()
 
-    def _load(self):
+    def _load(self) -> None:
         path = os.path.join(self.project_root, ".tw", GRAPH_FILE)
         if os.path.exists(path):
             try:
@@ -39,13 +39,13 @@ class DependencyGraph:
                 self.graph = {}
                 self.reverse = {}
 
-    def save(self):
+    def save(self) -> None:
         path = os.path.join(self.project_root, ".tw", GRAPH_FILE)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"forward": self.graph, "reverse": self.reverse}, f, indent=2)
 
-    def add_dependency(self, source: str, target: str):
+    def add_dependency(self, source: str, target: str) -> None:
         if source not in self.graph:
             self.graph[source] = []
         if target not in self.graph[source]:
@@ -75,7 +75,7 @@ class DependencyGraph:
                     queue.append(dependent)
         return affected
 
-    def build_from_project(self):
+    def build_from_project(self) -> None:
         """Build the dependency graph by scanning the project."""
         self.graph = {}
         self.reverse = {}

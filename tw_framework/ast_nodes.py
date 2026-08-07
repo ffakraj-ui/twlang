@@ -90,7 +90,7 @@ class BaseNode:
 class TextNode(BaseNode):
     value: str
 
-    def __init__(self, value: str):
+    def __init__(self, value: str) -> None:
         super().__init__("text")
         self.value = value
 
@@ -100,7 +100,7 @@ class LetNode(BaseNode):
     name: str
     value: Any
 
-    def __init__(self, name: str, value: Any):
+    def __init__(self, name: str, value: Any) -> None:
         super().__init__("let")
         self.name = name
         self.value = value
@@ -112,7 +112,7 @@ class IfNode(BaseNode):
     children: List[BaseNode] = field(default_factory=list)
     else_children: List[BaseNode] = field(default_factory=list)
 
-    def __init__(self, condition: str, children: Optional[List[BaseNode]] = None, else_children: Optional[List[BaseNode]] = None):
+    def __init__(self, condition: str, children: Optional[List[BaseNode]] = None, else_children: Optional[List[BaseNode]] = None) -> None:
         super().__init__("if")
         self.condition = condition
         self.children = children or []
@@ -125,7 +125,7 @@ class ForNode(BaseNode):
     iterable: str
     children: List[BaseNode] = field(default_factory=list)
 
-    def __init__(self, var_name: str, iterable: str, children: Optional[List[BaseNode]] = None):
+    def __init__(self, var_name: str, iterable: str, children: Optional[List[BaseNode]] = None) -> None:
         super().__init__("for")
         self.var_name = var_name
         self.iterable = iterable
@@ -136,7 +136,7 @@ class ForNode(BaseNode):
 class ScriptNode(BaseNode):
     raw_js: str
 
-    def __init__(self, raw_js: str):
+    def __init__(self, raw_js: str) -> None:
         super().__init__("script")
         self.raw_js = raw_js
 
@@ -160,7 +160,7 @@ class ElementNode(BaseNode):
         events: Optional[List[Attribute]] = None,
         router: Optional[Dict[str, Any]] = None,
         children: Optional[List[BaseNode]] = None,
-    ):
+    ) -> None:
         super().__init__("element")
         self.tag = tag
         self.text = text
@@ -177,7 +177,7 @@ class ComponentNode(BaseNode):
     props: List[Attribute] = field(default_factory=list)
     children: List[BaseNode] = field(default_factory=list)
 
-    def __init__(self, name: str, props: Optional[List[Attribute]] = None, children: Optional[List[BaseNode]] = None):
+    def __init__(self, name: str, props: Optional[List[Attribute]] = None, children: Optional[List[BaseNode]] = None) -> None:
         super().__init__("component")
         self.name = name
         self.props = props or []

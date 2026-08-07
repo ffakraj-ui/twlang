@@ -1,3 +1,5 @@
+from typing import Any, Dict, List, Optional
+
 import argparse
 import json
 import os
@@ -365,11 +367,11 @@ __pycache__/
 }
 
 
-def ensure_dir(path):
+def ensure_dir(path) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def _restrict_global_config_permissions():
+def _restrict_global_config_permissions() -> None:
     try:
         os.chmod(GLOBAL_CONFIG_DIR, 0o700)
     except Exception:
@@ -380,19 +382,19 @@ def _restrict_global_config_permissions():
         pass
 
 
-def write_text(path, content):
+def write_text(path, content) -> None:
     ensure_dir(os.path.dirname(path) or ".")
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
 
 
-def slugify_package_name(name):
+def slugify_package_name(name: str) -> str:
     normalized = re.sub(r"[^a-z0-9-_]+", "-", name.strip().lower())
     normalized = re.sub(r"-{2,}", "-", normalized).strip("-")
     return normalized or "tw-site"
 
 
-def build_package_json(project_name):
+def build_package_json(project_name) -> Any:
     package_name = slugify_package_name(project_name)
     return json.dumps(
         {
@@ -419,7 +421,7 @@ def build_package_json(project_name):
     ) + "\n"
 
 
-def build_vercel_json():
+def build_vercel_json() -> Any:
     return json.dumps(
         {
             "buildCommand": "tw build",
@@ -429,7 +431,7 @@ def build_vercel_json():
     ) + "\n"
 
 
-def load_global_config():
+def load_global_config() -> Any:
     if not os.path.exists(GLOBAL_CONFIG_FILE):
         return {}
     try:
@@ -442,7 +444,7 @@ def load_global_config():
         return {}
 
 
-def save_global_config(config):
+def save_global_config(config) -> None:
     ensure_dir(GLOBAL_CONFIG_DIR)
     _restrict_global_config_permissions()
     # Atomic write (temp-file + rename) to avoid corrupting config on crash/kill.
@@ -453,7 +455,7 @@ def save_global_config(config):
     _restrict_global_config_permissions()
 
 
-def find_project_root(start_dir=None):
+def find_project_root(start_dir=None) -> Any:
     current = os.path.abspath(start_dir or os.getcwd())
     while True:
         config_path = os.path.join(current, "tw.config")
@@ -469,7 +471,7 @@ def find_project_root(start_dir=None):
     )
 
 
-def create_project(project_name, parent_dir=None):
+def create_project(project_name, parent_dir=None) -> None:
     parent_dir = os.path.abspath(parent_dir or os.getcwd())
     root = os.path.join(parent_dir, project_name)
     if os.path.exists(root) and os.listdir(root):
@@ -513,17 +515,17 @@ def create_project(project_name, parent_dir=None):
     log(f"  {CLI_NAME} dev")
 
 
-def open_browser_later(url):
+def open_browser_later(url) -> None:
     timer = threading.Timer(1.0, lambda: webbrowser.open(url))
     timer.daemon = True
     timer.start()
 
 
-def resolve_output_dir(project_root):
+def resolve_output_dir(project_root) -> Any:
     return os.path.join(project_root, "dist")
 
 
-def configure_project_for_file(file_path):
+def configure_project_for_file(file_path) -> Any:
     abs_path = os.path.abspath(file_path)
     try:
         project_root = find_project_root(os.path.dirname(abs_path))
@@ -533,18 +535,18 @@ def configure_project_for_file(file_path):
     return project_root
 
 
-def _guess_route_for_file(abs_path):
+def _guess_route_for_file(abs_path) -> Any:
     for page_info in compiler.discover_pages():
         if os.path.abspath(page_info["path"]) == abs_path:
             return compiler.route_path_from_page_info(page_info)
     return "/"
 
 
-def _diagnostics_have_errors(items):
+def _diagnostics_have_errors(items) -> Any:
     return any(item.get("severity") == "error" for item in items or [])
 
 
-def _serialize_token(token):
+def _serialize_token(token) -> Any:
     if hasattr(token, "to_dict"):
         return token.to_dict()
     return {
@@ -555,7 +557,7 @@ def _serialize_token(token):
     }
 
 
-def _json_safe(value):
+def _json_safe(value) -> Any:
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
     if isinstance(value, dict):
@@ -581,7 +583,7 @@ def _json_safe(value):
     return repr(value)
 
 
-def _diagnostic_summary(items):
+def _diagnostic_summary(items) -> Any:
     summary = {"total": 0, "errors": 0, "warnings": 0, "info": 0, "by_phase": {}, "by_code": {}}
     for item in items or []:
         summary["total"] += 1
@@ -599,7 +601,7 @@ def _diagnostic_summary(items):
     return summary
 
 
-def _compile_file_artifacts(file_path, *, include_css=False, capture_errors=False):
+def _compile_file_artifacts(file_path, *, include_css=False, capture_errors=False) -> Any:
     abs_path = os.path.abspath(file_path)
     configure_project_for_file(abs_path)
     css_href = None
@@ -613,17 +615,17 @@ def _compile_file_artifacts(file_path, *, include_css=False, capture_errors=Fals
     )
 
 
-def command_create(args):
+def command_create(args) -> None:
     create_project(args.name, args.directory)
 
 
-def command_init(args):
+def command_init(args) -> None:
     """Create a new TW project in the current directory (zero‑config)."""
     project_name = args.name or os.path.basename(os.getcwd())
     create_project(project_name, os.getcwd())
 
 
-def command_dev(args):
+def command_dev(args) -> int:
     project_root = find_project_root(args.project_root)
     host = args.host
     port = args.port
@@ -638,7 +640,7 @@ def command_dev(args):
     return 0
 
 
-def command_build(args):
+def command_build(args) -> Any:
     project_root = find_project_root(args.project_root)
     output_dir = args.out_dir or resolve_output_dir(project_root)
     if args.clean:
@@ -651,7 +653,7 @@ def command_build(args):
 
     adapters = [args.adapter] if args.adapter else None
 
-    def run_once(force_build=False):
+    def run_once(force_build=False) -> Any:
         summary = framework.build_hidden_site(
             project_root=project_root,
             output_dir=output_dir,
@@ -744,7 +746,7 @@ def command_build(args):
     return 0
 
 
-def command_export(args):
+def command_export(args) -> int:
     project_root = find_project_root(args.project_root)
     summary = framework.build_hidden_site(
         project_root=project_root,
@@ -768,7 +770,7 @@ def command_export(args):
     return 0
 
 
-def command_preview(args):
+def command_preview(args) -> Any:
     project_root = find_project_root(args.project_root)
     output_dir = args.out_dir or resolve_output_dir(project_root)
     if not args.no_build:
@@ -789,14 +791,14 @@ def command_preview(args):
     framework.run_preview_server(output_dir=output_dir, host=args.host, port=args.port)
 
 
-def command_clean(args):
+def command_clean(args) -> int:
     project_root = find_project_root(args.project_root)
     framework.clean_project_outputs(project_root)
     log("✔ dist/ aur .tw/ clean kar diye gaye")
     return 0
 
 
-def command_doctor(args):
+def command_doctor(args) -> Any:
     project_root = find_project_root(args.project_root)
     checks = framework.doctor_project(project_root)
     # Extra CLI-level checks (global deploy config)
@@ -819,7 +821,7 @@ def command_doctor(args):
     return 1 if failed else 0
 
 
-def command_info(args):
+def command_info(args) -> int:
     project_root = find_project_root(args.project_root)
     info = framework.inspect_project(project_root)
     print(f"Project root: {info['project_root']}")
@@ -836,7 +838,7 @@ def command_info(args):
     return 0
 
 
-def _write_or_print_output(output_path, payload):
+def _write_or_print_output(output_path, payload) -> None:
     if output_path:
         write_text(output_path, payload)
         log(f"✔ Output saved: {output_path}")
@@ -844,7 +846,7 @@ def _write_or_print_output(output_path, payload):
     print(payload)
 
 
-def command_ast(args):
+def command_ast(args) -> Any:
     configure_project_for_file(args.file)
     program = parse_file(os.path.abspath(args.file))
     diagnostics = analyze_program(program)
@@ -858,7 +860,7 @@ def command_ast(args):
     return 1 if diagnostics.has_errors else 0
 
 
-def command_ir(args):
+def command_ir(args) -> Any:
     configure_project_for_file(args.file)
     program = parse_file(os.path.abspath(args.file))
     diagnostics = analyze_program(program)
@@ -873,7 +875,7 @@ def command_ir(args):
     return 1 if diagnostics.has_errors else 0
 
 
-def command_run_file(args):
+def command_run_file(args) -> Any:
     artifacts = _compile_file_artifacts(args.file, include_css=True, capture_errors=args.diagnostics)
     if args.diagnostics:
         payload = {
@@ -889,7 +891,7 @@ def command_run_file(args):
     return 1 if _diagnostics_have_errors(artifacts.diagnostics) else 0
 
 
-def command_tokens(args):
+def command_tokens(args) -> int:
     configure_project_for_file(args.file)
     payload = {
         "tokens": [_serialize_token(token) for token in tokenize_file(os.path.abspath(args.file))]
@@ -898,7 +900,7 @@ def command_tokens(args):
     return 0
 
 
-def command_check(args):
+def command_check(args) -> Any:
     artifacts = _compile_file_artifacts(args.file, capture_errors=True)
     payload = {
         "diagnostics": artifacts.diagnostics,
@@ -916,7 +918,7 @@ def command_check(args):
     return 1 if _diagnostics_have_errors(artifacts.diagnostics) else 0
     
 
-def command_verify(args):
+def command_verify(args) -> int:
     project_root = find_project_root(args.project_root)
     output_dir = args.out_dir or resolve_output_dir(project_root)
     manifest_path = os.path.join(output_dir, "_tw", "route-manifest.json")
@@ -976,14 +978,14 @@ def command_verify(args):
     return 0
 
 
-def apply_deploy_config(config, provider):
+def apply_deploy_config(config, provider) -> Any:
     """Returns a cleanup callable to restore env changes."""
     cleanup = lambda: None
     if provider == "vercel" and config.get("vercel_token"):
         old_value = os.environ.get("VERCEL_TOKEN")
         os.environ["VERCEL_TOKEN"] = config["vercel_token"]
 
-        def cleanup():
+        def cleanup() -> None:
             if old_value is None:
                 os.environ.pop("VERCEL_TOKEN", None)
             else:
@@ -992,7 +994,7 @@ def apply_deploy_config(config, provider):
     return cleanup
 
 
-def resolve_provider(args, config):
+def resolve_provider(args, config) -> Any:
     if args.vercel:
         return "vercel"
     if args.cloudflare:
@@ -1002,7 +1004,7 @@ def resolve_provider(args, config):
     return config.get("default_provider", "local")
 
 
-def command_login(args):
+def command_login(args) -> None:
     config = load_global_config()
     if args.provider:
         config["default_provider"] = args.provider
@@ -1014,7 +1016,7 @@ def command_login(args):
         log(f"✔ Default provider: {config['default_provider']}")
 
 
-def command_deploy(args):
+def command_deploy(args) -> int:
     project_root = find_project_root(args.project_root)
     config = load_global_config()
     provider = resolve_provider(args, config)
@@ -1039,7 +1041,7 @@ def command_deploy(args):
     return 0
 
 
-def command_serve(args):
+def command_serve(args) -> int:
     """Start the TW production server."""
     from .server import run_production_server
     project_root = find_project_root(args.project_root)
@@ -1077,26 +1079,26 @@ def command_serve(args):
     return 0
 
 
-def build_parser():
+def build_parser() -> Any:
     parser = argparse.ArgumentParser(description="TW framework CLI")
     parser.add_argument("--project-root", help="Manual project root override")
     parser.add_argument("--debug", action="store_true", help="Print full tracebacks and internal state")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    def add_output_dir_arg(subparser, help_text):
+    def add_output_dir_arg(subparser, help_text) -> None:
         subparser.add_argument("--out-dir", help=help_text)
 
-    def add_workers_arg(subparser):
+    def add_workers_arg(subparser) -> None:
         subparser.add_argument("--workers", type=int, default=framework.compiler.DEFAULT_WORKERS)
 
-    def add_host_port_args(subparser, *, host_default, port_default, allow_no_open=False):
+    def add_host_port_args(subparser, *, host_default, port_default, allow_no_open=False) -> None:
         subparser.add_argument("--host", default=host_default)
         subparser.add_argument("--port", type=int, default=port_default)
         if allow_no_open:
             subparser.add_argument("--no-open", action="store_true", help="Disable auto-opening the browser")
 
-    def add_no_minify_arg(subparser, help_text):
+    def add_no_minify_arg(subparser, help_text) -> None:
         subparser.add_argument("--no-minify", action="store_true", help=help_text)
 
     create_parser = subparsers.add_parser("create", help="Create a new TW project")
@@ -1223,7 +1225,7 @@ def build_parser():
     return parser
 
 
-def main():
+def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
     result = args.func(args)

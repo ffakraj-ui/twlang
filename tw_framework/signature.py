@@ -8,7 +8,7 @@ from .common import content_hash
 TW_SIGNATURE_SALT = "TW-FRAMEWORK-V1"
 
 
-def compute_tw_signature(program: Any, *, length: int = 16) -> str:
+def compute_tw_signature(program: Any, *, length: int = 16) -> Any:
     """
     किसी भी TW program (AST या IR, दोनों में .to_dict() होता है) का
     deterministic fingerprint निकालता है।
@@ -28,7 +28,7 @@ def compute_tw_signature(program: Any, *, length: int = 16) -> str:
     return content_hash(f"{TW_SIGNATURE_SALT}::{serialized}", length=length)
 
 
-def build_signature_banner(signature: str, *, title: str = "") -> str:
+def build_signature_banner(signature: str, *, title: str = "") -> Any:
     safe_title = (title or "").replace("-->", "-- >")
     return (
         f"<!-- Built with TW Framework (https://github.com/ffakraj-ui/twlang) "
@@ -36,7 +36,7 @@ def build_signature_banner(signature: str, *, title: str = "") -> str:
     )
 
 
-def build_signature_meta_tag(signature: str) -> str:
+def build_signature_meta_tag(signature: str) -> Any:
     return (
         f'<meta name="generator" content="TW Framework">\n'
         f'<meta name="tw-signature" content="{signature}">'

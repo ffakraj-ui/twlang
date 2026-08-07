@@ -21,13 +21,13 @@ from .ast_nodes import (
 from .lexer import tokenize_tw
 
 
-def _legacy():
+def _legacy() -> Any:
     from . import compiler
 
     return compiler
 
 
-def _convert_node(node: Any):
+def _convert_node(node: Any) -> Any:
     tag = getattr(node, "tag", "")
     if tag == "__let__":
         return LetNode(node.name, node.value)
@@ -78,7 +78,7 @@ def _convert_node(node: Any):
     )
 
 
-def _normalize_scalar(value: Any):
+def _normalize_scalar(value: Any) -> Any:
     compiler = _legacy()
     if not isinstance(value, str):
         return value
@@ -95,7 +95,7 @@ def _normalize_scalar(value: Any):
     return compiler.parse_literal_value(stripped)
 
 
-def from_legacy_page(page, source_path: str = "") -> Program:
+def from_legacy_page(page: Any, source_path: str = "") -> Program:
     program = Program(
         meta=PageMeta(
             title=page.title,
@@ -137,21 +137,21 @@ def parse_file(path: str, debug: bool = False) -> Program:
     return parse_text(source, base_dir=compiler.normalize_path(os.path.dirname(path)), file_path=path, debug=debug)
 
 
-def build_tw_ast(tokens, base_dir, file_path, source):
+def build_tw_ast(tokens, base_dir, file_path, source) -> Any:
     compiler = _legacy()
     return compiler.build_tw_ast(tokens, base_dir, file_path, source)
 
 
-def build_tss_ast_from_text(text: str):
+def build_tss_ast_from_text(text: str) -> Any:
     compiler = _legacy()
     return compiler.build_tss_ast_from_text(text)
 
 
-def program_to_dict(program: Program):
+def program_to_dict(program: Program) -> Any:
     return program.to_dict()
 
 
-def nodes_to_dict(nodes: List[Any]):
+def nodes_to_dict(nodes: List[Any]) -> List[Any]:
     return [node_to_dict(node) for node in nodes]
 
 

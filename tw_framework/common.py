@@ -1,8 +1,10 @@
+from typing import Any, Optional
+
 import hashlib
 import sys
 
 
-def content_hash(value, *, length=None):
+def content_hash(value, *, length=None) -> Any:
     if isinstance(value, str):
         payload = value.encode("utf-8")
     elif isinstance(value, bytes):
@@ -15,7 +17,7 @@ def content_hash(value, *, length=None):
     return digest
 
 
-def log(message, level="info", file=None):
+def log(message, level="info", file=None) -> None:
     stream = file
     if stream is None:
         stream = sys.stderr if str(level).lower() in {"warning", "error"} else sys.stdout

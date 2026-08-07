@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -11,7 +11,7 @@ class LexerToken:
     line: int
     col: int
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "type": self.type,
             "value": self.value,
@@ -20,7 +20,7 @@ class LexerToken:
         }
 
 
-def _legacy():
+def _legacy() -> Any:
     from . import compiler
 
     return compiler

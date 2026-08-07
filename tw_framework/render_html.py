@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import logging
 import os
-from typing import Dict, Generator, Iterable, List, Optional
+from typing import Any, Dict, Generator, Iterable, List, Optional
 
 from .ir import IRComponent, IRElement, IRFor, IRIf, IRLet, IRProgram, IRScript, IRText
 from .runtime_values import RuntimeEnvironment
@@ -14,7 +14,7 @@ from .streaming import render_program_streaming
 logger = logging.getLogger(__name__)
 
 
-def _legacy():
+def _legacy() -> Any:
     from . import compiler
 
     return compiler
@@ -25,7 +25,7 @@ VOID_TAGS = {"br", "hr", "img", "input", "meta", "link"}
 _COMPONENT_PROGRAM_CACHE: Dict[str, IRProgram] = {}
 
 
-def _interpolate(value, context):
+def _interpolate(value, context) -> Any:
     compiler = _legacy()
     if value is None:
         return ""
@@ -34,12 +34,12 @@ def _interpolate(value, context):
     return compiler.interpolate(value, context)
 
 
-def _evaluate(expr: str, context):
+def _evaluate(expr: str, context) -> Any:
     compiler = _legacy()
     return compiler.evaluate_expression(expr, context)
 
 
-def build_runtime_context(program, context: Optional[Dict] = None) -> Dict:
+def build_runtime_context(program: Any, context: Optional[Dict] = None) -> Dict:
     compiler = _legacy()
     runtime_context: Dict = {}
     runtime_context.update(dict(program.lets))
@@ -54,7 +54,7 @@ def build_runtime_context(program, context: Optional[Dict] = None) -> Dict:
     return runtime_context
 
 
-def _render_attrs(attrs: Iterable[Dict], env: RuntimeEnvironment) -> str:
+def _render_attrs(attrs: Iterable[Dict], env: RuntimeEnvironment) -> Any:
     parts: List[str] = []
     context = env.to_context()
     for attr in attrs:
@@ -68,7 +68,7 @@ def _render_attrs(attrs: Iterable[Dict], env: RuntimeEnvironment) -> str:
     return f" {' '.join(parts)}" if parts else ""
 
 
-def _render_style(styles: Iterable[Dict], env: RuntimeEnvironment) -> str:
+def _render_style(styles: Iterable[Dict], env: RuntimeEnvironment) -> Any:
     resolved = []
     context = env.to_context()
     for item in styles:
@@ -106,7 +106,7 @@ def _load_component_ir(name: str) -> Optional[IRProgram]:
     return ir_program
 
 
-def render_node(node, env: RuntimeEnvironment) -> str:
+def render_node(node: Any, env: RuntimeEnvironment) -> Any:
     context = env.to_context()
     if isinstance(node, IRText):
         return html.escape(str(_interpolate(node.value, context)))
@@ -173,7 +173,7 @@ def render_node(node, env: RuntimeEnvironment) -> str:
     return ""
 
 
-def render_program(program: IRProgram, context: Optional[Dict] = None) -> str:
+def render_program(program: IRProgram, context: Optional[Dict] = None) -> Any:
     env = RuntimeEnvironment(values={**dict(program.lets), **dict(program.state), **dict(context or {})})
     body = "".join(render_node(node, env) for node in program.body)
     title = html.escape(str(program.meta.get("title") or "TW Program"))
@@ -199,7 +199,7 @@ def render_program(program: IRProgram, context: Optional[Dict] = None) -> str:
     return html_output
 
 
-def _inject_tw_signature(html_doc: str, banner: str, meta_tag: str) -> str:
+def _inject_tw_signature(html_doc: str, banner: str, meta_tag: str) -> Any:
     """
     Legacy renderer सीधे HTML string return करता है, IR tree नहीं, इसलिए
     यहां हम एक best-effort post-processing करते हैं: document के सबसे ऊपर
@@ -222,7 +222,7 @@ def render_streaming(ir_program: IRProgram, *, page_program=None, context: Optio
     yield from render_program_streaming(ir_program, context=context)
 
 
-def render_program_document(ir_program: IRProgram, *, page_program=None, context: Optional[Dict] = None, css_href: Optional[str] = None, debug: bool = False) -> str:
+def render_program_document(ir_program: IRProgram, *, page_program=None, context: Optional[Dict] = None, css_href: Optional[str] = None, debug: bool = False) -> Any:
     compiler = _legacy()
     merged_context = build_runtime_context(page_program, context=context) if page_program is not None else dict(context or {})
 

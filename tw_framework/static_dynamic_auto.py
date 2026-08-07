@@ -6,14 +6,14 @@ based on the page's content and dependencies.
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from . import compiler
 
 logger = logging.getLogger(__name__)
 
 
-def determine_render_mode(page_path: str) -> str:
+def determine_render_mode(page_path: str) -> Any:
     """Analyze a page and return the recommended render mode."""
     raw = compiler.read_text_file(page_path)
     # Check for explicit render mode

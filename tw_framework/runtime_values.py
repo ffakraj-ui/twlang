@@ -9,17 +9,17 @@ class RuntimeEnvironment:
     values: Dict[str, Any] = field(default_factory=dict)
     parent: Optional["RuntimeEnvironment"] = None
 
-    def get(self, name: str, default=None):
+    def get(self, name: str, default=None) -> Any:
         if name in self.values:
             return self.values[name]
         if self.parent is not None:
             return self.parent.get(name, default)
         return default
 
-    def set(self, name: str, value: Any):
+    def set(self, name: str, value: Any) -> None:
         self.values[name] = value
 
-    def to_context(self) -> Dict[str, Any]:
+    def to_context(self) -> Any:
         data = self.parent.to_context() if self.parent is not None else {}
         data.update(self.values)
         return data

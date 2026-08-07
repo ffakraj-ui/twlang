@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class BuildReport:
     """Collects build metrics and generates a report."""
 
-    def __init__(self, project_root: str):
+    def __init__(self, project_root: str) -> None:
         self.project_root = project_root
         self.start_time = time.time()
         self.pages: List[Dict[str, Any]] = []
@@ -30,24 +30,24 @@ class BuildReport:
         self.slowest_pages: List[Dict[str, Any]] = []
         self.build_timings: Dict[str, float] = {}
 
-    def add_page(self, path: str, size: int, duration: float):
+    def add_page(self, path: str, size: int, duration: float) -> None:
         self.pages.append({"path": path, "size": size, "duration": duration})
         self.total_bundle_size += size
 
-    def add_component(self, name: str, size: int):
+    def add_component(self, name: str, size: int) -> None:
         self.components.append({"name": name, "size": size})
         self.total_bundle_size += size
 
-    def add_css_size(self, size: int):
+    def add_css_size(self, size: int) -> None:
         self.total_css_size += size
 
-    def add_js_size(self, size: int):
+    def add_js_size(self, size: int) -> None:
         self.total_js_size += size
 
-    def add_image_size(self, size: int):
+    def add_image_size(self, size: int) -> None:
         self.total_image_size += size
 
-    def add_unused_code(self, item: str):
+    def add_unused_code(self, item: str) -> None:
         self.unused_code.append(item)
 
     def finalize(self) -> Dict[str, Any]:
@@ -70,7 +70,7 @@ class BuildReport:
             "build_timings": self.build_timings,
         }
 
-    def save(self):
+    def save(self) -> Any:
         report = self.finalize()
         report_dir = os.path.join(self.project_root, ".tw")
         os.makedirs(report_dir, exist_ok=True)

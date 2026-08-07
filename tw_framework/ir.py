@@ -13,7 +13,7 @@ class IRNode:
 class IRText(IRNode):
     value: str
 
-    def __init__(self, value: str):
+    def __init__(self, value: str) -> None:
         super().__init__("text")
         self.value = value
 
@@ -23,7 +23,7 @@ class IRLet(IRNode):
     name: str
     value: Any
 
-    def __init__(self, name: str, value: Any):
+    def __init__(self, name: str, value: Any) -> None:
         super().__init__("let")
         self.name = name
         self.value = value
@@ -35,7 +35,7 @@ class IRIf(IRNode):
     children: List[IRNode] = field(default_factory=list)
     else_children: List[IRNode] = field(default_factory=list)
 
-    def __init__(self, condition: str, children=None, else_children=None):
+    def __init__(self, condition: str, children=None, else_children=None) -> None:
         super().__init__("if")
         self.condition = condition
         self.children = children or []
@@ -48,7 +48,7 @@ class IRFor(IRNode):
     iterable: str
     children: List[IRNode] = field(default_factory=list)
 
-    def __init__(self, var_name: str, iterable: str, children=None):
+    def __init__(self, var_name: str, iterable: str, children=None) -> None:
         super().__init__("for")
         self.var_name = var_name
         self.iterable = iterable
@@ -59,7 +59,7 @@ class IRFor(IRNode):
 class IRScript(IRNode):
     raw_js: str
 
-    def __init__(self, raw_js: str):
+    def __init__(self, raw_js: str) -> None:
         super().__init__("script")
         self.raw_js = raw_js
 
@@ -74,7 +74,7 @@ class IRElement(IRNode):
     router: Dict[str, Any] = field(default_factory=dict)
     children: List[IRNode] = field(default_factory=list)
 
-    def __init__(self, tag: str, text=None, attrs=None, styles=None, events=None, router=None, children=None):
+    def __init__(self, tag: str, text=None, attrs=None, styles=None, events=None, router=None, children=None) -> None:
         super().__init__("element")
         self.tag = tag
         self.text = text
@@ -91,7 +91,7 @@ class IRComponent(IRNode):
     props: List[Dict[str, Any]] = field(default_factory=list)
     children: List[IRNode] = field(default_factory=list)
 
-    def __init__(self, name: str, props=None, children=None):
+    def __init__(self, name: str, props=None, children=None) -> None:
         super().__init__("component")
         self.name = name
         self.props = props or []
@@ -106,7 +106,7 @@ class IRProgram:
     state: Dict[str, Any] = field(default_factory=dict)
     body: List[IRNode] = field(default_factory=list)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "meta": dict(self.meta),
             "head": dict(self.head),
@@ -116,7 +116,7 @@ class IRProgram:
         }
 
 
-def ir_node_to_dict(node: IRNode):
+def ir_node_to_dict(node: IRNode) -> Dict[str, Any]:
     if isinstance(node, IRText):
         return {"kind": node.kind, "value": node.value}
     if isinstance(node, IRLet):

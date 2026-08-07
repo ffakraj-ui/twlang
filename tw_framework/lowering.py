@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from typing import Any
+
 from .ast_nodes import ComponentNode, ElementNode, ForNode, IfNode, LetNode, Program, ScriptNode, TextNode
 from .ir import IRComponent, IRElement, IRFor, IRIf, IRLet, IRProgram, IRScript, IRText
 
 
-def lower_node(node):
+def lower_node(node) -> Any:
     if isinstance(node, TextNode):
         return IRText(node.value)
     if isinstance(node, LetNode):

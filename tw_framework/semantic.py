@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from .ast_nodes import ComponentNode, ElementNode, ForNode, IfNode, LetNode, Program
 from .diagnostics import Diagnostic, DiagnosticBag
@@ -9,14 +9,14 @@ from .diagnostics import Diagnostic, DiagnosticBag
 logger = logging.getLogger(__name__)
 
 
-def _legacy():
+def _legacy() -> Any:
     from . import compiler
 
     return compiler
 
 
 class SemanticAnalyzer:
-    def _check_expression(self, expr, scope, diagnostics: DiagnosticBag, source_path: str, label: str):
+    def _check_expression(self, expr, scope, diagnostics: DiagnosticBag, source_path: str, label: str) -> None:
         compiler = _legacy()
         try:
             names = compiler.collect_expression_names(expr)
@@ -34,14 +34,14 @@ class SemanticAnalyzer:
                     )
                 )
 
-    def _check_interpolations(self, text, scope, diagnostics: DiagnosticBag, source_path: str, label: str):
+    def _check_interpolations(self, text, scope, diagnostics: DiagnosticBag, source_path: str, label: str) -> None:
         compiler = _legacy()
         if not isinstance(text, str):
             return
         for expr in compiler.extract_placeholder_expressions(text):
             self._check_expression(expr, scope, diagnostics, source_path, label)
 
-    def _walk_nodes(self, nodes, scope, diagnostics: DiagnosticBag, source_path: str):
+    def _walk_nodes(self, nodes, scope, diagnostics: DiagnosticBag, source_path: str) -> None:
         next_scope = dict(scope)
         for node in nodes:
             if isinstance(node, LetNode):
@@ -72,7 +72,7 @@ class SemanticAnalyzer:
                     self._check_interpolations(prop.value, next_scope, diagnostics, source_path, f"`{node.name}` prop `{prop.name}`")
                 self._walk_nodes(node.children, dict(next_scope), diagnostics, source_path)
 
-    def _check_page_meta(self, program: Program, diagnostics: DiagnosticBag, source_path: str):
+    def _check_page_meta(self, program: Program, diagnostics: DiagnosticBag, source_path: str) -> None:
         meta = program.meta
 
         valid_render_modes = {"static", "server", "edge"}

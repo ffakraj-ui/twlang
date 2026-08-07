@@ -17,7 +17,7 @@ from . import compiler
 logger = logging.getLogger(__name__)
 
 
-def optimize_for_production(output_dir: str):
+def optimize_for_production(output_dir: str) -> None:
     """Apply production optimizations to the output directory."""
     # Minify HTML files
     for root, _, files in os.walk(output_dir):

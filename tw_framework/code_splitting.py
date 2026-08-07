@@ -8,7 +8,7 @@ import hashlib
 import json
 import logging
 import os
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from . import compiler
 
@@ -54,13 +54,13 @@ def _build_page_js(page: dict) -> Optional[str]:
     return None
 
 
-def _page_chunk_name(page_path: str) -> str:
+def _page_chunk_name(page_path: str) -> Any:
     """Generate a deterministic chunk name from the page path."""
     normalized = page_path.replace(os.sep, "/").lstrip("/")
     return normalized.replace("/", "_").replace(".", "_")
 
 
-def _write_chunk(js_content: str, name: str, output_dir: str) -> str:
+def _write_chunk(js_content: str, name: str, output_dir: str) -> Any:
     """Write a JavaScript chunk to the output directory and return its URL."""
     digest = hashlib.sha256(js_content.encode("utf-8")).hexdigest()[:12]
     filename = f"{name}.{digest}.js"

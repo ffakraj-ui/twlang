@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from .lowering import lower_program
 from .parser import parse_file, parse_text
@@ -16,7 +16,7 @@ class InterpreterResult:
 
 
 class Interpreter:
-    def run_program(self, program, context: Optional[Dict] = None, css_href: Optional[str] = None) -> InterpreterResult:
+    def run_program(self, program: Any, context: Optional[Dict] = None, css_href: Optional[str] = None) -> InterpreterResult:
         ir_program = lower_program(program)
         runtime_context = build_runtime_context(program, context=context)
         html = render_program_document(ir_program, page_program=program, context=runtime_context, css_href=css_href)

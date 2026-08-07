@@ -1,3 +1,5 @@
+from typing import Any, Callable, Dict, Generator, Optional
+
 """Minimal RFC 6455 WebSocket implementation, stdlib-only (no external deps).
 
 Handles the HTTP Upgrade handshake and basic text/binary frame
@@ -25,18 +27,18 @@ class WebSocketClosed(Exception):
     """Raised internally when the peer closes the connection or the socket errors out."""
 
 
-def is_websocket_upgrade(headers) -> bool:
+def is_websocket_upgrade(headers: Dict[str, Any]) -> bool:
     connection = str(headers.get("Connection", "")).lower()
     upgrade = str(headers.get("Upgrade", "")).lower()
     return "upgrade" in connection and upgrade == "websocket"
 
 
-def _compute_accept_key(client_key: str) -> str:
+def _compute_accept_key(client_key: str) -> Any:
     sha1 = hashlib.sha1((client_key + WS_MAGIC).encode("utf-8")).digest()
     return base64.b64encode(sha1).decode("ascii")
 
 
-def perform_handshake(handler) -> bool:
+def perform_handshake(handler: Callable[..., Any]) -> bool:
     """Sends the 101 Switching Protocols response directly over the raw socket.
     Returns True on success. `handler` is a BaseHTTPRequestHandler instance."""
     client_key = handler.headers.get("Sec-WebSocket-Key")
@@ -70,7 +72,7 @@ def _recv_exact(sock: socket.socket, n: int) -> bytes:
     return b"".join(chunks)
 
 
-def _read_frame(sock: socket.socket):
+def _read_frame(sock: socket.socket) -> Any:
     """Reads one WebSocket frame from the client. Returns (opcode, payload_bytes)."""
     header = _recv_exact(sock, 2)
     b0, b1 = header[0], header[1]
@@ -111,7 +113,7 @@ class WebSocketConnection:
     """A single upgraded connection. One instance per client; runs on its
     own request-handler thread."""
 
-    def __init__(self, sock: socket.socket, path: str, headers=None):
+    def __init__(self, sock: socket.socket, path: str, headers=None) -> None:
         self.sock = sock
         self.path = path
         self.headers = headers or {}
@@ -148,7 +150,7 @@ class WebSocketConnection:
         except (BrokenPipeError, ConnectionResetError, OSError):
             self.closed = True
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[Any, None, None]:
         """Yields text (str) or binary (bytes) messages until the client
         disconnects. Ping/pong and close frames are handled transparently."""
         buffer = bytearray()

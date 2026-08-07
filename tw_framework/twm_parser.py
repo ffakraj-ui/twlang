@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 
 _IDENT_RE = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
@@ -30,7 +30,7 @@ class TWMParseError(Exception):
     pass
 
 
-def _scan_matching_brace(source: str, open_brace_index: int) -> int:
+def _scan_matching_brace(source: str, open_brace_index: int) -> Any:
     """
     Returns index of the matching closing brace `}` for the `{` at open_brace_index.
     Implements JS-like string/comment awareness so braces inside strings/comments
@@ -170,7 +170,7 @@ def parse_twm_functions(source: str) -> List[Dict[str, str]]:
     return functions
 
 
-def compile_twm_module_to_js(source: str, *, module_id: str) -> str:
+def compile_twm_module_to_js(source: str, *, module_id: str) -> Any:
     funcs = parse_twm_functions(source)
     lines: List[str] = []
     lines.append(f"// TW module: {module_id}")
@@ -185,7 +185,7 @@ def compile_twm_module_to_js(source: str, *, module_id: str) -> str:
     return "\n".join(lines)
 
 
-def compile_twm_module_to_cjs(source: str, *, module_id: str) -> str:
+def compile_twm_module_to_cjs(source: str, *, module_id: str) -> Any:
     """
     Compile `.twm` into a CommonJS module for server-side execution (Node.js).
 
@@ -211,10 +211,10 @@ def compile_twm_module_to_cjs(source: str, *, module_id: str) -> str:
 
 
 def build_page_twm_bundle_js(
-    sources: List[Dict[str, str]],
+    sources: List[Dict[str, Any]],
     *,
     page_source_path: str = "",
-) -> str:
+) -> Any:
     """
     Produces a per-page JS bundle that:
     - creates the module registry
@@ -261,7 +261,7 @@ def build_page_twm_bundle_js(
     return "\n".join(parts)
 
 
-def _js_string(value: str) -> str:
+def _js_string(value: str) -> Any:
     return str(value).replace("\\", "\\\\").replace("'", "\\'")
 
 

@@ -8,14 +8,14 @@ expected, found, suggestions, and documentation link.
 
 import logging
 import os
-from typing import Optional
+from typing import Any, Optional
 
 from .diagnostics import Diagnostic
 
 logger = logging.getLogger(__name__)
 
 
-def format_error(diag: Diagnostic, project_root: str) -> str:
+def format_error(diag: Diagnostic, project_root: str) -> Any:
     """Format a diagnostic into a human-readable string with all required fields."""
     lines = []
     code_display = diag.code if str(diag.code).upper().startswith("TW") else f"TW{diag.code}"

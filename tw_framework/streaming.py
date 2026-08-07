@@ -7,7 +7,7 @@ enabling progressive rendering and faster Time-to-First-Byte.
 
 import html
 import logging
-from typing import Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 from .ir import IRComponent, IRElement, IRFor, IRIf, IRLet, IRProgram, IRScript, IRText
 from .runtime_values import RuntimeEnvironment
@@ -15,7 +15,7 @@ from .runtime_values import RuntimeEnvironment
 logger = logging.getLogger(__name__)
 
 
-def _interpolate(value, context):
+def _interpolate(value, context) -> Any:
     from . import compiler
     if value is None:
         return ""
@@ -24,12 +24,12 @@ def _interpolate(value, context):
     return compiler.interpolate(value, context)
 
 
-def _evaluate(expr: str, context):
+def _evaluate(expr: str, context) -> Any:
     from . import compiler
     return compiler.evaluate_expression(expr, context)
 
 
-def render_node_streaming(node, env: RuntimeEnvironment) -> Generator[str, None, None]:
+def render_node_streaming(node: Any, env: RuntimeEnvironment) -> Generator[str, None, None]:
     """Yield HTML chunks for a single IR node."""
     context = env.to_context()
     if isinstance(node, IRText):
@@ -97,7 +97,7 @@ def render_node_streaming(node, env: RuntimeEnvironment) -> Generator[str, None,
             yield f"<{node.tag}{attrs}{style_attr}{event_attrs}>{text}{children}</{node.tag}>"
 
 
-def _render_attrs(attrs, env):
+def _render_attrs(attrs, env) -> Any:
     parts = []
     context = env.to_context()
     for attr in attrs:
@@ -111,7 +111,7 @@ def _render_attrs(attrs, env):
     return f" {' '.join(parts)}" if parts else ""
 
 
-def _render_style(styles, env):
+def _render_style(styles, env) -> Any:
     resolved = []
     context = env.to_context()
     for item in styles:

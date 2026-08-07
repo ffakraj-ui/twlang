@@ -17,7 +17,7 @@ import socketserver
 import threading
 import time
 import urllib.parse
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from . import compiler
 from .common import content_hash, log
@@ -73,7 +73,7 @@ class SSRCache:
             self._store.move_to_end(key)
             return entry["body"]
 
-    def _enforce_namespace_limit(self, namespace: Optional[str], namespace_max: Optional[int]):
+    def _enforce_namespace_limit(self, namespace: Optional[str], namespace_max: Optional[int]) -> None:
         if not namespace or not namespace_max or namespace_max <= 0:
             return
         while True:
@@ -90,7 +90,7 @@ class SSRCache:
         *,
         namespace: Optional[str] = None,
         namespace_max: Optional[int] = None,
-    ):
+    ) -> None:
         with self._lock:
             self._store[key] = {
                 "body": body,
@@ -105,18 +105,18 @@ class SSRCache:
                 while self.max_entries and len(self._store) > self.max_entries:
                     self._store.popitem(last=False)
 
-    def invalidate(self, key: str):
+    def invalidate(self, key: str) -> None:
         with self._lock:
             self._store.pop(key, None)
 
-    def clear(self):
+    def clear(self) -> None:
         with self._lock:
             self._store.clear()
 
 
 # ─── ETag / static file helpers ──────────────────────────────────────────────
 
-def compute_etag(data: bytes) -> str:
+def compute_etag(data: bytes) -> Any:
     return '"' + content_hash(data) + '"'
 
 
@@ -149,7 +149,7 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
     class TWProductionHandler(http.server.BaseHTTPRequestHandler):
         server_version = "TWServer/1.0"
 
-        def log_message(self, fmt, *args):
+        def log_message(self, fmt, *args) -> None:
             ts = time.strftime("%H:%M:%S")
             log(f"[{ts}] {self.command} {self.path} — {fmt % args}")
 
@@ -161,7 +161,7 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
         def do_OPTIONS(self):self._handle("OPTIONS")
         def do_HEAD(self):   self._handle("HEAD")
 
-        def _handle(self, method: str):
+        def _handle(self, method: str) -> None:
             raw_path = self.path
             url_path = normalize_url_path(raw_path)
 
@@ -304,7 +304,7 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
 
             self._serve_page(match, method, mw, raw_path, request_headers)
 
-        def _build_page_cache_key(self, match: RouteMatch, raw_path: str, request_headers: Dict[str, str], render_mode: str, page_ast) -> str:
+        def _build_page_cache_key(self, match: RouteMatch, raw_path: str, request_headers: Dict[str, str], render_mode: str, page_ast: Any) -> Any:
             parsed = urllib.parse.urlparse(raw_path)
             cache_by = getattr(page_ast, "cache_by", None)
             if render_mode == "edge" and not cache_by:
@@ -325,7 +325,7 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
                 return f"{match.route_path}::{render_mode}::{selector}::{parsed.query or ''}"
             return f"{match.route_path}::{render_mode}::{selector}"
 
-        def _serve_page(self, match: RouteMatch, method: str, mw: dict, raw_path: str, request_headers: Dict[str, str]):
+        def _serve_page(self, match: RouteMatch, method: str, mw: dict, raw_path: str, request_headers: Dict[str, str]) -> None:
             page_path = match.page_info["path"]
             try:
                 page_ast = compiler.load_page_ast_from_file(page_path)
@@ -398,7 +398,7 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
                 cookies=mw.get("cookies", []),
             )
 
-        def _serve_404(self, mw: dict):
+        def _serve_404(self, mw: dict) -> None:
             try:
                 custom = project.compile_special_page(404, dev_mode=False)
                 if custom:
@@ -410,7 +410,7 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
             self._send(404, render_error_html("Not Found", f"Route not found: {normalize_url_path(self.path)}", 404),
                        "text/html; charset=utf-8", extra_headers=mw.get("headers", []), cookies=mw.get("cookies", []))
 
-        def _serve_500(self, message: str, mw: dict):
+        def _serve_500(self, message: str, mw: dict) -> None:
             try:
                 custom = project.compile_special_page(500, dev_mode=False)
                 if custom:
@@ -429,7 +429,7 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
 
         def _send(self, status: int, body: bytes, content_type: str,
                   extra_headers: Optional[List] = None,
-                  cookies: Optional[List] = None):
+                  cookies: Optional[List] = None) -> None:
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
@@ -471,7 +471,7 @@ def run_production_server(
     port: int = 8000,
     output_dir: Optional[str] = None,
     workers: Optional[int] = None,
-):
+) -> None:
     """
     Start the TW production server.
 
@@ -515,7 +515,7 @@ def run_production_server(
 
     stop_event = threading.Event()
 
-    def _shutdown(signum, frame):
+    def _shutdown(signum, frame) -> None:
         log("\nShutting down...")
         stop_event.set()
         threading.Thread(target=server.shutdown, daemon=True).start()

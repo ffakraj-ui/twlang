@@ -1,3 +1,5 @@
+from typing import Any
+
 """
 TW Client Reactivity System
 Generates a lightweight JS runtime injected into pages that use:
@@ -280,7 +282,7 @@ def parse_state_block(source: str) -> dict:
     return state
 
 
-def has_reactivity(source: str) -> bool:
+def has_reactivity(source: str) -> Any:
     """Quick check: does this .tw file use any reactive features?"""
     patterns = [
         r'\bstate\s*\{',
@@ -294,14 +296,14 @@ def has_reactivity(source: str) -> bool:
     return any(re.search(p, source) for p in patterns)
 
 
-def build_state_init_script(state: dict) -> str:
+def build_state_init_script(state: dict) -> Any:
     """Generates the inline script that seeds __twDefineState."""
     if not state:
         return ""
     return f"__twDefineState({json.dumps(state, ensure_ascii=False)});"
 
 
-def get_reactivity_runtime_js() -> str:
+def get_reactivity_runtime_js() -> Any:
     return _TW_REACTIVE_RUNTIME
 
 

@@ -1,3 +1,5 @@
+from typing import Any, Callable, List, Optional
+
 import importlib.util
 import logging
 import os
@@ -25,28 +27,28 @@ class LoadedExtension:
 
 
 class PluginAPI:
-    def __init__(self, manager, extension_name):
+    def __init__(self, manager, extension_name) -> None:
         self.manager = manager
         self.extension_name = extension_name
 
-    def register_hook(self, event_name, handler):
+    def register_hook(self, event_name, handler) -> None:
         self.manager.register_hook(event_name, handler, self.extension_name)
 
-    def hook(self, event_name, handler):
+    def hook(self, event_name, handler) -> None:
         self.register_hook(event_name, handler)
 
-    def get_config(self):
+    def get_config(self) -> Any:
         return dict(self.manager.config or {})
 
-    def get_env(self):
+    def get_env(self) -> Any:
         return dict(self.manager.env or {})
 
-    def get_project_root(self):
+    def get_project_root(self) -> Any:
         return self.manager.project_root
 
 
 class ExtensionManager:
-    def __init__(self, project_root, config=None, env=None):
+    def __init__(self, project_root, config=None, env=None) -> None:
         self.project_root = os.path.abspath(project_root)
         self.config = dict(config or {})
         self.env = dict(env or {})
@@ -54,7 +56,7 @@ class ExtensionManager:
         self.hooks = {}
         self.errors = []
 
-    def refresh(self, config=None, env=None):
+    def refresh(self, config=None, env=None) -> Any:
         self.config = dict(config or self.config or {})
         self.env = dict(env or self.env or {})
         self.extensions = []
@@ -66,7 +68,7 @@ class ExtensionManager:
             self._load_extension(path)
         return self
 
-    def discover_extension_paths(self):
+    def discover_extension_paths(self) -> Any:
         paths = []
         for folder in self._extension_roots():
             if not os.path.isdir(folder):
@@ -79,10 +81,10 @@ class ExtensionManager:
         normalized = sorted(set(os.path.abspath(path) for path in paths))
         return self._apply_allowlist(normalized)
 
-    def dependency_paths(self):
+    def dependency_paths(self) -> Any:
         return self.discover_extension_paths()
 
-    def emit(self, event_name, **payload):
+    def emit(self, event_name, **payload) -> Any:
         canonical = self._normalize_event_name(event_name)
         event_payload = dict(payload)
         event_payload.setdefault("event", canonical)
@@ -100,7 +102,7 @@ class ExtensionManager:
                 self.errors.append(f"{hook['extension']}::{canonical}: {err}\n{tb}")
         return event_payload
 
-    def register_hook(self, event_name, handler, extension_name):
+    def register_hook(self, event_name, handler, extension_name) -> None:
         canonical = self._normalize_event_name(event_name)
         if not callable(handler):
             raise TypeError(f"Hook `{canonical}` from `{extension_name}` must be callable")
@@ -109,18 +111,18 @@ class ExtensionManager:
             "handler": handler,
         })
 
-    def _extension_roots(self):
+    def _extension_roots(self) -> List[Any]:
         home_dir = os.path.join(self.project_root, "[home]")
         return [
             os.path.join(home_dir, "plugins"),
             os.path.join(home_dir, "hooks"),
         ]
 
-    def _normalize_event_name(self, event_name):
+    def _normalize_event_name(self, event_name) -> Any:
         raw = str(event_name or "").strip()
         return HOOK_ALIASES.get(raw, raw)
 
-    def _configured_allowlist(self):
+    def _configured_allowlist(self) -> Any:
         raw = (
             self.config.get("plugin_allowlist")
             or self.config.get("plugins_allowlist")
@@ -138,7 +140,7 @@ class ExtensionManager:
             if str(item).strip()
         }
 
-    def _apply_allowlist(self, paths):
+    def _apply_allowlist(self, paths) -> Any:
         allowlist = self._configured_allowlist()
         if not allowlist:
             return paths
@@ -158,7 +160,7 @@ class ExtensionManager:
             )
         return allowed
 
-    def _warn_extension_execution(self, paths):
+    def _warn_extension_execution(self, paths) -> None:
         if not paths:
             return
         rendered = ", ".join(
@@ -172,7 +174,7 @@ class ExtensionManager:
                 rendered,
             )
 
-    def _load_extension(self, path):
+    def _load_extension(self, path) -> None:
         name = os.path.splitext(os.path.basename(path))[0]
         module_name = f"tw_ext_{name}_{content_hash(path, length=10)}"
         spec = importlib.util.spec_from_file_location(module_name, path)

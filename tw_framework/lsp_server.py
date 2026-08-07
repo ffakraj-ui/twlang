@@ -25,7 +25,7 @@ class LSPServer:
         "cache_size", "redirect", "rewrite",
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.root_uri: Optional[str] = None
         self.root_path: Optional[str] = None
         self.documents: Dict[str, str] = {}
@@ -34,7 +34,7 @@ class LSPServer:
 
     # ── Lazy framework imports ──────────────────────────────────────
 
-    def _ensure_compiler(self):
+    def _ensure_compiler(self) -> Any:
         if self._compiler is None:
             try:
                 from . import compiler
@@ -66,21 +66,21 @@ class LSPServer:
         except Exception:
             return None
 
-    def _write_message(self, msg: Dict):
+    def _write_message(self, msg: Dict) -> None:
         body = json.dumps(msg).encode("utf-8")
         header = f"Content-Length: {len(body)}\r\n\r\n"
         sys.stdout.buffer.write(header.encode("utf-8"))
         sys.stdout.buffer.write(body)
         sys.stdout.buffer.flush()
 
-    def _send_response(self, request_id: Any, result: Any):
+    def _send_response(self, request_id: Any, result: Any) -> None:
         self._write_message({
             "jsonrpc": "2.0",
             "id": request_id,
             "result": result,
         })
 
-    def _send_notification(self, method: str, params: Dict):
+    def _send_notification(self, method: str, params: Dict) -> None:
         self._write_message({
             "jsonrpc": "2.0",
             "method": method,
@@ -89,7 +89,7 @@ class LSPServer:
 
     # ── Main loop ───────────────────────────────────────────────────
 
-    def run(self):
+    def run(self) -> None:
         while True:
             msg = self._read_message()
             if msg is None:
@@ -193,7 +193,7 @@ class LSPServer:
 
     # ── Diagnostic engine ──────────────────────────────────────────
 
-    def _publish_diagnostics(self, uri: str, text: str):
+    def _publish_diagnostics(self, uri: str, text: str) -> None:
         diagnostics = []
         ext = uri.rsplit(".", 1)[-1].lower() if "." in uri else ""
 
@@ -207,7 +207,7 @@ class LSPServer:
             "diagnostics": diagnostics,
         })
 
-    def _diagnose_tw(self, text: str, uri: str) -> List[Dict]:
+    def _diagnose_tw(self, text: str, uri: str) -> Any:
         compiler = self._ensure_compiler()
         if not compiler:
             return []
@@ -288,7 +288,7 @@ class LSPServer:
 
         return unique
 
-    def _diagnose_tss(self, text: str, uri: str) -> List[Dict]:
+    def _diagnose_tss(self, text: str, uri: str) -> Any:
         compiler = self._ensure_compiler()
         if not compiler:
             return []
@@ -320,7 +320,7 @@ class LSPServer:
 
         return diagnostics
 
-    def _compiler_error_to_diagnostic(self, err, lines: List[str]) -> Dict:
+    def _compiler_error_to_diagnostic(self, err: Any, lines: List[str]) -> Dict:
         """Convert a CompilerError to an LSP diagnostic with proper range."""
         line = 0
         char = 0
@@ -364,7 +364,7 @@ class LSPServer:
 
     # ── Completion engine ───────────────────────────────────────────
 
-    def _get_completions(self, text: str, line: int, char: int, uri: str) -> List[Dict]:
+    def _get_completions(self, text: str, line: int, char: int, uri: str) -> Any:
         lines = text.splitlines()
         if line >= len(lines):
             return []
@@ -543,7 +543,7 @@ class LSPServer:
 
     # ── Helpers ──────────────────────────────────────────────────────
 
-    def _extract_word(self, line: str, char: int) -> str:
+    def _extract_word(self, line: str, char: int) -> Any:
         if char > len(line):
             char = len(line)
         left = char
@@ -554,7 +554,7 @@ class LSPServer:
             right += 1
         return line[left:right]
 
-    def _token_range(self, token, lines: List[str] = None) -> Dict:
+    def _token_range(self, token: Any, lines: Optional[List[str]] = None) -> Dict:
         """Build a proper LSP range for a token — underlines the exact token text."""
         line = max(0, (getattr(token, "line", 1) or 1) - 1)
         col = max(0, (getattr(token, "col", 1) or 1) - 1)
@@ -571,7 +571,7 @@ class LSPServer:
         }
 
 
-def main():
+def main() -> None:
     server = LSPServer()
     server.run()
 

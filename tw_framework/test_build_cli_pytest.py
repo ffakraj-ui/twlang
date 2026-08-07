@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import http.server
 import json
 import os
@@ -62,7 +64,7 @@ BODY { div "Home" }
     return root
 
 
-def test_static_route_build_pretty_urls(tmp_path: Path):
+def test_static_route_build_pretty_urls(tmp_path: Path) -> None:
     root = make_project(tmp_path, pretty_urls=True)
     home = root / "[home]"
     _write(
@@ -77,7 +79,7 @@ BODY { h1 "About" }
     assert (root / "dist" / "about" / "index.html").exists()
 
 
-def test_dynamic_route_single_build(tmp_path: Path):
+def test_dynamic_route_single_build(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(
@@ -94,7 +96,7 @@ BODY { h1 "{id}" }
     assert (root / "dist" / "b" / "index.html").exists()
 
 
-def test_dynamic_route_catch_all_build(tmp_path: Path):
+def test_dynamic_route_catch_all_build(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(
@@ -110,7 +112,7 @@ BODY { p "{x}" }
     assert (root / "dist" / "a" / "b" / "index.html").exists()
 
 
-def test_dynamic_route_optional_catch_all_build(tmp_path: Path):
+def test_dynamic_route_optional_catch_all_build(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(
@@ -127,7 +129,7 @@ BODY { p "ok" }
     assert (root / "dist" / "index.html").exists()
 
 
-def test_imported_component_supports_unicode_text(tmp_path: Path):
+def test_imported_component_supports_unicode_text(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(
@@ -156,7 +158,7 @@ BODY {
     assert "Hello — “world” 🚀" in html
 
 
-def test_imported_component_repairs_common_mojibake(tmp_path: Path):
+def test_imported_component_repairs_common_mojibake(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(
@@ -183,7 +185,7 @@ BODY {
     assert "Python • JavaScript — HTML" in html
 
 
-def test_component_block_accepts_semicolon_separators(tmp_path: Path):
+def test_component_block_accepts_semicolon_separators(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(
@@ -217,7 +219,7 @@ BODY {
     assert "Admin panel UI" in html
 
 
-def test_circular_component_import_detection(tmp_path: Path):
+def test_circular_component_import_detection(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     framework.configure_compiler_paths(str(root))
     _write(root / "[home]" / "components" / "A.tw", 'div { import "B" p "A" }')
@@ -227,7 +229,7 @@ def test_circular_component_import_detection(tmp_path: Path):
     assert "Circular component import" in str(exc.value)
 
 
-def test_component_not_found_error(tmp_path: Path):
+def test_component_not_found_error(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(
@@ -241,7 +243,7 @@ BODY { import "Nope" }
     assert summary.errors >= 1
 
 
-def test_component_level_load_directive(tmp_path: Path):
+def test_component_level_load_directive(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(home / "styles" / "extra.tss", ".x { color red }")
@@ -265,7 +267,7 @@ BODY { import "Card" Card {} }
     assert "color: red" in html
 
 
-def test_resolve_source_path_supports_project_and_home_aliases(tmp_path: Path):
+def test_resolve_source_path_supports_project_and_home_aliases(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     framework.configure_compiler_paths(str(root))
     base_dir = str(root / "[home]" / "pages")
@@ -275,7 +277,7 @@ def test_resolve_source_path_supports_project_and_home_aliases(tmp_path: Path):
     assert compiler.resolve_source_path("@../style/site.tss", base_dir) == str(root / "[home]" / "style" / "site.tss")
 
 
-def test_quoted_load_uses_same_folder(tmp_path: Path):
+def test_quoted_load_uses_same_folder(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     (home / "pages" / "apps").mkdir(parents=True, exist_ok=True)
@@ -294,7 +296,7 @@ BODY { div { class "apps-page" text "Apps" } }
     assert "color: blue" in html
 
 
-def test_layout_level_load_directive(tmp_path: Path):
+def test_layout_level_load_directive(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(home / "components" / "Header.tw", 'header { h1 "Header" }')
@@ -322,7 +324,7 @@ BODY { p "ok" }
     assert "<header>" in html and "Header" in html
 
 
-def test_layout_chaining_multiple_layouts(tmp_path: Path):
+def test_layout_chaining_multiple_layouts(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(home / "layouts" / "outer.tw", "<html><body><main>OUTER{slot}</main></body></html>")
@@ -344,7 +346,7 @@ BODY { p "Hello" }
     assert "OUTER" in html and "INNER" in html and "Hello" in html
 
 
-def test_undefined_symbol_diagnostics_edge_cases(tmp_path: Path):
+def test_undefined_symbol_diagnostics_edge_cases(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     tw = root / "[home]" / "pages" / "warn.tw"
     _write(
@@ -364,7 +366,7 @@ BODY {
     assert "TW2001" in codes
 
 
-def test_cli_build_exit_code_zero_clean(tmp_path: Path):
+def test_cli_build_exit_code_zero_clean(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     args = type(
         "Args",
@@ -387,7 +389,7 @@ def test_cli_build_exit_code_zero_clean(tmp_path: Path):
     assert cli.command_build(args) == 0
 
 
-def test_cli_build_prod_fails_on_warnings(tmp_path: Path):
+def test_cli_build_prod_fails_on_warnings(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(home / "pages" / "warn.tw", 'page { title "W" layout "main" render static } BODY { p "{missing}" }')
@@ -412,7 +414,7 @@ def test_cli_build_prod_fails_on_warnings(tmp_path: Path):
     assert cli.command_build(args) == 1
 
 
-def test_cli_check_json_shape(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+def test_cli_check_json_shape(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     root = make_project(tmp_path)
     tw = root / "[home]" / "pages" / "ok.tw"
     _write(tw, 'page { title "Ok" layout "main" render static } BODY { p "ok" }')
@@ -425,7 +427,7 @@ def test_cli_check_json_shape(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     assert payload["summary"]["errors"] == 0
 
 
-def test_cli_check_include_ast_and_ir_are_json_serializable(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+def test_cli_check_include_ast_and_ir_are_json_serializable(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     root = make_project(tmp_path)
     tw = root / "[home]" / "pages" / "ok.tw"
     _write(
@@ -447,7 +449,7 @@ BODY { p "ok" }
     assert payload["metadata"]["diagnostic_summary"]["errors"] == 0
 
 
-def test_compile_pipeline_reports_failure_phase(tmp_path: Path):
+def test_compile_pipeline_reports_failure_phase(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     tw = root / "[home]" / "pages" / "broken.tw"
     _write(tw, 'page { title "Broken" layout "main" render static } BODY { p "oops }')
@@ -457,13 +459,13 @@ def test_compile_pipeline_reports_failure_phase(tmp_path: Path):
     assert artifacts.metadata["diagnostic_summary"]["errors"] >= 1
 
 
-def test_cli_doctor_smoke(tmp_path: Path):
+def test_cli_doctor_smoke(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     args = type("Args", (), dict(project_root=str(root)))()
     assert cli.command_doctor(args) == 0
 
 
-def test_cli_create_scaffold_generates_files(tmp_path: Path):
+def test_cli_create_scaffold_generates_files(tmp_path: Path) -> None:
     target_parent = tmp_path / "parent"
     target_parent.mkdir()
     cli.create_project("hello", str(target_parent))
@@ -473,7 +475,7 @@ def test_cli_create_scaffold_generates_files(tmp_path: Path):
     assert (root / ".gitignore").exists()
 
 
-def test_incremental_build_cache_skips(tmp_path: Path):
+def test_incremental_build_cache_skips(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     out_dir = root / "dist"
     first = framework.build_hidden_site(str(root), str(out_dir), workers=1, minify=False)
@@ -483,7 +485,7 @@ def test_incremental_build_cache_skips(tmp_path: Path):
     assert second.skipped >= 1
 
 
-def test_dependency_graph_contains_component_deps(tmp_path: Path):
+def test_dependency_graph_contains_component_deps(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(home / "components" / "Thing.tw", 'div { p "T" }')
@@ -496,7 +498,7 @@ def test_dependency_graph_contains_component_deps(tmp_path: Path):
     assert any("Thing.tw" in " ".join(deps) for deps in forward.values())
 
 
-def test_parse_state_block_basic():
+def test_parse_state_block_basic() -> None:
     state = parse_state_block(
         """
 state {
@@ -511,7 +513,7 @@ state {
     assert state["items"] == [1, 2, 3]
 
 
-def test_css_normalization_edge_cases():
+def test_css_normalization_edge_cases() -> None:
     css = framework.compiler.render_css(  # type: ignore[attr-defined]
         compiler.build_tss_ast_from_text(
             """
@@ -528,13 +530,13 @@ def test_css_normalization_edge_cases():
     assert "width: 50%;" in css
 
 
-def test_minifiers_do_not_crash():
+def test_minifiers_do_not_crash() -> None:
     assert compiler.minify_html_content("<div> \n  <span> x </span>\n</div>")
     assert compiler.minify_css_content("/*x*/ .a { color : red ; }")
     assert compiler.minify_js_content("//c\n/*x*/\nvar a = 1;\n")
 
 
-def test_dynamic_json_malformed_returns_empty_and_warns(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+def test_dynamic_json_malformed_returns_empty_and_warns(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(home / "pages" / "[id].tw", 'page { title "D" layout "main" render static } BODY { p "x" }')
@@ -545,7 +547,7 @@ def test_dynamic_json_malformed_returns_empty_and_warns(tmp_path: Path, capsys: 
     assert "Failed to parse dynamic route JSON" in err
 
 
-def test_route_collision_warning_and_strict_error(tmp_path: Path):
+def test_route_collision_warning_and_strict_error(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     # Static /about
@@ -563,7 +565,7 @@ def test_route_collision_warning_and_strict_error(tmp_path: Path):
     assert strict.route_collisions >= 1
 
 
-def test_dynamic_json_schema_validation_is_error(tmp_path: Path):
+def test_dynamic_json_schema_validation_is_error(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(home / "pages" / "[id].tw", 'page { title "D" layout "main" render static } BODY { p "{id}" }')
@@ -573,7 +575,7 @@ def test_dynamic_json_schema_validation_is_error(tmp_path: Path):
     assert summary.errors >= 1
 
 
-def test_backup_before_write_manifest_and_dependency_graph(tmp_path: Path):
+def test_backup_before_write_manifest_and_dependency_graph(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     framework.configure_compiler_paths(str(root))
     # Seed old files
@@ -591,7 +593,7 @@ def test_backup_before_write_manifest_and_dependency_graph(tmp_path: Path):
     assert (root / ".tw" / "cache" / "dependency-graph.json.bak").exists()
 
 
-def test_chunk_cache_is_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_chunk_cache_is_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = make_project(tmp_path)
     framework.configure_compiler_paths(str(root))
     monkeypatch.setenv("TW_CHUNK_CACHE_MAX", "2")
@@ -602,7 +604,7 @@ def test_chunk_cache_is_bounded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert len(compiler._CHUNK_CACHE) <= 2
 
 
-def test_env_parsing_inline_comments_and_quotes(tmp_path: Path):
+def test_env_parsing_inline_comments_and_quotes(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     env_path = root / ".env"
     env_path.write_text('A=1 # comment\nB="x # not comment"\nC=\'y # not comment\'\n', "utf-8")
@@ -612,7 +614,7 @@ def test_env_parsing_inline_comments_and_quotes(tmp_path: Path):
     assert env["C"] == "y # not comment"
 
 
-def test_build_package_json_scaffolds_dependency_sections():
+def test_build_package_json_scaffolds_dependency_sections() -> None:
     package_json = json.loads(cli.build_package_json("Demo App"))
     assert package_json["name"] == "demo-app"
     assert package_json["engines"]["node"] == ">=18"
@@ -620,7 +622,7 @@ def test_build_package_json_scaffolds_dependency_sections():
     assert package_json["devDependencies"] == {}
 
 
-def test_twm_async_helpers_support_http_env_and_pkg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_twm_async_helpers_support_http_env_and_pkg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     if shutil.which("node") is None:
         pytest.skip("Node.js is required for `.twm` runtime tests")
 
@@ -650,7 +652,7 @@ async fn post(request) {
     )
 
     class EchoHandler(http.server.BaseHTTPRequestHandler):
-        def do_POST(self):
+        def do_POST(self) -> None:
             length = int(self.headers.get("Content-Length", "0") or "0")
             payload = self.rfile.read(length)
             data = json.loads(payload.decode("utf-8"))
@@ -661,7 +663,7 @@ async fn post(request) {
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, fmt, *args):
+        def log_message(self, fmt, *args) -> None:
             return
 
     server_instance = socketserver.TCPServer(("127.0.0.1", 0), EchoHandler)
@@ -708,7 +710,7 @@ def test_global_config_atomic_write(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert stat.S_IMODE(os.stat(cfg_file).st_mode) == 0o600
 
 
-def test_file_watcher_rescan_ticks_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_file_watcher_rescan_ticks_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = make_project(tmp_path)
     framework.configure_compiler_paths(str(root))
     project = framework.TWProject(str(root))
@@ -719,7 +721,7 @@ def test_file_watcher_rescan_ticks_config(tmp_path: Path, monkeypatch: pytest.Mo
     assert watcher.rescan_ticks == 1
 
 
-def test_file_watcher_inotify_setup_smoke(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_file_watcher_inotify_setup_smoke(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     if not sys.platform.startswith("linux"):
         pytest.skip("inotify backend is Linux-only")
     root = make_project(tmp_path)
@@ -737,7 +739,7 @@ def test_file_watcher_inotify_setup_smoke(tmp_path: Path, monkeypatch: pytest.Mo
     watcher._inotify_fd = None
 
 
-def test_thread_safety_build_workers(tmp_path: Path):
+def test_thread_safety_build_workers(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
     _write(home / "components" / "Shared.tw", 'div { p "shared" }')
@@ -757,14 +759,14 @@ BODY {{ import "Shared" Shared {{}} }}
     assert summary.errors == 0
 
 
-def test_component_import_path_traversal_rejected(tmp_path: Path):
+def test_component_import_path_traversal_rejected(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     framework.configure_compiler_paths(str(root))
     with pytest.raises(compiler.CompilerError):
         compiler.resolve_component_path("../secrets")
 
 
-def test_component_name_absolute_and_null_bytes_rejected(tmp_path: Path):
+def test_component_name_absolute_and_null_bytes_rejected(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     framework.configure_compiler_paths(str(root))
     with pytest.raises(compiler.CompilerError):
@@ -773,7 +775,7 @@ def test_component_name_absolute_and_null_bytes_rejected(tmp_path: Path):
         compiler.resolve_component_path("Bad\x00Name")
 
 
-def test_extension_manager_warns_before_executing_plugins(tmp_path: Path, caplog: pytest.LogCaptureFixture):
+def test_extension_manager_warns_before_executing_plugins(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     root = make_project(tmp_path)
     plugin_dir = root / "[home]" / "plugins"
     _write(
@@ -790,7 +792,7 @@ def register(api):
     assert "sample.py" in caplog.text
 
 
-def test_extension_allowlist_blocks_unlisted_plugins(tmp_path: Path):
+def test_extension_allowlist_blocks_unlisted_plugins(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     plugin_dir = root / "[home]" / "plugins"
     marker = root / "executed.txt"
@@ -820,7 +822,7 @@ def register(api):
     assert not marker.exists()
 
 
-def test_create_project_gitignore_includes_cache_dir(tmp_path: Path):
+def test_create_project_gitignore_includes_cache_dir(tmp_path: Path) -> None:
     target_parent = tmp_path / "parent2"
     target_parent.mkdir()
     cli.create_project("hello2", str(target_parent))
@@ -828,7 +830,7 @@ def test_create_project_gitignore_includes_cache_dir(tmp_path: Path):
     assert ".tw-cache/" in gitignore
 
 
-def test_load_config_supports_nested_blocks(tmp_path: Path):
+def test_load_config_supports_nested_blocks(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     _write(
         root / "tw.config",
@@ -850,7 +852,7 @@ ssr:
     assert config["ssr"]["cache_max"] == 42
 
 
-def test_page_parser_accepts_cache_controls(tmp_path: Path):
+def test_page_parser_accepts_cache_controls(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     page_path = root / "[home]" / "pages" / "edge.tw"
     _write(
@@ -873,7 +875,7 @@ BODY { div "edge" }
     assert page_ast.cache_size == 3
 
 
-def test_rate_limit_is_opt_in_middleware_primitive(tmp_path: Path):
+def test_rate_limit_is_opt_in_middleware_primitive(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     _write(
         root / "middleware.tw",
@@ -895,7 +897,7 @@ use {
     assert second["response"]["status"] == 429
 
 
-def test_render_cookie_header_honors_secure_mode_auto():
+def test_render_cookie_header_honors_secure_mode_auto() -> None:
     secure = framework.render_cookie_header(
         "session",
         "abc",
@@ -914,7 +916,7 @@ def test_render_cookie_header_honors_secure_mode_auto():
     assert "Secure" not in insecure
 
 
-def test_is_path_within_blocks_prefix_confusion(tmp_path: Path):
+def test_is_path_within_blocks_prefix_confusion(tmp_path: Path) -> None:
     root = tmp_path / "root"
     root.mkdir()
     sibling = tmp_path / "root-evil" / "file.txt"
@@ -924,7 +926,7 @@ def test_is_path_within_blocks_prefix_confusion(tmp_path: Path):
     assert not framework.is_path_within(str(root), str(sibling))
 
 
-def test_ssr_cache_respects_namespace_limit():
+def test_ssr_cache_respects_namespace_limit() -> None:
     cache = server.SSRCache(max_entries=10)
     cache.set("a", b"1", None, namespace="/dashboard", namespace_max=2)
     cache.set("b", b"2", None, namespace="/dashboard", namespace_max=2)
@@ -934,7 +936,7 @@ def test_ssr_cache_respects_namespace_limit():
     assert cache.get("c") == b"3"
 
 
-def test_twm_modules_compile_and_do_not_auto_execute(tmp_path: Path):
+def test_twm_modules_compile_and_do_not_auto_execute(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
 
@@ -989,7 +991,7 @@ BODY {
     assert "function hello" in joined
 
 
-def test_on_load_init_injects_explicit_invoke(tmp_path: Path):
+def test_on_load_init_injects_explicit_invoke(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
 
@@ -1027,7 +1029,7 @@ BODY {
     assert '"init"' in html or "'init'" in html
 
 
-def test_declarative_script_tag_strategies(tmp_path: Path):
+def test_declarative_script_tag_strategies(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
 
@@ -1059,7 +1061,7 @@ BODY {
     assert "addEventListener('load'" in html or "addEventListener(\"load\"" in html
 
 
-def test_raw_script_blocks_disabled_by_default(tmp_path: Path):
+def test_raw_script_blocks_disabled_by_default(tmp_path: Path) -> None:
     root = make_project(tmp_path)
     home = root / "[home]"
 

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class CompilerStats:
     """Collects compiler statistics during a build."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.start_time = time.time()
         self.pages_compiled = 0
         self.components_compiled = 0
@@ -25,7 +25,7 @@ class CompilerStats:
         self.cache_misses = 0
 
     @property
-    def cache_hit_rate(self) -> float:
+    def cache_hit_rate(self) -> Any:
         total = self.cache_hits + self.cache_misses
         if total == 0:
             return 0.0

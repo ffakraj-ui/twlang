@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 
 @dataclass
@@ -30,7 +30,7 @@ class Diagnostic:
     traceback: str = ""
 
     @classmethod
-    def from_legacy(cls, item):
+    def from_legacy(cls, item) -> Any:
         return cls(
             severity=getattr(item, "severity", "error"),
             code=getattr(item, "code", "TW0000"),
@@ -56,7 +56,7 @@ class Diagnostic:
             exception_type=getattr(item, "exception_type", None),
         )
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "severity": self.severity,
             "code": self.code,
@@ -71,27 +71,27 @@ class Diagnostic:
         }
 
 
-def format_advanced_error(diag: Diagnostic, project_root: str = "") -> str:
+def format_advanced_error(diag: Diagnostic, project_root: str = "") -> Any:
     """Format a diagnostic with all required fields."""
     from .error_formatter import format_error
     return format_error(diag, project_root)
 
 
 class DiagnosticBag:
-    def __init__(self):
+    def __init__(self) -> None:
         self.items: List[Diagnostic] = []
 
-    def add(self, diagnostic: Diagnostic):
+    def add(self, diagnostic: Diagnostic) -> None:
         self.items.append(diagnostic)
 
-    def extend(self, diagnostics: Iterable[Diagnostic]):
+    def extend(self, diagnostics: Iterable[Diagnostic]) -> None:
         self.items.extend(diagnostics)
 
     @property
-    def has_errors(self) -> bool:
+    def has_errors(self) -> Any:
         return any(item.severity == "error" for item in self.items)
 
-    def to_list(self):
+    def to_list(self) -> List[Any]:
         return [item.to_dict() for item in self.items]
 
 

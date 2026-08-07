@@ -1,3 +1,5 @@
+from typing import Any, Dict, Generator, List, Optional
+
 import os
 import re
 import json
@@ -30,7 +32,7 @@ except ImportError:  # pragma: no cover
 
 
 @contextlib.contextmanager
-def _file_lock(target_path: str, *, shared: bool):
+def _file_lock(target_path: str, *, shared: bool) -> Generator[Any, None, None]:
     lock_path = str(target_path) + ".lock"
     os.makedirs(os.path.dirname(lock_path), exist_ok=True)
     if fcntl is None:
@@ -55,7 +57,7 @@ def _file_lock(target_path: str, *, shared: bool):
 
 # Reactivity module (lazy import to avoid circular)
 _reactivity = None
-def _get_reactivity():
+def _get_reactivity() -> Any:
     global _reactivity
     if _reactivity is None:
         from . import reactivity as _reactivity
@@ -255,7 +257,7 @@ class Diagnostic:
     parser_state: str = ""
     traceback: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.relative_path and self.file_path:
             try:
                 self.relative_path = os.path.relpath(self.file_path, PROJECT_ROOT)
@@ -270,7 +272,7 @@ class Diagnostic:
         if self.notes is None:
             self.notes = []
 
-    def to_new_diagnostic(self):
+    def to_new_diagnostic(self) -> Any:
         """Convert to the new diagnostics.Diagnostic for unified formatting."""
         from .diagnostics import Diagnostic as NewDiag
         return NewDiag(
@@ -295,7 +297,7 @@ class Diagnostic:
 
 
 class CompilerError(Exception):
-    def __init__(self, message, token=None, file_path=None, suggestion=None, code="TW1000", notes=None, category="parser", parser_state=""):
+    def __init__(self, message, token=None, file_path=None, suggestion=None, code="TW1000", notes=None, category="parser", parser_state="") -> None:
         super().__init__(message)
         self.message = message
         self.token = token
@@ -306,7 +308,7 @@ class CompilerError(Exception):
         self.category = category
         self.parser_state = parser_state
 
-    def to_diagnostic(self, fallback_file_path=None):
+    def to_diagnostic(self, fallback_file_path=None) -> Any:
         line = getattr(self.token, "line", 0) or 0
         col = getattr(self.token, "col", 0) or 0
         return Diagnostic(
@@ -328,12 +330,12 @@ class CompilerError(Exception):
 class DiagnosticEmitter:
     """Formats diagnostics using the unified engine."""
 
-    def __init__(self, file_path, source):
+    def __init__(self, file_path, source) -> None:
         self.file_path = file_path
         self.source = source
         self.lines = source.splitlines()
 
-    def format(self, err, debug: bool = False):
+    def format(self, err, debug: bool = False) -> Any:
         from .diagnostics import Diagnostic as NewDiagnostic, format_advanced_error
 
         if isinstance(err, Diagnostic):
@@ -358,7 +360,7 @@ class DiagnosticEmitter:
         return format_advanced_error(new_diag, project_root=PROJECT_ROOT)
 
 
-def print_diagnostic(diagnostic, debug: bool = False):
+def print_diagnostic(diagnostic, debug: bool = False) -> None:
     path = diagnostic.file_path or ""
     source = ""
     if path and os.path.exists(path):
@@ -370,11 +372,11 @@ def print_diagnostic(diagnostic, debug: bool = False):
     log(emitter.format(diagnostic, debug=debug), level=diagnostic.severity)
 
 
-def _mojibake_score(text):
+def _mojibake_score(text) -> Any:
     return sum(text.count(ch) for ch in ("Ã", "Â", "â", "ð"))
 
 
-def _repair_common_mojibake(text):
+def _repair_common_mojibake(text) -> Any:
     """
     Best-effort repair for UTF-8 text that was previously decoded as latin-1/cp1252
     and then saved again as plain text, for example:
@@ -396,7 +398,7 @@ def _repair_common_mojibake(text):
     return repaired if _mojibake_score(repaired) < _mojibake_score(text) else text
 
 
-def normalize_source_text(text):
+def normalize_source_text(text) -> Any:
     if not text:
         return text
     text = text.lstrip("\ufeff")
@@ -404,18 +406,18 @@ def normalize_source_text(text):
     return _repair_common_mojibake(text)
 
 
-def read_text_file(path):
+def read_text_file(path) -> Any:
     with open(path, "r", encoding="utf-8") as f:
         return normalize_source_text(f.read())
 
 
-def get_incremental_cache(project_root: str = PROJECT_ROOT):
+def get_incremental_cache(project_root: str = PROJECT_ROOT) -> Any:
     """Return an IncrementalCache instance for the given project."""
     from .incremental_cache import IncrementalCache
     return IncrementalCache(project_root)
 
 
-def get_dependency_graph(project_root: str = PROJECT_ROOT):
+def get_dependency_graph(project_root: str = PROJECT_ROOT) -> Any:
     """Return a DependencyGraph instance for the given project."""
     from .dependency_graph import DependencyGraph
     return DependencyGraph(project_root)
@@ -426,17 +428,17 @@ def get_framework_version() -> str:
     return "1.0.0"
 
 
-def detect_tw_project(root: str) -> bool:
+def detect_tw_project(root: str) -> Any:
     """Check if the given directory contains a TW Framework project."""
     config_path = os.path.join(root, "tw.config")
     return os.path.isfile(config_path)
 
 
-def normalize_path(path):
+def normalize_path(path) -> Any:
     return os.path.normpath(path)
 
 
-def resolve_source_path(path, base_dir):
+def resolve_source_path(path, base_dir) -> Any:
     value = str(path or "")
     if value.startswith("@./"):
         value = value[3:]
@@ -454,14 +456,14 @@ def resolve_source_path(path, base_dir):
     return normalize_path(os.path.join(base_dir, value))
 
 
-def minify_html_content(text):
+def minify_html_content(text: str):
     # Collapse whitespace between tags: `>   <` -> `><`
     text = re.sub(r">\s+<", "><", text)
     text = re.sub(r"\n\s*\n+", "\n", text)
     return text.strip()
 
 
-def minify_css_content(text):
+def minify_css_content(text: str):
     # Strip block comments: /* ... */
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     # Collapse runs of whitespace
@@ -471,7 +473,7 @@ def minify_css_content(text):
     return text.strip()
 
 
-def minify_js_content(text):
+def minify_js_content(text: str):
     # Conservative minifier: strip block comments and drop empty/`//...` lines.
     # (We intentionally do not try to remove inline `//` safely inside strings.)
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
@@ -484,7 +486,7 @@ def minify_js_content(text):
     return "".join(lines).strip()
 
 
-def parse_config_scalar(raw):
+def parse_config_scalar(raw) -> Any:
     if isinstance(raw, (int, float, bool)) or raw is None:
         return raw
     if not isinstance(raw, str):
@@ -498,7 +500,7 @@ def parse_config_scalar(raw):
     return parse_literal_value(stripped)
 
 
-def get_config_value(config, *path, default=None):
+def get_config_value(config, *path, default=None) -> Any:
     if not isinstance(config, dict) or not path:
         return default
 
@@ -514,7 +516,7 @@ def get_config_value(config, *path, default=None):
     return current
 
 
-def normalize_route_directory(rel_dir):
+def normalize_route_directory(rel_dir) -> Any:
     if not rel_dir or rel_dir == ".":
         return ""
     parts = []
@@ -525,7 +527,7 @@ def normalize_route_directory(rel_dir):
     return os.path.join(*parts) if parts else ""
 
 
-def resolve_static_asset_url(value):
+def resolve_static_asset_url(value) -> Any:
     if not isinstance(value, str):
         return value
     if value in ASSET_URL_MAP:
@@ -533,14 +535,14 @@ def resolve_static_asset_url(value):
     return value
 
 
-def safe_relpath(path, start):
+def safe_relpath(path, start) -> Any:
     try:
         return os.path.relpath(path, start)
     except (ValueError, OSError):
         return path
 
 
-def load_build_manifest():
+def load_build_manifest() -> Any:
     if not os.path.exists(BUILD_MANIFEST_FILE):
         return {"version": BUILD_MANIFEST_VERSION, "pages": {}}
     try:
@@ -557,7 +559,7 @@ def load_build_manifest():
         return {"version": BUILD_MANIFEST_VERSION, "pages": {}}
 
 
-def save_build_manifest(manifest):
+def save_build_manifest(manifest) -> None:
     os.makedirs(os.path.dirname(BUILD_MANIFEST_FILE), exist_ok=True)
     manifest = dict(manifest or {})
     manifest["version"] = BUILD_MANIFEST_VERSION
@@ -580,7 +582,7 @@ def save_build_manifest(manifest):
         os.replace(tmp_path, BUILD_MANIFEST_FILE)
 
 
-def save_dependency_graph(dependency_map):
+def save_dependency_graph(dependency_map) -> None:
     os.makedirs(os.path.dirname(DEPENDENCY_GRAPH_FILE), exist_ok=True)
     metadata = {}
     if isinstance(dependency_map, dict) and "forward" in dependency_map:
@@ -618,7 +620,7 @@ def save_dependency_graph(dependency_map):
         os.replace(tmp_path, DEPENDENCY_GRAPH_FILE)
 
 
-def file_fingerprint(path):
+def file_fingerprint(path: str) -> Optional[Dict[str, Any]]:
     if not os.path.exists(path):
         return None
     stat = os.stat(path)
@@ -628,7 +630,7 @@ def file_fingerprint(path):
     }
 
 
-def compute_dependency_signature(paths):
+def compute_dependency_signature(paths) -> Any:
     digest = hashlib.sha1()
     for path in sorted(normalize_path(p) for p in paths):
         digest.update(path.encode("utf-8"))
@@ -640,14 +642,14 @@ def compute_dependency_signature(paths):
     return digest.hexdigest()
 
 
-def collect_dependency_fingerprints(paths):
+def collect_dependency_fingerprints(paths) -> Any:
     fingerprints = {}
     for path in sorted(normalize_path(p) for p in paths):
         fingerprints[path] = file_fingerprint(path)
     return fingerprints
 
 
-def describe_dependency_delta(previous_fingerprints, current_fingerprints):
+def describe_dependency_delta(previous_fingerprints, current_fingerprints) -> Any:
     previous_fingerprints = previous_fingerprints or {}
     current_fingerprints = current_fingerprints or {}
     for path in sorted(set(previous_fingerprints) | set(current_fingerprints)):
@@ -663,17 +665,17 @@ def describe_dependency_delta(previous_fingerprints, current_fingerprints):
     return "dependency changed"
 
 
-def page_cache_key(page_info):
+def page_cache_key(page_info) -> Any:
     return normalize_path(page_info["path"])
 
 
-def cleanup_outputs(paths):
+def cleanup_outputs(paths) -> None:
     for path in paths or []:
         if os.path.exists(path):
             os.remove(path)
 
 
-def remove_deleted_page_outputs(old_manifest, current_page_keys):
+def remove_deleted_page_outputs(old_manifest, current_page_keys) -> Any:
     removed = 0
     old_keys = set(old_manifest.get("pages", {}).keys())
     for stale_key in sorted(old_keys - current_page_keys):
@@ -685,7 +687,7 @@ def remove_deleted_page_outputs(old_manifest, current_page_keys):
 
 
 class PageNode:
-    def __init__(self):
+    def __init__(self) -> None:
         self.title = ""
         # Backwards compatible:
         # - Old: `page.layout` was a single string (eg "main")
@@ -720,14 +722,14 @@ class PageNode:
 
 
 class HeadNode:
-    def __init__(self):
+    def __init__(self) -> None:
         self.metas = []
         self.icon = None
         self.seo = {}
 
 
 class ElementNode:
-    def __init__(self, tag, text=None, token=None, file_path=None):
+    def __init__(self, tag, text=None, token=None, file_path=None) -> None:
         self.tag = tag
         self.text = text
         self.children = []
@@ -740,7 +742,7 @@ class ElementNode:
 
 
 class ComponentNode:
-    def __init__(self, name, token=None, file_path=None):
+    def __init__(self, name, token=None, file_path=None) -> None:
         self.tag = "__component__"
         self.name = name
         self.props = []
@@ -750,7 +752,7 @@ class ComponentNode:
 
 
 class ForNode:
-    def __init__(self, var_name, list_expr):
+    def __init__(self, var_name, list_expr) -> None:
         self.tag = "__for__"
         self.var_name = var_name
         self.list_expr = list_expr
@@ -758,7 +760,7 @@ class ForNode:
 
 
 class IfNode:
-    def __init__(self, condition):
+    def __init__(self, condition) -> None:
         self.tag = "__if__"
         self.condition = condition
         self.children = []
@@ -766,14 +768,14 @@ class IfNode:
 
 
 class LetNode:
-    def __init__(self, name, value):
+    def __init__(self, name, value) -> None:
         self.tag = "__let__"
         self.name = name
         self.value = value
 
 
 class ScriptNode:
-    def __init__(self, raw_js, token=None, file_path=None):
+    def __init__(self, raw_js, token=None, file_path=None) -> None:
         self.tag = "__script__"
         self.raw_js = raw_js
         self.children = []
@@ -791,7 +793,7 @@ class ScriptTagNode:
     This is NOT raw JS. It is always explicit and safe by default.
     """
 
-    def __init__(self, src: str, strategy: str = "afterInteractive", token=None, file_path=None):
+    def __init__(self, src: str, strategy: str = "afterInteractive", token=None, file_path=None) -> None:
         self.tag = "__script_tag__"
         self.src = src
         self.strategy = strategy
@@ -801,22 +803,22 @@ class ScriptTagNode:
 
 
 class StyleSheetNode:
-    def __init__(self):
+    def __init__(self) -> None:
         self.rules = []
 
 
 class RuleNode:
-    def __init__(self, selector):
+    def __init__(self, selector) -> None:
         self.selector = selector
         self.declarations = []
         self.children = []
 
 
-def is_identifier_boundary_char(ch):
+def is_identifier_boundary_char(ch) -> Any:
     return not (ch.isalnum() or ch == "_")
 
 
-def tokenize(code, allow_inline_scripts=False):
+def tokenize(code, allow_inline_scripts=False) -> Any:
     global _SCRIPT_COUNTER
     global _TWM_SCRIPT_COUNTER
 
@@ -826,7 +828,7 @@ def tokenize(code, allow_inline_scripts=False):
     col = 1
     n = len(code)
 
-    def advance_one():
+    def advance_one() -> Any:
         nonlocal i, line, col
         ch = code[i]
         i += 1
@@ -837,7 +839,7 @@ def tokenize(code, allow_inline_scripts=False):
             col += 1
         return ch
 
-    def advance_count(count):
+    def advance_count(count) -> None:
         for _ in range(count):
             advance_one()
 
@@ -857,7 +859,7 @@ def tokenize(code, allow_inline_scripts=False):
         # Unterminated block comment: treat as EOF (do not crash the tokenizer)
         return
 
-    def read_string(quote_char):
+    def read_string(quote_char) -> bool:
         nonlocal i
         start_line, start_col = line, col
         advance_one()  # consume opening quote
@@ -874,7 +876,7 @@ def tokenize(code, allow_inline_scripts=False):
                 value.append(advance_one())
         raise CompilerError("Unterminated string literal", Token("STRING", "", start_line, start_col))
 
-    def read_inline_script_block(open_token):
+    def read_inline_script_block(open_token) -> bool:
         """
         Parse `script { ... }` as a single placeholder token, but do brace matching
         in a JS-aware way (ignore braces inside strings and comments) so nested
@@ -979,7 +981,7 @@ def tokenize(code, allow_inline_scripts=False):
 
         raise CompilerError("Unterminated `script { ... }` block", token=open_token)
 
-    def read_inline_twm_block(open_token):
+    def read_inline_twm_block(open_token) -> bool:
         """
         Parse top-level `SCRIPT { ... }` as a single placeholder token, using the
         same brace-matching strategy as inline JS scripts.
@@ -1193,11 +1195,11 @@ def tokenize(code, allow_inline_scripts=False):
     return tokens
 
 
-def tokenize_tw(code):
+def tokenize_tw(code) -> Any:
     return tokenize(code, allow_inline_scripts=True)
 
 
-def classify_known_prop(name):
+def classify_known_prop(name) -> str:
     nl = name.lower()
     if nl in ROUTER_KEYS:
         return "router"
@@ -1218,15 +1220,15 @@ def classify_known_prop(name):
     return "unknown"
 
 
-def normalize_css_prop(name):
+def normalize_css_prop(name) -> Any:
     return CSS_ALIASES.get(name.lower(), name.lower())
 
 
-def normalize_attr_name(name):
+def normalize_attr_name(name) -> Any:
     return name if any(c.isupper() for c in name) else name.lower()
 
 
-def component_exists(name):
+def component_exists(name) -> Any:
     with _CACHE_LOCK:
         if name in _COMPONENT_EXISTS_CACHE:
             return _COMPONENT_EXISTS_CACHE[name]
@@ -1237,13 +1239,13 @@ def component_exists(name):
     return found
 
 
-def is_component_name(name):
+def is_component_name(name: str):
     # Only treat it as a component if it actually exists.
     # This avoids errors like `Section {}` being treated as a missing component.
     return component_exists(name)
 
 
-def resolve_component_path(name):
+def resolve_component_path(name: str):
     # 1) Support nested component folders via `import "ui/Button"` (path-like names)
     name = str(name or "")
     if not name:
@@ -1296,7 +1298,7 @@ def resolve_component_path(name):
         return _COMPONENT_PATH_CACHE[name]
 
 
-def component_name_from_path(path):
+def component_name_from_path(path) -> Any:
     full_path = normalize_path(path)
     try:
         rel_path = os.path.relpath(full_path, COMPONENTS_DIR).replace("\\", "/")
@@ -1309,7 +1311,7 @@ def component_name_from_path(path):
     return rel_path[:-3]
 
 
-def resolve_load_target(raw_path, base_dir, *, token=None, location="load"):
+def resolve_load_target(raw_path, base_dir, *, token=None, location="load") -> Dict[str, Any]:
     rel_path = str(raw_path or "")
     if not rel_path:
         raise CompilerError(f"{location}: path cannot be empty", token=token)
@@ -1394,7 +1396,7 @@ def resolve_load_target(raw_path, base_dir, *, token=None, location="load"):
     }
 
 
-def extract_directives_from_source(raw, base_dir):
+def extract_directives_from_source(raw, base_dir) -> Dict[str, Any]:
     imports = IMPORT_RE.findall(raw)
     layouts = []
     for quoted, bare in LAYOUT_RE.findall(raw):
@@ -1425,7 +1427,7 @@ def extract_directives_from_source(raw, base_dir):
     }
 
 
-def collect_component_dependencies(name, stack=None, seen=None):
+def collect_component_dependencies(name, stack=None, seen=None) -> Any:
     with _CACHE_LOCK:
         if name in _COMPONENT_DEP_GRAPH_CACHE:
             return set(_COMPONENT_DEP_GRAPH_CACHE[name])
@@ -1467,7 +1469,7 @@ def collect_component_dependencies(name, stack=None, seen=None):
     return set(deps)
 
 
-def collect_page_dependencies(tw_path):
+def collect_page_dependencies(tw_path) -> Any:
     tw_path = normalize_path(tw_path)
     base_dir = os.path.dirname(tw_path)
     raw = read_text_file(tw_path)
@@ -1519,7 +1521,7 @@ def collect_page_dependencies(tw_path):
     return sorted(deps)
 
 
-def route_path_from_page_info(page_info, item=None):
+def route_path_from_page_info(page_info, item=None) -> str:
     route_parts = []
     rel_dir = page_info.get("rel_dir", "")
     if rel_dir:
@@ -1534,7 +1536,7 @@ def route_path_from_page_info(page_info, item=None):
     return route or "/"
 
 
-def collect_page_metadata(page_info, page_ast=None, route_path=None, *, pipeline="legacy", item=None):
+def collect_page_metadata(page_info, page_ast=None, route_path=None, *, pipeline="legacy", item=None) -> Dict[str, Any]:
     page_ast = page_ast or load_page_ast_from_file(page_info["path"])
     raw = read_text_file(page_info["path"])
     directives = extract_directives_from_source(raw, os.path.dirname(page_info["path"]))
@@ -1573,11 +1575,11 @@ def get_public_env(config=None) -> dict:
     return {name: os.environ[name] for name in names if name in os.environ}
 
 
-def create_request_context(route_path, params=None):
+def create_request_context(route_path, params=None) -> Dict[str, Any]:
     return {"path": route_path or "/", "params": dict(params or {}), "env": get_public_env()}
 
 
-def build_page_context(page_info, page_ast=None, tw_path=None, *, item=None, route_path=None, request_params=None):
+def build_page_context(page_info, page_ast=None, tw_path=None, *, item=None, route_path=None, request_params=None) -> Any:
     tw_path = tw_path or page_info["path"]
     page_ast = page_ast or load_page_ast_from_file(tw_path)
     params = dict(request_params or {})
@@ -1598,7 +1600,7 @@ def build_page_context(page_info, page_ast=None, tw_path=None, *, item=None, rou
     return context
 
 
-def parse_literal_value(raw):
+def parse_literal_value(raw) -> Any:
     if isinstance(raw, (int, float, bool)) or raw is None:
         return raw
     if not isinstance(raw, str):
@@ -1635,7 +1637,7 @@ def parse_literal_value(raw):
     return raw
 
 
-def to_bool(value):
+def to_bool(value) -> Any:
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
@@ -1649,7 +1651,7 @@ def to_bool(value):
     return bool(value)
 
 
-def resolve_path(path, context):
+def resolve_path(path, context) -> Any:
     current = context
     for part in path.split("."):
         if isinstance(current, dict) and part in current:
@@ -1659,14 +1661,14 @@ def resolve_path(path, context):
     return current
 
 
-def _transform_logic_operators(expr):
+def _transform_logic_operators(expr) -> Any:
     expr = expr.replace("&&", " and ")
     expr = expr.replace("||", " or ")
     expr = re.sub(r"(?<![=!<>])!(?!=)", " not ", expr)
     return expr
 
 
-def _safe_eval(node, context):
+def _safe_eval(node, context) -> Any:
     if isinstance(node, ast.Expression):
         return _safe_eval(node.body, context)
 
@@ -1775,7 +1777,7 @@ def _safe_eval(node, context):
     raise ValueError(f"Unsupported expression node: {type(node).__name__}")
 
 
-def evaluate_expression(expr, context):
+def evaluate_expression(expr, context) -> Any:
     expr = expr.strip()
     if not expr:
         return ""
@@ -1806,7 +1808,7 @@ PLACEHOLDER_MOUSTACHE_RE = re.compile(r"\{\{([^{}]+)\}\}")
 RESERVED_EXPR_NAMES = {"true", "false", "null", "none"}
 
 
-def extract_placeholder_expressions(text):
+def extract_placeholder_expressions(text) -> Any:
     if text is None or "{" not in str(text):
         return []
     expressions = []
@@ -1822,14 +1824,14 @@ def extract_placeholder_expressions(text):
 
 
 class ExpressionNameCollector(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         self.names = []
 
-    def visit_Name(self, node):
+    def visit_Name(self, node) -> None:
         self.names.append(node.id)
 
 
-def collect_expression_names(expr):
+def collect_expression_names(expr) -> Any:
     expr = str(expr or "").strip()
     if not expr:
         return []
@@ -1850,7 +1852,7 @@ def collect_expression_names(expr):
     return names
 
 
-def build_diagnostic(severity, code, message, file_path, token=None, suggestion=None, notes=None):
+def build_diagnostic(severity, code, message, file_path, token=None, suggestion=None, notes=None) -> Any:
     line = getattr(token, "line", 0) or 0
     col = getattr(token, "col", 0) or 0
     return Diagnostic(
@@ -1867,13 +1869,13 @@ def build_diagnostic(severity, code, message, file_path, token=None, suggestion=
     )
 
 
-def collect_known_scope_names(context):
+def collect_known_scope_names(context) -> Any:
     names = set(context.keys() if isinstance(context, dict) else [])
     names.update({"config", "site", "env", "request", "props", "children"})
     return names
 
 
-def analyze_expression_symbols(expr, scope_names, diagnostics, token=None, file_path=None, label="expression"):
+def analyze_expression_symbols(expr, scope_names, diagnostics, token=None, file_path=None, label="expression") -> None:
     for name in collect_expression_names(expr):
         if name.startswith("_tw_") or name in scope_names:
             continue
@@ -1888,12 +1890,12 @@ def analyze_expression_symbols(expr, scope_names, diagnostics, token=None, file_
         ))
 
 
-def analyze_interpolated_text(text, scope_names, diagnostics, token=None, file_path=None, label="template"):
+def analyze_interpolated_text(text, scope_names, diagnostics, token=None, file_path=None, label="template") -> None:
     for expr in extract_placeholder_expressions(text):
         analyze_expression_symbols(expr, scope_names, diagnostics, token=token, file_path=file_path, label=label)
 
 
-def _append_unique_diagnostic(diagnostics, diagnostic, seen_keys):
+def _append_unique_diagnostic(diagnostics, diagnostic, seen_keys) -> None:
     key = (
         diagnostic.severity,
         diagnostic.code,
@@ -1908,7 +1910,7 @@ def _append_unique_diagnostic(diagnostics, diagnostic, seen_keys):
     diagnostics.append(diagnostic)
 
 
-def analyze_nodes_semantics(nodes, scope_names, diagnostics, file_path, component_stack=None, seen_keys=None):
+def analyze_nodes_semantics(nodes, scope_names, diagnostics, file_path, component_stack=None, seen_keys=None) -> None:
     current_scope = set(scope_names)
     component_stack = list(component_stack or [])
     seen_keys = seen_keys if seen_keys is not None else set()
@@ -1992,7 +1994,7 @@ def analyze_nodes_semantics(nodes, scope_names, diagnostics, file_path, componen
             analyze_nodes_semantics(node.children, current_scope, diagnostics, node_file_path, component_stack=component_stack, seen_keys=seen_keys)
 
 
-def analyze_page_semantics(page_ast, context, tw_path, page_info=None):
+def analyze_page_semantics(page_ast, context, tw_path, page_info=None) -> Any:
     diagnostics = []
     seen_keys = set()
     scope_names = collect_known_scope_names(context)
@@ -2019,15 +2021,15 @@ def analyze_page_semantics(page_ast, context, tw_path, page_info=None):
     return deduped
 
 
-def eval_condition(expr, context):
+def eval_condition(expr, context) -> Any:
     return to_bool(evaluate_expression(expr, context))
 
 
-def interpolate(text, context):
+def interpolate(text, context) -> Any:
     if text is None or "{" not in str(text):
         return text
 
-    def repl(match):
+    def repl(match) -> Any:
         value = evaluate_expression(match.group(1), context)
         return match.group(0) if value is None else str(value)
 
@@ -2038,14 +2040,14 @@ def interpolate(text, context):
     return INTERPOLATION_RE.sub(repl, rendered)
 
 
-def _append_px_if_numeric(token):
+def _append_px_if_numeric(token) -> Any:
     stripped = str(token).strip()
     if NUM_RE.match(stripped):
         return "0" if float(stripped) == 0 else f"{stripped}px"
     return stripped
 
 
-def _split_css_tokens_outside_parens(value):
+def _split_css_tokens_outside_parens(value) -> Any:
     tokens = []
     current = []
     depth = 0
@@ -2069,8 +2071,8 @@ def _split_css_tokens_outside_parens(value):
     return tokens
 
 
-def _normalize_css_function_args(value):
-    def repl(match):
+def _normalize_css_function_args(value) -> Any:
+    def repl(match) -> Any:
         fn = match.group(1)
         args = match.group(2)
         parts = re.split(r"(\s*,\s*|\s+)", args)
@@ -2085,14 +2087,14 @@ def _normalize_css_function_args(value):
     return re.sub(r"\b(translate(?:3d|X|Y|Z)?|blur)\(([^)]*)\)", repl, value)
 
 
-def _normalize_border_like_value(value):
+def _normalize_border_like_value(value) -> Any:
     tokens = _split_css_tokens_outside_parens(value)
     if tokens and NUM_RE.match(tokens[0]):
         tokens[0] = _append_px_if_numeric(tokens[0])
     return " ".join(tokens)
 
 
-def _normalize_shadow_value(value):
+def _normalize_shadow_value(value) -> Any:
     tokens = _split_css_tokens_outside_parens(value)
     normalized = []
     for token in tokens:
@@ -2100,7 +2102,7 @@ def _normalize_shadow_value(value):
     return " ".join(normalized)
 
 
-def _normalize_at_rule_selector(selector):
+def _normalize_at_rule_selector(selector) -> Any:
     if not selector.lstrip().startswith("@media"):
         return selector
     return re.sub(
@@ -2110,7 +2112,7 @@ def _normalize_at_rule_selector(selector):
     )
 
 
-def finalize_css_value(css_prop, raw_value, context):
+def finalize_css_value(css_prop, raw_value, context) -> Any:
     value = interpolate(raw_value, context)
     if value is None:
         value = ""
@@ -2143,7 +2145,7 @@ def finalize_css_value(css_prop, raw_value, context):
     return str(value)
 
 
-def classify_known_keywords():
+def classify_known_keywords() -> Any:
     return {
         "let", "if", "else", "for", "each", "in", "as", "import",
         "layout", "head", "body", "title", "load", "page",
@@ -2151,11 +2153,11 @@ def classify_known_keywords():
     }
 
 
-def peek(tokens, i):
+def peek(tokens, i) -> Any:
     return tokens[i] if i < len(tokens) else None
 
 
-def collect_until_block(tokens, i):
+def collect_until_block(tokens, i) -> Any:
     parts = []
     while i < len(tokens) and not (tokens[i].type == "BRACE" and tokens[i].value == "{"):
         if tokens[i].type != "NL":
@@ -2164,7 +2166,7 @@ def collect_until_block(tokens, i):
     return " ".join(parts).strip(), i
 
 
-def collect_until_eol(tokens, i, stop_on_block_open=False):
+def collect_until_eol(tokens, i, stop_on_block_open=False) -> Any:
     """
     Collect tokens into an expression string until newline / block end.
     - STRING tokens are re-quoted to preserve valid JSON/Python literal parsing.
@@ -2200,13 +2202,13 @@ def collect_until_eol(tokens, i, stop_on_block_open=False):
     return expr, i
 
 
-def is_statement_separator(token):
+def is_statement_separator(token) -> bool:
     return bool(token) and (
         token.type == "NL" or (token.type == "WORD" and token.value == ";")
     )
 
 
-def parse_value_token(tokens, i):
+def parse_value_token(tokens, i) -> Any:
     token = peek(tokens, i)
     if not token:
         return True, i
@@ -2218,7 +2220,7 @@ def parse_value_token(tokens, i):
     return parse_literal_value(expr), j
 
 
-def unknown_property_error(token, is_component=False):
+def unknown_property_error(token, is_component=False) -> None:
     candidates = set(CSS_PROPERTIES) | set(CSS_ALIASES) | set(HTML_ATTRIBUTES) | set(EVENTS) | set(ROUTER_KEYS)
     if is_component:
         return None
@@ -2235,7 +2237,7 @@ def unknown_property_error(token, is_component=False):
     )
 
 
-def looks_like_child_start(tokens, i):
+def looks_like_child_start(tokens, i) -> bool:
     token = peek(tokens, i)
     nxt = peek(tokens, i + 1)
     if not token or token.type != "WORD":
@@ -2253,7 +2255,7 @@ def looks_like_child_start(tokens, i):
     return False
 
 
-def extract_component_load_directive(raw, base_dir):
+def extract_component_load_directive(raw, base_dir) -> Any:
     """Scans a component/.tw source for a top-level `load "x.tss"` / `load @x.tss`
     line, strips it out (so the main element parser never sees it), and returns
     the parsed stylesheet (or None if nothing was loaded)."""
@@ -2273,7 +2275,7 @@ def extract_component_load_directive(raw, base_dir):
     return raw, sheet
 
 
-def load_component_ast(name):
+def load_component_ast(name) -> Any:
     with _CACHE_LOCK:
         if name in _COMPONENT_AST_CACHE:
             return copy.deepcopy(_COMPONENT_AST_CACHE[name])
@@ -2293,7 +2295,7 @@ def load_component_ast(name):
     return copy.deepcopy(nodes)
 
 
-def load_layout(name):
+def load_layout(name) -> Any:
     with _CACHE_LOCK:
         if name in _LAYOUT_CACHE:
             return _LAYOUT_CACHE[name]
@@ -2319,14 +2321,14 @@ def load_layout(name):
     return raw
 
 
-def resolve_layout_loads(raw, base_dir):
+def resolve_layout_loads(raw, base_dir) -> Any:
     """Lets a layout file pull in a component (header/footer etc.) or a
     stylesheet via `load "path"` / `load @path`, so it shows on every page
     that uses this layout — without the layout needing real TW parsing.
     Paths are resolved relative to `[home]/`, same as `./components/...`
     inside a component's own `load`."""
 
-    def repl(m):
+    def repl(m) -> Any:
         quoted, atpath = m.group(1), m.group(2)
         load_info = resolve_load_target(quoted or atpath, base_dir, location="layout load")
         full_path = load_info["full_path"]
@@ -2352,7 +2354,7 @@ def resolve_layout_loads(raw, base_dir):
     return LAYOUT_LOAD_RE.sub(repl, raw)
 
 
-def get_layout_meta(name):
+def get_layout_meta(name: str):
     # Ensures layout is loaded at least once (populates meta cache)
     with _CACHE_LOCK:
         loaded = name in _LAYOUT_CACHE
@@ -2362,14 +2364,14 @@ def get_layout_meta(name):
         return dict(_LAYOUT_META_CACHE.get(name, {}) or {})
 
 
-def load_external_stylesheet(rel_path, base_dir):
+def load_external_stylesheet(rel_path, base_dir) -> Any:
     full_path = resolve_source_path(rel_path, base_dir)
     if not os.path.exists(full_path):
         raise FileNotFoundError(f"load: stylesheet not found -> {full_path}")
     return build_tss_ast_from_text(read_text_file(full_path))
 
 
-def write_chunk(content, ext):
+def write_chunk(content, ext) -> Any:
     if MINIFY_OUTPUT and ext == "js":
         content = minify_js_content(content)
     digest = content_hash(content, length=8)
@@ -2405,7 +2407,7 @@ def write_chunk(content, ext):
         return url
 
 
-def parse_import(tokens, i):
+def parse_import(tokens, i) -> Any:
     i += 1
     token = peek(tokens, i)
     if not token or token.type != "STRING":
@@ -2421,7 +2423,7 @@ def parse_import(tokens, i):
     return None, i + 1
 
 
-def _collect_used_component_names(nodes, found=None):
+def _collect_used_component_names(nodes, found=None) -> Any:
     found = found or set()
     for node in nodes or []:
         if getattr(node, "tag", "") == "__component__" and getattr(node, "name", ""):
@@ -2431,7 +2433,7 @@ def _collect_used_component_names(nodes, found=None):
     return found
 
 
-def parse_let(tokens, i):
+def parse_let(tokens, i) -> Any:
     start = peek(tokens, i)
     i += 1
     name_token = peek(tokens, i)
@@ -2444,7 +2446,7 @@ def parse_let(tokens, i):
     return LetNode(name_token.value, value), i
 
 
-def parse_if(tokens, i, file_path, source):
+def parse_if(tokens, i, file_path, source) -> Any:
     start = peek(tokens, i)
     i += 1
     condition, i = collect_until_block(tokens, i)
@@ -2464,7 +2466,7 @@ def parse_if(tokens, i, file_path, source):
     return node, i
 
 
-def parse_for(tokens, i, file_path, source):
+def parse_for(tokens, i, file_path, source) -> Any:
     start = peek(tokens, i)
     i += 1
     var_token = peek(tokens, i)
@@ -2485,7 +2487,7 @@ def parse_for(tokens, i, file_path, source):
     return node, i
 
 
-def parse_each(tokens, i, file_path, source):
+def parse_each(tokens, i, file_path, source) -> Any:
     """
     Syntax sugar:
       each links as link { ... }
@@ -2531,7 +2533,7 @@ def parse_each(tokens, i, file_path, source):
     return node, i
 
 
-def _try_parse_script_tag_config(raw_body: str, *, token=None):
+def _try_parse_script_tag_config(raw_body: str, *, token=None) -> Any:
     """
     Detect and parse:
       script { src "..." strategy afterInteractive|beforeInteractive|lazyOnload }
@@ -2604,7 +2606,7 @@ def _try_parse_script_tag_config(raw_body: str, *, token=None):
     return str(cfg["src"]), strategy
 
 
-def parse_script_placeholder(tokens, i, file_path=None):
+def parse_script_placeholder(tokens, i, file_path=None) -> Any:
     token = peek(tokens, i)
     m = SCRIPT_PLACEHOLDER_RE.match(token.value)
     if not m:
@@ -2618,7 +2620,7 @@ def parse_script_placeholder(tokens, i, file_path=None):
     return ScriptNode(raw_body, token=token, file_path=file_path), i + 1
 
 
-def parse_twm_script_placeholder(tokens, i):
+def parse_twm_script_placeholder(tokens, i) -> Any:
     token = peek(tokens, i)
     m = TWM_SCRIPT_PLACEHOLDER_RE.match(token.value)
     if not m:
@@ -2627,7 +2629,7 @@ def parse_twm_script_placeholder(tokens, i):
     return INLINE_TWM_SCRIPTS.get(uid, ""), i + 1
 
 
-def parse_property_value(tokens, i):
+def parse_property_value(tokens, i) -> Any:
     tok = peek(tokens, i)
     if not tok or tok.type in {"NL"}:
         return True, i + (1 if tok and tok.type == "NL" else 0)
@@ -2651,7 +2653,7 @@ def parse_property_value(tokens, i):
     return expr, j
 
 
-def parse_element_or_component(tokens, i, file_path, source):
+def parse_element_or_component(tokens, i, file_path, source) -> Any:
     token = peek(tokens, i)
     name = token.value
     i += 1
@@ -2687,7 +2689,7 @@ def parse_element_or_component(tokens, i, file_path, source):
     return node, i
 
 
-def parse_child_statement(tokens, i, file_path, source):
+def parse_child_statement(tokens, i, file_path, source) -> Any:
     token = peek(tokens, i)
     if not token:
         return None, i
@@ -2716,7 +2718,7 @@ def parse_child_statement(tokens, i, file_path, source):
     raise CompilerError(f"Unexpected token: `{token.value}`", token=token)
 
 
-def parse_element_block(tokens, i, node, file_path, source):
+def parse_element_block(tokens, i, node, file_path, source) -> Any:
     while i < len(tokens):
         token = peek(tokens, i)
         if is_statement_separator(token):
@@ -2795,7 +2797,7 @@ def parse_element_block(tokens, i, node, file_path, source):
     )
 
 
-def parse_component_block(tokens, i, node, file_path, source):
+def parse_component_block(tokens, i, node, file_path, source) -> Any:
     while i < len(tokens):
         token = peek(tokens, i)
         if is_statement_separator(token):
@@ -2850,7 +2852,7 @@ def parse_component_block(tokens, i, node, file_path, source):
     )
 
 
-def build_elements(tokens, i, file_path, source, require_closing_brace=False, start_token=None):
+def build_elements(tokens, i, file_path, source, require_closing_brace=False, start_token=None) -> Any:
     nodes = []
     while i < len(tokens):
         token = peek(tokens, i)
@@ -2872,7 +2874,7 @@ def build_elements(tokens, i, file_path, source, require_closing_brace=False, st
     return nodes, i
 
 
-def parse_head_block(tokens, i, head):
+def parse_head_block(tokens, i, head) -> Any:
     while i < len(tokens):
         token = peek(tokens, i)
         if is_statement_separator(token):
@@ -2940,7 +2942,7 @@ def parse_head_block(tokens, i, head):
     )
 
 
-def parse_page_block(tokens, i, page):
+def parse_page_block(tokens, i, page) -> Any:
     while i < len(tokens):
         token = peek(tokens, i)
         if is_statement_separator(token):
@@ -3005,7 +3007,7 @@ def parse_page_block(tokens, i, page):
     )
 
 
-def build_tw_ast(tokens, base_dir, file_path, source):
+def build_tw_ast(tokens, base_dir, file_path, source) -> Any:
     page = PageNode()
     i = 0
     while i < len(tokens):
@@ -3150,7 +3152,7 @@ def build_tw_ast(tokens, base_dir, file_path, source):
     return page
 
 
-def _attach_component_stylesheets(page, source):
+def _attach_component_stylesheets(page, source) -> None:
     """Components can `load` their own .tss file. If this page (directly or
     via nested component imports) ends up using such a component, pull that
     stylesheet in automatically -- same place page-level `load` results land."""
@@ -3169,7 +3171,7 @@ def _attach_component_stylesheets(page, source):
 
 
 
-def _is_new_tss_declaration(item):
+def _is_new_tss_declaration(item) -> bool:
     """Check if item starts a new CSS property or nested block."""
     if "{" in item:
         return True
@@ -3179,7 +3181,7 @@ def _is_new_tss_declaration(item):
     return False
 
 
-def _split_tss_body_items(body):
+def _split_tss_body_items(body) -> Any:
     items = []
     start = 0
     depth = 0
@@ -3207,7 +3209,7 @@ def _split_tss_body_items(body):
     return merged
 
 
-def _parse_tss_rule(selector, body):
+def _parse_tss_rule(selector, body) -> Any:
     rule = RuleNode(selector)
     for item in _split_tss_body_items(body):
         if "{" in item and item.rstrip().endswith("}"):
@@ -3221,7 +3223,7 @@ def _parse_tss_rule(selector, body):
     return rule
 
 
-def build_tss_ast_from_text(text):
+def build_tss_ast_from_text(text) -> Any:
     sheet = StyleSheetNode()
     code = re.sub(r"/\\*.*?\\*/", "", text, flags=re.S)
     code = re.sub(r"//.*?$", "", code, flags=re.MULTILINE)
@@ -3259,7 +3261,7 @@ def build_tss_ast_from_text(text):
     return sheet
 
 
-def render_value(value, context):
+def render_value(value, context) -> Any:
     if isinstance(value, str):
         rendered = interpolate(value, context)
         parsed = parse_literal_value(rendered)
@@ -3267,7 +3269,7 @@ def render_value(value, context):
     return value
 
 
-def html_escape(value):
+def html_escape(value) -> Any:
     if isinstance(value, bool):
         value = "true" if value else "false"
     s = "" if value is None else str(value)
@@ -3279,18 +3281,18 @@ def html_escape(value):
     )
 
 
-def js_escape(value):
+def js_escape(value) -> Any:
     return str(value).replace("\\\\", "\\\\\\\\").replace("'", "\\\\'").replace("\\n", "\\\\n")
 
 
-def safe_clone(value):
+def safe_clone(value: Any):
     # Avoid accidental cross-scope mutation for composite values
     if isinstance(value, (dict, list)):
         return copy.deepcopy(value)
     return value
 
 
-def render_attrs(attrs, context):
+def render_attrs(attrs, context) -> Any:
     if not attrs:
         return ""
     # Transform reactive directives (bind:, on:, show:, tw-ref, etc.)
@@ -3328,7 +3330,7 @@ def render_attrs(attrs, context):
     return (" " + " ".join(parts)) if parts else ""
 
 
-def render_events(events, context):
+def render_events(events, context) -> Any:
     if not events:
         return ""
     parts = []
@@ -3364,7 +3366,7 @@ def render_events(events, context):
     return (" " + " ".join(parts)) if parts else ""
 
 
-def render_router(router, context):
+def render_router(router, context) -> Any:
     prefix = ""
     suffix = ""
     extra = ""
@@ -3384,7 +3386,7 @@ def render_router(router, context):
     return prefix, suffix, extra, uses_router
 
 
-def render_inline_style(style_items, context):
+def render_inline_style(style_items, context) -> Any:
     if not style_items:
         return ""
     decls = []
@@ -3393,14 +3395,14 @@ def render_inline_style(style_items, context):
     return f' style="{" ".join(decls)}"'
 
 
-def _format_css_selector(selector, pad):
+def _format_css_selector(selector, pad) -> Any:
     parts = [line.strip() for line in selector.splitlines() if line.strip()]
     if not parts:
         return selector.strip()
     return f"\n{pad}".join(parts)
 
 
-def _render_css_rule(rule, context, indent=0):
+def _render_css_rule(rule, context, indent=0) -> Any:
     pad = "    " * indent
     inner_pad = "    " * (indent + 1)
     selector = _format_css_selector(_normalize_at_rule_selector(rule.selector), pad)
@@ -3413,7 +3415,7 @@ def _render_css_rule(rule, context, indent=0):
     return "\n".join(lines)
 
 
-def render_css(sheet, context=None):
+def render_css(sheet, context=None) -> Any:
     context = context or {}
     out = []
     for rule in sheet.rules:
@@ -3421,13 +3423,13 @@ def render_css(sheet, context=None):
     return "\n".join(out)
 
 
-def render_head_extras(head, context):
+def render_head_extras(head, context) -> Any:
     config = context.get("config", {}) if isinstance(context, dict) else {}
     site_url = str(config.get("site_url", "") or config.get("siteUrl", "") or "").rstrip("/")
     current_route = str(context.get("_tw_route", "") or "/")
     responsive = to_bool(context.get("_tw_responsive", False))
 
-    def absolute_url(value):
+    def absolute_url(value) -> Any:
         value = render_value(value, context)
         value = resolve_static_asset_url(value)
         if not isinstance(value, str):
@@ -3489,7 +3491,7 @@ def render_head_extras(head, context):
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-def get_router_runtime_url():
+def get_router_runtime_url() -> Any:
     runtime_js = """window.__twRouterGoto = window.__twRouterGoto || function(event, path) {
   if (event && typeof event.preventDefault === 'function') event.preventDefault();
   window.location.href = path;
@@ -3498,7 +3500,7 @@ def get_router_runtime_url():
     return write_chunk(runtime_js, "js")
 
 
-def get_search_runtime_url():
+def get_search_runtime_url() -> Any:
     runtime_js = """(function(){
   var INDEX_URL = '/_tw/search-index.json';
   var CACHE = null;
@@ -3536,7 +3538,7 @@ def get_search_runtime_url():
     return write_chunk(runtime_js, "js")
 
 
-def build_theme_inline_script(context):
+def build_theme_inline_script(context) -> Any:
     """
     Dark/Light mode support (static friendly).
     Config keys supported:
@@ -3604,7 +3606,7 @@ def build_theme_inline_script(context):
     return f"  <script>{js}</script>\n"
 
 
-def maybe_optimize_image(node):
+def maybe_optimize_image(node) -> None:
     if node.tag != "img":
         return
 
@@ -3615,7 +3617,7 @@ def maybe_optimize_image(node):
         node.attrs.append(("decoding", "async"))
 
 
-def _build_declarative_script_loader_js(src: str, strategy: str) -> str:
+def _build_declarative_script_loader_js(src: str, strategy: str) -> Any:
     src_json = json.dumps(str(src))
     strategy_json = json.dumps(str(strategy))
     return f"""(function(){{
@@ -3645,7 +3647,7 @@ def _build_declarative_script_loader_js(src: str, strategy: str) -> str:
 }})();"""
 
 
-def render_elements_html(nodes, context, indent=1, slot_children=None, collect_head_scripts: bool = True):
+def render_elements_html(nodes, context, indent=1, slot_children=None, collect_head_scripts: bool = True) -> Any:
     pad = "  " * indent
     out = []
     current_context = dict(context)
@@ -3868,7 +3870,7 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
     return "".join(out), needs_router_runtime, head_scripts
 
 
-def _build_tw_signature(page=None, context=None):
+def _build_tw_signature(page=None, context=None) -> Any:
     """
     Returns (meta_tags_html, tw_data_script_html, build_comments_html)
     These injected parts form TW Framework's signature in the HTML output.
@@ -3894,7 +3896,7 @@ def _build_tw_signature(page=None, context=None):
             page_name = route.strip("/").split("/")[-1] or "index"
 
         # Collect component names from body nodes recursively
-        def _collect_components(nodes, seen=None):
+        def _collect_components(nodes, seen=None) -> Any:
             if seen is None:
                 seen = set()
             if not nodes:
@@ -3951,7 +3953,7 @@ def _build_tw_signature(page=None, context=None):
     return meta_html, data_script, build_comments
 
 
-def build_default_document(title, head_extras, style_blocks, body_html, runtime_scripts_html, page=None, context=None):
+def build_default_document(title, head_extras, style_blocks, body_html, runtime_scripts_html, page=None, context=None) -> Any:
     runtime_scripts = (runtime_scripts_html + "\n") if runtime_scripts_html else ""
     meta_html, data_script, build_comments = _build_tw_signature(page, context)
     return f"""{build_comments}<!DOCTYPE html>
@@ -3963,7 +3965,7 @@ def build_default_document(title, head_extras, style_blocks, body_html, runtime_
 </html>"""
 
 
-def build_redirect_document(title, target):
+def build_redirect_document(title, target) -> Any:
     safe_target = html_escape(target)
     return f"""<!DOCTYPE html>
 <html>
@@ -3980,11 +3982,11 @@ def build_redirect_document(title, target):
 _LAYOUT_VAR_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*(?:\[[0-9]+\])*)\}")
 
 
-def interpolate_layout_template(text, context):
+def interpolate_layout_template(text, context) -> Any:
     if text is None or "{" not in str(text):
         return text
 
-    def repl(match):
+    def repl(match) -> Any:
         expr = match.group(1)
         value = evaluate_expression(expr, context)
         return match.group(0) if value is None else str(value)
@@ -3992,7 +3994,7 @@ def interpolate_layout_template(text, context):
     return _LAYOUT_VAR_RE.sub(repl, str(text))
 
 
-def apply_layout_template(layout_template, title, head_extras, style_blocks, body_html, runtime_scripts_html, context, page=None):
+def apply_layout_template(layout_template, title, head_extras, style_blocks, body_html, runtime_scripts_html, context, page=None) -> Any:
     runtime_scripts = runtime_scripts_html or ""
     meta_html, data_script, build_comments = _build_tw_signature(page, context)
     # Inject signature into {head} placeholder
@@ -4010,7 +4012,7 @@ def apply_layout_template(layout_template, title, head_extras, style_blocks, bod
     return result
 
 
-def _inject_reactivity_runtime(html_text: str, page_source: str, state: dict) -> str:
+def _inject_reactivity_runtime(html_text: str, page_source: str, state: dict) -> Any:
     """Inject TW reactivity runtime + state init into HTML before </body>."""
     try:
         from .reactivity import get_reactivity_runtime_js, build_state_init_script
@@ -4027,7 +4029,7 @@ def _inject_reactivity_runtime(html_text: str, page_source: str, state: dict) ->
         return html_text
 
 
-def _inject_on_load_inits(html_text: str, handlers) -> str:
+def _inject_on_load_inits(html_text: str, handlers: Any) -> Any:
     handlers = [str(h).strip() for h in (handlers or []) if str(h).strip()]
     if not handlers:
         return html_text
@@ -4057,7 +4059,7 @@ def _inject_on_load_inits(html_text: str, handlers) -> str:
     return html_text + script
 
 
-def render_html(page, context, css_href):
+def render_html(page, context, css_href) -> Any:
     if page.redirect_to:
         target = interpolate(page.redirect_to, context)
         return build_redirect_document(page.title or "Redirecting", target)
@@ -4186,7 +4188,7 @@ def render_html(page, context, css_href):
     return final_doc
 
 
-def parse_layout_chain(raw_value):
+def parse_layout_chain(raw_value) -> Any:
     """
     Accept:
       - "main"
@@ -4205,7 +4207,7 @@ def parse_layout_chain(raw_value):
     return parts
 
 
-def apply_layout_fragment(layout_template, body_html, context):
+def apply_layout_fragment(layout_template, body_html, context) -> Any:
     """
     Apply an inner (fragment) layout around body_html.
     Inner layouts should ideally NOT include <html>/<head>/<body>; they are wrappers around `{slot}`.
@@ -4222,7 +4224,7 @@ def apply_layout_fragment(layout_template, body_html, context):
 _LOAD_JSON_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-def load_external_json(rel_path, base_dir):
+def load_external_json(rel_path, base_dir) -> Any:
     full_path = resolve_source_path(rel_path, base_dir)
     if not os.path.exists(full_path):
         raise FileNotFoundError(f"load: json not found -> {full_path}")
@@ -4230,7 +4232,7 @@ def load_external_json(rel_path, base_dir):
         return json.load(f)
 
 
-def infer_json_context_key(rel_path):
+def infer_json_context_key(rel_path) -> Any:
     base = os.path.basename(rel_path)
     stem = base[:-5] if base.lower().endswith(".json") else os.path.splitext(base)[0]
     if not _LOAD_JSON_KEY_RE.match(stem):
@@ -4238,7 +4240,7 @@ def infer_json_context_key(rel_path):
     return stem
 
 
-def load_page_data(tw_path):
+def load_page_data(tw_path) -> Any:
     base, ext = os.path.splitext(tw_path)
     json_path = base + ".json" if ext.lower() == ".tw" else tw_path + ".json"
     if os.path.exists(json_path):
@@ -4251,7 +4253,7 @@ def load_page_data(tw_path):
     return {}
 
 
-def load_page_ast_from_file(tw_path):
+def load_page_ast_from_file(tw_path) -> Any:
     raw = read_text_file(tw_path)
     tokens = tokenize_tw(raw)
     ast = build_tw_ast(tokens, os.path.dirname(tw_path), tw_path, raw)
@@ -4259,7 +4261,7 @@ def load_page_ast_from_file(tw_path):
     return ast
 
 
-def load_dynamic_items(tw_path):
+def load_dynamic_items(tw_path) -> Any:
     base, ext = os.path.splitext(tw_path)
     json_path = base + ".json" if ext.lower() == ".tw" else tw_path + ".json"
     if not os.path.exists(json_path):
@@ -4283,7 +4285,7 @@ def load_dynamic_items(tw_path):
     )
 
 
-def classify_dynamic_route_file(filename):
+def classify_dynamic_route_file(filename) -> Optional[Dict[str, Any]]:
     optional_match = OPTIONAL_CATCH_ALL_FILE_RE.match(filename)
     if optional_match:
         return {"type": "dynamic", "route_kind": "optional-catch-all", "param": optional_match.group(1)}
@@ -4299,7 +4301,7 @@ def classify_dynamic_route_file(filename):
     return None
 
 
-def resolve_dynamic_segments(page_info, item):
+def resolve_dynamic_segments(page_info, item) -> Any:
     raw_value = item.get(page_info["param"], item.get("id", item.get("slug", "unknown")))
     route_kind = page_info.get("route_kind", "single")
 
@@ -4319,7 +4321,7 @@ def resolve_dynamic_segments(page_info, item):
     return segments
 
 
-def load_config():
+def load_config() -> Any:
     config = {"name": "My Site"}
     if not os.path.exists(CONFIG_FILE):
         return config
@@ -4349,7 +4351,7 @@ def load_config():
     return config
 
 
-def discover_pages():
+def discover_pages() -> Any:
     pages = []
     if os.path.exists(INDEX_FILE):
         pages.append({"type": "static", "path": INDEX_FILE, "rel_dir": "", "name": "index"})
@@ -4378,7 +4380,7 @@ def discover_pages():
     return pages
 
 
-def copy_assets():
+def copy_assets() -> None:
     ASSET_URL_MAP.clear()
     if not os.path.exists(ASSETS_DIR):
         return
@@ -4412,12 +4414,12 @@ def copy_assets():
                 ASSET_URL_MAP[original_url] = hashed_url
 
 
-def verify_api_isolated():
+def verify_api_isolated() -> None:
     if os.path.exists(API_DIR):
         log("  🔒 api/ folder detected — kept server-only, not included in build output.")
 
 
-def read_global_stylesheet():
+def read_global_stylesheet() -> Any:
     if not os.path.exists(STYLE_FILE):
         return "", None
     raw = read_text_file(STYLE_FILE)
@@ -4429,7 +4431,7 @@ def read_global_stylesheet():
     return css_url, sheet
 
 
-def create_base_context(page_ast, tw_path):
+def create_base_context(page_ast, tw_path) -> Any:
     context = {}
     for key, value in page_ast.let_vars.items():
         context[key] = value
@@ -4452,7 +4454,7 @@ def create_base_context(page_ast, tw_path):
     return context
 
 
-def build_one_page(page_info, css_url):
+def build_one_page(page_info, css_url) -> Any:
     tw_path = page_info["path"]
     page_ast = load_page_ast_from_file(tw_path)
 
@@ -4504,7 +4506,7 @@ def build_one_page(page_info, css_url):
     return built_paths
 
 
-def parse_cli_args():
+def parse_cli_args() -> Any:
     parser = argparse.ArgumentParser(description="TW compiler build tool")
     parser.add_argument("--force", action="store_true", help="Rebuild all pages")
     parser.add_argument(
@@ -4520,11 +4522,11 @@ def parse_cli_args():
     )
 
 
-def get_page_manifest_entry(manifest, page_info):
+def get_page_manifest_entry(manifest, page_info) -> Any:
     return manifest.get("pages", {}).get(page_cache_key(page_info))
 
 
-def should_rebuild_page(page_info, dependencies, manifest, options):
+def should_rebuild_page(page_info, dependencies, manifest, options) -> Any:
     if options.force:
         return True, "forced rebuild"
 
@@ -4545,7 +4547,7 @@ def should_rebuild_page(page_info, dependencies, manifest, options):
     return False, "cache valid"
 
 
-def update_page_manifest_entry(manifest, page_info, dependencies, outputs, metadata=None):
+def update_page_manifest_entry(manifest, page_info, dependencies, outputs, metadata=None) -> None:
     key = page_cache_key(page_info)
     manifest.setdefault("pages", {})
     previous = manifest["pages"].get(key, {})
@@ -4567,7 +4569,7 @@ def update_page_manifest_entry(manifest, page_info, dependencies, outputs, metad
     }
 
 
-def build_page_job(page_info, css_url):
+def build_page_job(page_info, css_url) -> Dict[str, Any]:
     outputs = build_one_page(page_info, css_url)
     return {
         "page_info": page_info,
@@ -4575,7 +4577,7 @@ def build_page_job(page_info, css_url):
     }
 
 
-def print_compiler_error(page_info, err, debug: bool = False):
+def print_compiler_error(page_info, err, debug: bool = False) -> None:
     if isinstance(err, CompilerError) and page_info.get("path") and os.path.exists(page_info["path"]):
         raw = read_text_file(page_info["path"])
         emitter = DiagnosticEmitter(page_info["path"], raw)
@@ -4584,7 +4586,7 @@ def print_compiler_error(page_info, err, debug: bool = False):
         log(f"  ❌ Error in {page_info['path']}: {err}", level="error")
 
 
-def main():
+def main() -> None:
     options = parse_cli_args()
     config = load_config()
     log(f"🔧 Building: {config.get('name', 'My Site')}\n")
@@ -4654,7 +4656,7 @@ def main():
     )
 
 
-def _token_to_dict(token):
+def _token_to_dict(token) -> Any:
     if hasattr(token, "to_dict"):
         return token.to_dict()
     return {
@@ -4665,7 +4667,7 @@ def _token_to_dict(token):
     }
 
 
-def _diagnostic_to_payload(err, fallback_file_path="", *, phase=None):
+def _diagnostic_to_payload(err, fallback_file_path="", *, phase=None) -> Dict[str, Any]:
     if isinstance(err, Diagnostic):
         diagnostic = err
     elif isinstance(err, CompilerError):
@@ -4708,7 +4710,7 @@ def _diagnostic_to_payload(err, fallback_file_path="", *, phase=None):
     }
 
 
-def _summarize_diagnostics_payload(items):
+def _summarize_diagnostics_payload(items) -> Any:
     summary = {
         "total": 0,
         "errors": 0,
@@ -4735,7 +4737,7 @@ def _summarize_diagnostics_payload(items):
     return summary
 
 
-def _pipeline_metadata_from_program(program, *, file_path, route_path, dependencies):
+def _pipeline_metadata_from_program(program, *, file_path, route_path, dependencies) -> Dict[str, Any]:
     layouts = list(program.meta.layouts or [])
     if not layouts and program.meta.layout:
         layouts = [program.meta.layout]
@@ -4760,7 +4762,7 @@ def _pipeline_metadata_from_program(program, *, file_path, route_path, dependenc
     }
 
 
-def compile_text_pipeline(text, *, base_dir=".", file_path="<memory>", context=None, css_href=None, route_path=None, capture_errors=False, dependency_paths=None):
+def compile_text_pipeline(text, *, base_dir=".", file_path="<memory>", context=None, css_href=None, route_path=None, capture_errors=False, dependency_paths=None) -> Any:
     from . import parser as modular_parser
     from .lowering import lower_program
     from .render_html import build_runtime_context, render_program_document
@@ -4865,7 +4867,7 @@ def compile_text_pipeline(text, *, base_dir=".", file_path="<memory>", context=N
     )
 
 
-def compile_file_pipeline(path, context=None, css_href=None, route_path=None, capture_errors=False):
+def compile_file_pipeline(path, context=None, css_href=None, route_path=None, capture_errors=False) -> Any:
     path = normalize_path(os.path.abspath(path))
     try:
         source = read_text_file(path)

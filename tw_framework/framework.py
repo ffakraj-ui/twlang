@@ -28,7 +28,7 @@ import importlib.util
 import urllib.parse
 from email.utils import formatdate
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 
 from . import compiler
 from .common import content_hash, log
@@ -106,7 +106,7 @@ class RouteMatch:
     route_path: str
 
 
-def configure_compiler_paths(project_root: str):
+def configure_compiler_paths(project_root: str) -> None:
     project_root = os.path.abspath(project_root)
 
     compiler.PROJECT_ROOT = project_root
@@ -137,7 +137,7 @@ def configure_compiler_paths(project_root: str):
 
 
 @contextlib.contextmanager
-def compiler_output_context(output_root: str):
+def compiler_output_context(output_root: str) -> Generator[Any, None, None]:
     old_values = {
         "INTERNAL_DIR": getattr(compiler, "INTERNAL_DIR", None),
         "CACHE_DIR": getattr(compiler, "CACHE_DIR", None),
@@ -183,7 +183,7 @@ def compiler_output_context(output_root: str):
         compiler._CHUNK_CACHE.clear()
 
 
-def invalidate_compiler_caches():
+def invalidate_compiler_caches() -> None:
     compiler._CHUNK_CACHE.clear()
     compiler._COMPONENT_AST_CACHE.clear()
     compiler._COMPONENT_EXISTS_CACHE.clear()
@@ -202,7 +202,7 @@ def invalidate_compiler_caches():
         compiler._LAYOUT_META_CACHE.clear()
 
 
-def use_modular_pipeline(config: Optional[Dict] = None) -> bool:
+def use_modular_pipeline(config: Optional[Dict] = None) -> Any:
     env_value = os.environ.get("TW_USE_MODULAR_PIPELINE")
     if env_value is not None and str(env_value).strip() != "":
         return str(env_value).strip().lower() in {"1", "true", "yes", "on"}
@@ -210,7 +210,7 @@ def use_modular_pipeline(config: Optional[Dict] = None) -> bool:
     return compiler.to_bool(config.get("modular_pipeline", config.get("modularPipeline", False)))
 
 
-def normalize_url_path(path: str) -> str:
+def normalize_url_path(path: str) -> Any:
     clean = urllib.parse.urlparse(path).path
     clean = posixpath.normpath(clean)
     if clean == ".":
@@ -220,13 +220,13 @@ def normalize_url_path(path: str) -> str:
     return clean
 
 
-def strip_trailing_slash(path: str) -> str:
+def strip_trailing_slash(path: str) -> Any:
     if path != "/" and path.endswith("/"):
         return path[:-1]
     return path
 
 
-def route_from_static_page(page_info: dict) -> str:
+def route_from_static_page(page_info: dict) -> Any:
     segments = []
     if page_info["rel_dir"]:
         segments.extend(page_info["rel_dir"].split(os.sep))
@@ -236,7 +236,7 @@ def route_from_static_page(page_info: dict) -> str:
     return route if route != "" else "/"
 
 
-def route_from_dynamic_page(page_info: dict, item: dict) -> str:
+def route_from_dynamic_page(page_info: dict, item: dict) -> Any:
     segments = []
     if page_info["rel_dir"]:
         segments.extend(page_info["rel_dir"].split(os.sep))
@@ -244,12 +244,12 @@ def route_from_dynamic_page(page_info: dict, item: dict) -> str:
     return "/" + "/".join(filter(None, segments))
 
 
-def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> List[str]:
+def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
     tw_path = page_info["path"]
     config = compiler.load_config()
     pretty_urls = compiler.to_bool(config.get("pretty_urls", config.get("prettyUrls", False)))
 
-    def render_and_write(route_path: str, render_context: Dict, out_path: str) -> str:
+    def render_and_write(route_path: str, render_context: Dict, out_path: str) -> Any:
         artifacts = compiler.compile_file_pipeline(
             tw_path,
             context=render_context,
@@ -298,7 +298,7 @@ def build_page_job_modular(page_info: dict, css_url: str) -> dict:
     return {"page_info": page_info, "outputs": outputs}
 
 
-def special_page_name_for_status(status_code: int) -> str:
+def special_page_name_for_status(status_code: int) -> Any:
     if status_code == 404:
         return "404"
     if status_code == 500:
@@ -340,7 +340,7 @@ def inject_dev_client(html_text: str) -> str:
     return html_text + client
 
 
-def _mask_ip(ip: str) -> str:
+def _mask_ip(ip: str) -> Any:
     if not ip:
         return "unknown"
     if ":" in ip:
@@ -352,7 +352,7 @@ def _mask_ip(ip: str) -> str:
     return "***"
 
 
-def _ip_footer_html(ip: str) -> str:
+def _ip_footer_html(ip: str) -> Any:
     if not ip:
         return ""
     masked = html.escape(_mask_ip(ip))
@@ -418,7 +418,7 @@ def render_error_html(title: str, message: str, status_code: int = 500, ip: str 
     return doc.encode("utf-8")
 
 
-def format_compiler_error(page_path: str, err: Exception) -> str:
+def format_compiler_error(page_path: str, err: Exception) -> Any:
     if isinstance(err, compiler.CompilerError) and os.path.exists(page_path):
         raw = compiler.read_text_file(page_path)
         emitter = compiler.DiagnosticEmitter(page_path, raw)
@@ -433,7 +433,7 @@ def safe_read_binary(path: str) -> Optional[bytes]:
         return f.read()
 
 
-def is_path_within(root_path: str, candidate_path: str) -> bool:
+def is_path_within(root_path: str, candidate_path: str) -> Any:
     try:
         root_abs = os.path.abspath(root_path)
         candidate_abs = os.path.abspath(candidate_path)
@@ -442,7 +442,7 @@ def is_path_within(root_path: str, candidate_path: str) -> bool:
         return False
 
 
-def _normalize_config_headers(raw_value) -> List[Tuple[str, str]]:
+def _normalize_config_headers(raw_value: Any) -> Any:
     if not raw_value:
         return []
     if isinstance(raw_value, dict):
@@ -484,7 +484,7 @@ def get_cookie_secure_mode(config: Optional[Dict]) -> str:
     return "auto"
 
 
-def request_uses_https(request_headers: Optional[Dict[str, str]] = None, server_port: Optional[int] = None) -> bool:
+def request_uses_https(request_headers: Optional[Dict[str, str]] = None, server_port: Optional[int] = None) -> Any:
     request_headers = request_headers or {}
     forwarded_proto = str(request_headers.get("X-Forwarded-Proto", "")).split(",", 1)[0].strip().lower()
     if forwarded_proto:
@@ -502,7 +502,7 @@ def render_cookie_header(
     config: Optional[Dict] = None,
     request_headers: Optional[Dict[str, str]] = None,
     server_port: Optional[int] = None,
-) -> str:
+) -> Any:
     rendered_value = urllib.parse.quote(str(value))
     parts = [f"{name}={rendered_value}", "Path=/", "HttpOnly", "SameSite=Lax"]
     secure_mode = get_cookie_secure_mode(config)
@@ -511,7 +511,7 @@ def render_cookie_header(
     return "; ".join(parts)
 
 
-def _csrf_secret() -> str:
+def _csrf_secret() -> Any:
     return (
         os.environ.get("TW_CSRF_SECRET")
         or os.environ.get("SECRET_KEY")
@@ -520,7 +520,7 @@ def _csrf_secret() -> str:
     )
 
 
-def _csrf_session_hint(request: Optional[Dict]) -> str:
+def _csrf_session_hint(request: Optional[Dict]) -> Any:
     cookies = dict((request or {}).get("cookies") or {})
     for key in ("session_id", "session", "sid"):
         if cookies.get(key):
@@ -528,7 +528,7 @@ def _csrf_session_hint(request: Optional[Dict]) -> str:
     return ""
 
 
-def generate_csrf_token(request: Optional[Dict] = None) -> str:
+def generate_csrf_token(request: Optional[Dict] = None) -> Any:
     issued_at = str(int(time.time()))
     nonce = secrets.token_urlsafe(16)
     session_hint = _csrf_session_hint(request)
@@ -538,7 +538,7 @@ def generate_csrf_token(request: Optional[Dict] = None) -> str:
     return base64.urlsafe_b64encode(token).decode("ascii").rstrip("=")
 
 
-def verify_csrf_token(token: str, request: Optional[Dict] = None, *, max_age: int = 7200) -> bool:
+def verify_csrf_token(token: str, request: Optional[Dict] = None, *, max_age: int = 7200) -> Any:
     if not token:
         return False
     try:
@@ -560,7 +560,7 @@ def verify_csrf_token(token: str, request: Optional[Dict] = None, *, max_age: in
 
 
 class TokenBucketRateLimiter:
-    def __init__(self, capacity: int, window_seconds: float):
+    def __init__(self, capacity: int, window_seconds: float) -> None:
         self.capacity = max(1, int(capacity))
         self.window_seconds = max(float(window_seconds), 1.0)
         self.refill_rate = self.capacity / self.window_seconds
@@ -715,7 +715,7 @@ def discover_ws_routes(project_root: str) -> Dict[str, str]:
     return routes
 
 
-def load_ws_handler(path: str):
+def load_ws_handler(path: str) -> Any:
     module_name = f"tw_ws_{os.path.splitext(os.path.basename(path))[0]}_{content_hash(path, length=10)}"
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
@@ -742,7 +742,7 @@ def parse_cookie_header(raw_value: str) -> Dict[str, str]:
     return cookies
 
 
-def match_path_pattern(path: str, pattern: str) -> bool:
+def match_path_pattern(path: str, pattern: str) -> Any:
     if not pattern or pattern in {"*", "/**"}:
         return True
     if pattern.endswith("/**"):
@@ -758,14 +758,14 @@ def middleware_file_candidates(project_root: str) -> List[str]:
     ]
 
 
-def parse_value_token(tokens, i):
+def parse_value_token(tokens, i) -> Any:
     expr, j = compiler.collect_until_eol(tokens, i, stop_on_block_open=True)
     if not expr:
         raise RuntimeError("Expected value token")
     return compiler.parse_literal_value(expr), j
 
 
-def parse_single_value_token(tokens, i):
+def parse_single_value_token(tokens, i) -> Any:
     """Parse exactly one literal token (STRING or WORD), without consuming
     the rest of the line. Needed for directives that carry more than one
     value on the same line, e.g. `auth "cookie" "redirect"`."""
@@ -779,7 +779,7 @@ def parse_single_value_token(tokens, i):
     raise RuntimeError("Expected value token")
 
 
-def parse_middleware_rules(project_root: str) -> List[dict]:
+def parse_middleware_rules(project_root: str) -> Any:
     source_path = next((path for path in middleware_file_candidates(project_root) if os.path.exists(path)), None)
     if not source_path:
         return []
@@ -787,25 +787,25 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
     tokens = compiler.tokenize_tw(compiler.read_text_file(source_path))
     rules = []
 
-    def skip_separators(index):
+    def skip_separators(index) -> Any:
         while index < len(tokens) and compiler.is_statement_separator(tokens[index]):
             index += 1
         return index
 
-    def expect_block(index, label):
+    def expect_block(index, label) -> Any:
         index = skip_separators(index)
         if index >= len(tokens) or tokens[index].type != "BRACE" or tokens[index].value != "{":
             raise RuntimeError(f"Expected `{{` after `{label}` in middleware.tw")
         return index + 1
 
-    def ensure_list(value):
+    def ensure_list(value) -> List[Any]:
         if value is None:
             return []
         if isinstance(value, (list, tuple, set)):
             return [str(item) for item in value]
         return [str(value)]
 
-    def parse_object_block(index):
+    def parse_object_block(index) -> Any:
         index = expect_block(index, "json")
         data = {}
         while index < len(tokens):
@@ -828,7 +828,7 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
             data[key] = value
         return data, index
 
-    def parse_response_block(index):
+    def parse_response_block(index) -> Any:
         index = expect_block(index, "response")
         response = {"headers": [], "cookies": []}
         while index < len(tokens):
@@ -861,7 +861,7 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
                 raise RuntimeError(f"Unsupported response key: {key}")
         return response, index
 
-    def parse_user_agent_block(index):
+    def parse_user_agent_block(index) -> Any:
         index = expect_block(index, "user_agent")
         spec = {"allow": [], "block": [], "empty_is_blocked": False}
         while index < len(tokens):
@@ -886,7 +886,7 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
                 raise RuntimeError(f"Unsupported user_agent key: {key}")
         return spec, index
 
-    def parse_origin_block(index):
+    def parse_origin_block(index) -> Any:
         index = expect_block(index, "origin")
         spec = {"allow": [], "allow_referer": True, "require": False}
         while index < len(tokens):
@@ -911,7 +911,7 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
                 raise RuntimeError(f"Unsupported origin key: {key}")
         return spec, index
 
-    def parse_path_block(index):
+    def parse_path_block(index) -> Any:
         index = expect_block(index, "path")
         spec = {
             "prefixes": [],
@@ -947,7 +947,7 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
                 raise RuntimeError(f"Unsupported path key: {key}")
         return spec, index
 
-    def parse_auth_block(index):
+    def parse_auth_block(index) -> Any:
         index = expect_block(index, "auth")
         spec = {"cookie": "", "jwt_secret": "", "jwt_secret_env": "", "required": True}
         while index < len(tokens):
@@ -971,7 +971,7 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
                 raise RuntimeError(f"Unsupported auth key: {key}")
         return spec, index
 
-    def parse_rate_limit_block(index):
+    def parse_rate_limit_block(index) -> Any:
         index = expect_block(index, "rate_limit")
         rate_limit = {"identity": "ip", "bucket_segments": 2}
         while index < len(tokens):
@@ -1092,7 +1092,7 @@ def parse_middleware_rules(project_root: str) -> List[dict]:
     return rules
 
 
-def _middleware_header(request_headers: Dict[str, str], name: str, default: str = "") -> str:
+def _middleware_header(request_headers: Dict[str, str], name: str, default: str = "") -> Any:
     lname = str(name).lower()
     for key, value in (request_headers or {}).items():
         if str(key).lower() == lname:
@@ -1100,7 +1100,7 @@ def _middleware_header(request_headers: Dict[str, str], name: str, default: str 
     return default
 
 
-def _middleware_list(value) -> List[str]:
+def _middleware_list(value: Any) -> List[str]:
     if value is None:
         return []
     if isinstance(value, (list, tuple, set)):
@@ -1108,7 +1108,7 @@ def _middleware_list(value) -> List[str]:
     return [str(value)]
 
 
-def _middleware_referer_origin(referer: str) -> str:
+def _middleware_referer_origin(referer: str) -> Any:
     parsed = urllib.parse.urlparse(str(referer or ""))
     if not parsed.scheme or not parsed.netloc:
         return ""
@@ -1200,7 +1200,7 @@ def discover_twm_api_handlers() -> List[dict]:
     return routes
 
 
-def _compile_twm_api_handler_to_cache(handler_path: str) -> str:
+def _compile_twm_api_handler_to_cache(handler_path: str) -> Any:
     cache_dir = os.path.join(compiler.CACHE_DIR, "twm_api")
     os.makedirs(cache_dir, exist_ok=True)
     with open(handler_path, "r", encoding="utf-8") as f:
@@ -1340,8 +1340,8 @@ def parse_api_route_file(tw_path: str) -> Dict[str, dict]:
     return methods
 
 
-def render_api_value(value, context):
-    def render_nested(item):
+def render_api_value(value, context) -> Any:
+    def render_nested(item) -> Any:
         if isinstance(item, dict):
             return {key: render_nested(val) for key, val in item.items()}
         if isinstance(item, list):
@@ -1361,7 +1361,7 @@ def render_api_value(value, context):
     return compiler.parse_literal_value(rendered)
 
 
-def decode_request_body(handler) -> object:
+def decode_request_body(handler: Callable[..., Any]) -> Any:
     length = int(handler.headers.get("Content-Length", "0") or "0")
     if length <= 0:
         return {}
@@ -1379,7 +1379,7 @@ def decode_request_body(handler) -> object:
 
 
 class TWProject:
-    def __init__(self, project_root: str):
+    def __init__(self, project_root: str) -> None:
         self.project_root = os.path.abspath(project_root)
         self._lock = threading.RLock()
         configure_compiler_paths(self.project_root)
@@ -1391,7 +1391,7 @@ class TWProject:
         self._rate_limiters: Dict[str, TokenBucketRateLimiter] = {}
 
     @property
-    def source_root(self) -> str:
+    def source_root(self) -> Any:
         return compiler.HOME_DIR
 
     def list_source_files(self) -> List[str]:
@@ -1411,7 +1411,7 @@ class TWProject:
                         files.append(os.path.join(dirpath, filename))
         return sorted(set(os.path.abspath(p) for p in files))
 
-    def source_signature(self) -> str:
+    def source_signature(self) -> Any:
         digest = hashlib.sha1()
         for path in self.list_source_files():
             stat = os.stat(path)
@@ -1420,7 +1420,7 @@ class TWProject:
             digest.update(str(stat.st_size).encode("utf-8"))
         return digest.hexdigest()
 
-    def invalidate(self):
+    def invalidate(self) -> None:
         invalidate_compiler_caches()
         self.env = load_project_env(self.project_root, "development")
         self.config = compiler.load_config()
@@ -1525,7 +1525,7 @@ class TWProject:
             self._rate_limiters[limiter_key] = limiter
         return limiter
 
-    def _resolve_rate_limit_identity(self, request_headers: Dict[str, str], request_meta: Optional[Dict[str, str]] = None) -> str:
+    def _resolve_rate_limit_identity(self, request_headers: Dict[str, str], request_meta: Optional[Dict[str, str]] = None) -> Any:
         request_meta = request_meta or {}
         forwarded_for = str(request_headers.get("X-Forwarded-For", "")).split(",", 1)[0].strip()
         return (
@@ -1701,7 +1701,7 @@ class TWProject:
                 return route
         return None
 
-    def execute_api_route(self, api_route: dict, method: str, url_path: str, headers: Dict[str, str], body: object) -> dict:
+    def execute_api_route(self, api_route: dict, method: str, url_path: str, headers: Dict[str, str], body: object) -> Any:
         if api_route.get("lang") == "twm":
             return execute_twm_api_handler(api_route["path"], method, url_path, headers, body)
         methods = parse_api_route_file(api_route["path"])
@@ -1864,7 +1864,7 @@ class TWProject:
         )
         return hook_state.get("response", response)
 
-    def compile_match_to_html(self, match: RouteMatch, dev_mode: bool = False) -> str:
+    def compile_match_to_html(self, match: RouteMatch, dev_mode: bool = False) -> Any:
         return self.compile_match_response(match, dev_mode=dev_mode)["html"]
 
     def compile_special_page(self, status_code: int, dev_mode: bool = False) -> Optional[str]:
@@ -1875,23 +1875,23 @@ class TWProject:
 
 
 class TWDevState:
-    def __init__(self, project: TWProject):
+    def __init__(self, project: TWProject) -> None:
         self.project = project
         self.version = 0
         self.stop_event = threading.Event()
         self.lock = threading.Lock()
 
-    def bump(self):
+    def bump(self) -> None:
         with self.lock:
             self.version += 1
 
-    def current_version(self) -> int:
+    def current_version(self) -> Any:
         with self.lock:
             return self.version
 
 
 class TWFileWatcher(threading.Thread):
-    def __init__(self, state: TWDevState, interval: float = 1.0):
+    def __init__(self, state: TWDevState, interval: float = 1.0) -> None:
         super().__init__(daemon=True)
         self.state = state
         # Allow tuning:
@@ -1931,7 +1931,7 @@ class TWFileWatcher(threading.Thread):
         self._debounce_s = max(0.05, float(os.environ.get("TW_WATCH_DEBOUNCE", "0.15") or 0.15))
         self._refresh_file_list()
 
-    def _refresh_file_list(self):
+    def _refresh_file_list(self) -> None:
         self._files = self.state.project.list_source_files()
         self._stats = {}
         for path in self._files:
@@ -1941,7 +1941,7 @@ class TWFileWatcher(threading.Thread):
             except OSError:
                 self._stats[path] = None
 
-    def _can_use_inotify(self) -> bool:
+    def _can_use_inotify(self) -> Any:
         if self.backend == "poll":
             return False
         if self.backend == "inotify":
@@ -1985,7 +1985,7 @@ class TWFileWatcher(threading.Thread):
             return False
         return True
 
-    def _inotify_refresh_watches(self, libc):
+    def _inotify_refresh_watches(self, libc) -> None:
         inotify_add_watch = libc.inotify_add_watch
         inotify_add_watch.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_uint32]
         inotify_add_watch.restype = ctypes.c_int
@@ -2015,7 +2015,7 @@ class TWFileWatcher(threading.Thread):
                 if wd >= 0:
                     self._wd_to_dir[wd] = dirpath
 
-    def _inotify_read_events(self) -> List[tuple]:
+    def _inotify_read_events(self) -> Any:
         """Returns list of (mask, name, watched_dir)."""
         assert self._inotify_fd is not None
         try:
@@ -2119,32 +2119,32 @@ class TWFileWatcher(threading.Thread):
                 self.state.bump()
 
 
-def make_dev_handler(state: TWDevState):
+def make_dev_handler(state: TWDevState) -> Any:
     class TWDevHandler(http.server.BaseHTTPRequestHandler):
         server_version = "TWDevServer/1.0"
 
-        def log_message(self, fmt, *args):
+        def log_message(self, fmt, *args) -> None:
             log(f"[dev] {self.address_string()} - {fmt % args}")
 
-        def do_GET(self):
+        def do_GET(self) -> None:
             self.handle_request("GET")
 
-        def do_POST(self):
+        def do_POST(self) -> None:
             self.handle_request("POST")
 
-        def do_PUT(self):
+        def do_PUT(self) -> None:
             self.handle_request("PUT")
 
-        def do_PATCH(self):
+        def do_PATCH(self) -> None:
             self.handle_request("PATCH")
 
-        def do_DELETE(self):
+        def do_DELETE(self) -> None:
             self.handle_request("DELETE")
 
-        def do_OPTIONS(self):
+        def do_OPTIONS(self) -> None:
             self.handle_request("OPTIONS")
 
-        def handle_request(self, method: str):
+        def handle_request(self, method: str) -> None:
             path = normalize_url_path(self.path)
 
             if tw_websocket.is_websocket_upgrade(self.headers):
@@ -2277,7 +2277,7 @@ def make_dev_handler(state: TWDevState):
                     body = render_error_html("Compile error", message, 500, ip=self.client_address[0] if self.client_address else "")
                     self.respond_bytes(500, body, "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
 
-        def handle_websocket(self, path: str):
+        def handle_websocket(self, path: str) -> None:
             routes = discover_ws_routes(state.project.project_root)
             handler_path = routes.get(path)
             if handler_path is None:
@@ -2315,7 +2315,7 @@ def make_dev_handler(state: TWDevState):
             finally:
                 conn.close()
 
-        def handle_events(self):
+        def handle_events(self) -> None:
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
@@ -2340,7 +2340,7 @@ def make_dev_handler(state: TWDevState):
             except (BrokenPipeError, ConnectionResetError):
                 return
 
-        def respond_bytes(self, status: int, payload: bytes, content_type: str, headers: Optional[List[Tuple[str, str]]] = None, cookies: Optional[List[Tuple[str, str]]] = None):
+        def respond_bytes(self, status: int, payload: bytes, content_type: str, headers: Optional[List[Tuple[str, str]]] = None, cookies: Optional[List[Tuple[str, str]]] = None) -> None:
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(payload)))
@@ -2376,7 +2376,7 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     daemon_threads = True
 
 
-def run_dev_server(project_root: str, host: str, port: int):
+def run_dev_server(project_root: str, host: str, port: int) -> None:
     project = TWProject(project_root)
     state = TWDevState(project)
     watcher = TWFileWatcher(state)
@@ -2405,7 +2405,7 @@ def run_dev_server(project_root: str, host: str, port: int):
         server.server_close()
 
 
-def build_preview_candidates(output_dir: str, path: str) -> List[str]:
+def build_preview_candidates(output_dir: str, path: str) -> Any:
     if path == "/":
         return [os.path.join(output_dir, "index.html")]
 
@@ -2417,16 +2417,16 @@ def build_preview_candidates(output_dir: str, path: str) -> List[str]:
     return candidates
 
 
-def make_preview_handler(output_dir: str):
+def make_preview_handler(output_dir: str) -> Any:
     output_dir = os.path.abspath(output_dir)
 
     class TWPreviewHandler(http.server.BaseHTTPRequestHandler):
         server_version = "TWPreviewServer/1.0"
 
-        def log_message(self, fmt, *args):
+        def log_message(self, fmt, *args) -> None:
             log(f"[preview] {self.address_string()} - {fmt % args}")
 
-        def do_GET(self):
+        def do_GET(self) -> None:
             path = normalize_url_path(self.path)
             for candidate in build_preview_candidates(output_dir, path):
                 candidate = os.path.abspath(candidate)
@@ -2446,7 +2446,7 @@ def make_preview_handler(output_dir: str):
             body = render_error_html("Page not found", f"Route not found: {path}", 404, ip=self.client_address[0] if self.client_address else "")
             self.respond_bytes(404, body, "text/html; charset=utf-8")
 
-        def respond_bytes(self, status: int, payload: bytes, content_type: str):
+        def respond_bytes(self, status: int, payload: bytes, content_type: str) -> None:
             if (
                 (
                     content_type.startswith("text/html")
@@ -2470,7 +2470,7 @@ def make_preview_handler(output_dir: str):
     return TWPreviewHandler
 
 
-def run_preview_server(output_dir: str, host: str, port: int):
+def run_preview_server(output_dir: str, host: str, port: int) -> None:
     output_dir = os.path.abspath(output_dir)
     if not os.path.isdir(output_dir):
         raise RuntimeError(f"Preview output missing: {output_dir}. Run `tw build` or `tw export` first.")
@@ -2488,7 +2488,7 @@ def run_preview_server(output_dir: str, host: str, port: int):
         server.server_close()
 
 
-def compile_typescript_sources(project_root: str, output_dir: str) -> List[str]:
+def compile_typescript_sources(project_root: str, output_dir: str) -> Any:
     ts_files = []
     for dirpath, _, filenames in os.walk(os.path.join(project_root, "[home]")):
         for filename in filenames:
@@ -2528,7 +2528,7 @@ def compile_typescript_sources(project_root: str, output_dir: str) -> List[str]:
     return emitted
 
 
-def ensure_project_metadata(project_root: str):
+def ensure_project_metadata(project_root: str) -> None:
     package_json_path = os.path.join(project_root, "package.json")
     if not os.path.exists(package_json_path):
         package_name = os.path.basename(os.path.abspath(project_root)).lower().replace(" ", "-")
@@ -2573,7 +2573,7 @@ def ensure_project_metadata(project_root: str):
             f.write("\n")
 
 
-def sync_runtime_chunks_to_output():
+def sync_runtime_chunks_to_output() -> None:
     os.makedirs(compiler.CHUNKS_DIR, exist_ok=True)
     os.makedirs(compiler.CHUNKS_PUBLIC_DIR, exist_ok=True)
 
@@ -2584,7 +2584,7 @@ def sync_runtime_chunks_to_output():
             shutil.copy2(src, dst)
 
 
-def write_hidden_cache_files(dependency_map: Dict[str, List[str]], metadata_map: Optional[Dict[str, dict]] = None):
+def write_hidden_cache_files(dependency_map: Dict[str, List[str]], metadata_map: Optional[Dict[str, dict]] = None) -> None:
     os.makedirs(compiler.CACHE_DIR, exist_ok=True)
     os.makedirs(compiler.MANIFEST_DIR, exist_ok=True)
     os.makedirs(compiler.COMPILER_DIR, exist_ok=True)
@@ -2601,7 +2601,7 @@ def write_hidden_cache_files(dependency_map: Dict[str, List[str]], metadata_map:
         json.dump(hash_db, f, indent=2, sort_keys=True)
 
 
-def write_text_file(path: str, content: str):
+def write_text_file(path: str, content: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
@@ -2650,7 +2650,7 @@ def route_records_for_build() -> List[dict]:
     return sorted(records, key=lambda item: item["route"])
 
 
-def write_route_artifacts(output_dir: str):
+def write_route_artifacts(output_dir: str) -> Any:
     config = compiler.load_config()
     site_url = str(config.get("site_url", "") or config.get("siteUrl", "") or "").rstrip("/")
     routes = [item for item in route_records_for_build() if item["route"] not in {"/404", "/500"}]
@@ -2740,7 +2740,7 @@ def strip_html_to_text(html_text: str) -> str:
     return html_text
 
 
-def write_search_index(output_dir: str, routes: List[dict]):
+def write_search_index(output_dir: str, routes: List[dict]) -> None:
     """
     Generates: dist/_tw/search-index.json
     Format: [{route,title,excerpt,content}]
@@ -2773,7 +2773,7 @@ def write_search_index(output_dir: str, routes: List[dict]):
     )
 
 
-def precompress_output(output_dir: str):
+def precompress_output(output_dir: str) -> None:
     try:
         import brotli  # type: ignore
     except ImportError:
@@ -2799,7 +2799,7 @@ def precompress_output(output_dir: str):
                 brotli_warned = True
 
 
-def ensure_deploy_support_files(project_root: str):
+def ensure_deploy_support_files(project_root: str) -> None:
     netlify_toml = os.path.join(project_root, "netlify.toml")
     if not os.path.exists(netlify_toml):
         write_text_file(netlify_toml, '[build]\ncommand = "tw build --prod"\npublish = "dist"\n')
@@ -3210,7 +3210,7 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
         compiler.MINIFY_OUTPUT = previous_minify
 
 
-def clean_project_outputs(project_root: str):
+def clean_project_outputs(project_root: str) -> None:
     project_root = os.path.abspath(project_root)
     configure_compiler_paths(project_root)
 
@@ -3256,7 +3256,7 @@ def doctor_project(project_root: str) -> List[dict]:
     configure_compiler_paths(project_root)
     checks = []
 
-    def add_check(name: str, ok: bool, detail: str):
+    def add_check(name: str, ok: bool, detail: str) -> None:
         checks.append({"name": name, "ok": ok, "detail": detail})
 
     add_check("tw.config", os.path.exists(compiler.CONFIG_FILE), compiler.CONFIG_FILE)
@@ -3340,7 +3340,7 @@ def doctor_project(project_root: str) -> List[dict]:
     return checks
 
 
-def deploy_with_vercel(output_dir: str, production: bool):
+def deploy_with_vercel(output_dir: str, production: bool) -> None:
     vercel_bin = shutil.which("vercel")
     if not vercel_bin:
         raise RuntimeError("`vercel` CLI is not installed. Please install the Vercel CLI first.")
@@ -3356,7 +3356,7 @@ def deploy_with_vercel(output_dir: str, production: bool):
     subprocess.run(command, check=True)
 
 
-def deploy_with_cloudflare(output_dir: str, project_name: str):
+def deploy_with_cloudflare(output_dir: str, project_name: str) -> None:
     wrangler_bin = shutil.which("wrangler")
     if not wrangler_bin:
         raise RuntimeError("`wrangler` CLI is not installed. Please install Cloudflare Wrangler first.")
@@ -3372,7 +3372,7 @@ def deploy_with_cloudflare(output_dir: str, project_name: str):
     subprocess.run(command, check=True)
 
 
-def deploy_with_netlify(output_dir: str):
+def deploy_with_netlify(output_dir: str) -> None:
     netlify_bin = shutil.which("netlify")
     if not netlify_bin:
         log("`netlify` CLI not found. Static output and `netlify.toml` are ready.", level="warning")
@@ -3380,7 +3380,7 @@ def deploy_with_netlify(output_dir: str):
     subprocess.run([netlify_bin, "deploy", "--dir", output_dir, "--prod"], check=True)
 
 
-def deploy_with_docker(project_root: str, production: bool):
+def deploy_with_docker(project_root: str, production: bool) -> None:
     docker_bin = shutil.which("docker")
     if not docker_bin:
         log("`docker` CLI not found. `Dockerfile` is ready.", level="warning")
@@ -3389,7 +3389,7 @@ def deploy_with_docker(project_root: str, production: bool):
     subprocess.run([docker_bin, "build", "-t", tag, project_root], check=True)
 
 
-def run_deploy(project_root: str, output_dir: str, provider: str, production: bool, dry_run: bool = False):
+def run_deploy(project_root: str, output_dir: str, provider: str, production: bool, dry_run: bool = False) -> None:
     ensure_deploy_support_files(project_root)
     checks = doctor_project(project_root)
     blocking_failures = [check for check in checks if not check["ok"] and check["name"] in {"tw.config", "[home]", "Route discovery"}]
@@ -3430,7 +3430,7 @@ def run_deploy(project_root: str, output_dir: str, provider: str, production: bo
     raise RuntimeError(f"Unsupported provider: {provider}")
 
 
-def parse_args():
+def parse_args() -> Any:
     parser = argparse.ArgumentParser(description="TW framework CLI")
     parser.add_argument("--project-root", default=DEFAULT_PROJECT_ROOT, help="TW project root")
 
@@ -3453,7 +3453,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     if args.command == "dev":
