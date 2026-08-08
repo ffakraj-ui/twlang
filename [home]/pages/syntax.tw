@@ -1,0 +1,405 @@
+page {
+    title "Syntax & Language - TW Framework Docs"
+    layout "main"
+    render static
+}
+
+load "@./style/global.tss"
+
+body {
+    div { class "docs-container"
+        div { class "docs-sidebar"
+            div { class "docs-sidebar-brand", "TW Framework" }
+            div { class "docs-sidebar-version", "v0.4.7 Documentation" }
+
+            div { class "docs-sidebar-section"
+                h3 "Getting Started"
+
+                a "Project Structure" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "CLI Command Reference" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "FAQ" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "Getting Started" { class "docs-sidebar-link", href "/getting-started" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Syntax & Language"
+
+                a "Common Syntax Errors and Fixes" { class "docs-sidebar-link docs-sidebar-link-active", href "/syntax" }
+
+                a "Component Patterns and Anti-Patterns" { class "docs-sidebar-link docs-sidebar-link-active", href "/syntax" }
+
+                a "TW File Syntax" { class "docs-sidebar-link docs-sidebar-link-active", href "/syntax" }
+
+                a "TSS (TW Style Sheets) Syntax Deep Dive" { class "docs-sidebar-link docs-sidebar-link-active", href "/syntax" }
+
+                a "TWM (TW Modules) Syntax and Patterns" { class "docs-sidebar-link docs-sidebar-link-active", href "/syntax" }
+
+                a "Data Binding and Reactivity" { class "docs-sidebar-link docs-sidebar-link-active", href "/syntax" }
+
+                a "Routing and Navigation" { class "docs-sidebar-link docs-sidebar-link-active", href "/syntax" }
+
+                a "Page Block and Meta Tags" { class "docs-sidebar-link docs-sidebar-link-active", href "/syntax" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Components & Layouts"
+
+                a "Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layouts" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Middleware" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Advanced Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Hooks System" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Responsive Design" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Custom Error Pages" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layout Inheritance and Chains" { class "docs-sidebar-link", href "/components-layouts" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Data & APIs"
+
+                a "API Routes" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Authentication" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Rate Limiting" { class "docs-sidebar-link", href "/data-api" }
+
+                a "WebSockets" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Form Handling and Validation" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Data Fetching Patterns" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Static Assets" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Webhook Handling" { class "docs-sidebar-link", href "/data-api" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Deployment"
+
+                a "Deploy Adapters" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
+                a "SSR vs SSG vs Edge Rendering" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Deployment Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
+                a "CI/CD Pipeline" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Docker Production" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Docker" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Edge Deployment" { class "docs-sidebar-link", href "/deployment" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Advanced"
+
+                a "Code Splitting" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Dead Code Detection" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Dev Server" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Security" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Image Optimization" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Structured Data (Schema.org)" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Service Workers and PWA" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Lazy Loading" { class "docs-sidebar-link", href "/advanced" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Reference"
+
+                a "SEO and Meta Tags" { class "docs-sidebar-link", href "/reference" }
+
+                a "Built-in Search" { class "docs-sidebar-link", href "/reference" }
+
+                a "Environment Variables" { class "docs-sidebar-link", href "/reference" }
+
+                a "Build Pipeline" { class "docs-sidebar-link", href "/reference" }
+
+                a "TW Config Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "Error Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "LSP and Editor Support" { class "docs-sidebar-link", href "/reference" }
+
+                a "Glossary" { class "docs-sidebar-link", href "/reference" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Guides & Tutorials"
+
+                a "Migration Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "Mobile Development" { class "docs-sidebar-link", href "/guides" }
+
+                a "E-Commerce Template Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "SaaS Landing Page Template" { class "docs-sidebar-link", href "/guides" }
+
+                a "Internationalization (i18n)" { class "docs-sidebar-link", href "/guides" }
+
+                a "Accessibility Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "Tutorial: Building a Blog" { class "docs-sidebar-link", href "/guides" }
+
+                a "Tutorial: Building a Docs Site" { class "docs-sidebar-link", href "/guides" }
+
+            }
+
+        }
+
+        div { class "docs-content"
+            div { class "docs-header"
+                h1 "📝 Syntax & Language"
+                p ".tw, .tss, .twm syntax and types"
+            }
+            div { class "docs-grid"
+
+                div { class "docs-card"
+                    h3 "Common Syntax Errors and Fixes"
+                    p "This guide covers every syntax mistake you can make in `.tw` files and exactly how to fix them. // WRONG page { title 'H..."
+                }
+
+                div { class "docs-card"
+                    h3 "Component Patterns and Anti-Patterns"
+                    p "Master component syntax in TW Framework with these proven patterns and common mistakes to avoid. // [home]/components/Bu..."
+                }
+
+                div { class "docs-card"
+                    h3 "TW File Syntax"
+                    p "A `.tw` file has up to four sections: page { title 'Page Title' layout 'main' render static } load '@./style/site.tss' h..."
+                }
+
+                div { class "docs-card"
+                    h3 "TSS (TW Style Sheets) Syntax Deep Dive"
+                    p "Complete reference for `.tss` file syntax, selectors, properties, and common mistakes. /* CORRECT */ .selector { propert..."
+                }
+
+                div { class "docs-card"
+                    h3 "TWM (TW Modules) Syntax and Patterns"
+                    p "Complete guide to `.twm` server module syntax, routing, request handling, and common errors. [home]/ api/ users/ route.t..."
+                }
+
+                div { class "docs-card"
+                    h3 "Data Binding and Reactivity"
+                    p "Master variable declaration, interpolation, conditionals, loops, and reactive state in TW Framework. let name = 'John' l..."
+                }
+
+                div { class "docs-card"
+                    h3 "Routing and Navigation"
+                    p "Complete guide to file-based routing, dynamic routes, parameters, and navigation in TW Framework. TW Framework automatic..."
+                }
+
+                div { class "docs-card"
+                    h3 "Page Block and Meta Tags"
+                    p "Complete reference for `page {}`, `head {}`, `seo {}`, and render modes in TW Framework. The `page` block is the first b..."
+                }
+
+                div { class "docs-card"
+                    h3 "Build and Compilation Errors"
+                    p "Comprehensive guide to every build error, compilation failure, and diagnostic in TW Framework. TW Framework uses a diagn..."
+                }
+
+                div { class "docs-card"
+                    h3 "JSON Data Integration"
+                    p "Complete guide to using JSON data files with TW Framework pages. TW Framework automatically pairs `.tw` files with `.jso..."
+                }
+
+                div { class "docs-card"
+                    h3 "Advanced Syntax Patterns"
+                    p "Advanced patterns, edge cases, and professional techniques for TW Framework syntax. let is_active = true let is_large = ..."
+                }
+
+                div { class "docs-card"
+                    h3 "CSS Properties and Aliases"
+                    p "`display`, `position`, `top`, `right`, `bottom`, `left`, `float`, `clear`, `overflow`, `overflow-x`, `overflow-y`, `z-in..."
+                }
+
+                div { class "docs-card"
+                    h3 "HTML Elements and Attributes"
+                    p "`div`, `span`, `section`, `article`, `header`, `footer`, `nav`, `aside`, `main`, `figure`, `figcaption` `h1`, `h2`, `h3`..."
+                }
+
+                div { class "docs-card"
+                    h3 "Event Types"
+                    p "| Event | Directive | Description | |---|---|---| | Click | `on:click` | Single click | | Double click | `on:dblclick` |..."
+                }
+
+                div { class "docs-card"
+                    h3 "Lib Directory — Build-Time Functions"
+                    p "TW Framework supports a `lib/` directory for shared server-side utility functions, similar to Next.js `@/lib`. These fun..."
+                }
+
+                div { class "docs-card"
+                    h3 "State Management"
+                    p "TW Framework provides simple reactive state management. Use `let` at the top of a `.tw` file: let count = 0 let name = '..."
+                }
+
+                div { class "docs-card"
+                    h3 "Conditional Rendering"
+                    p "let isLoggedIn = true if isLoggedIn { h1 'Welcome back!' } else { a 'Login' { href '/login' } } if hasNotifications { di..."
+                }
+
+                div { class "docs-card"
+                    h3 "Text Interpolation"
+                    p "Use `{variable}` to insert variable values into text: let name = 'World' let count = 42 h1 'Hello {name}!'           // ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Imports and Loads"
+                    p "Import components from `[home]/components/`: import 'Hero' import 'Button' import 'Footer' body { Hero { title 'Welcome'..."
+                }
+
+                div { class "docs-card"
+                    h3 "Advanced TSS"
+                    p ".grid { display grid grid-template-columns repeat(3, 1fr) gap 20px @media (max-width: 768px) { grid-template-columns 1fr"
+                }
+
+                div { class "docs-card"
+                    h3 "Cookie Management"
+                    p "In `.twm` API handlers: return { status: 200, json: { ok: true }, cookies: [ { name: 'session', value: 'abc123', httpOnl..."
+                }
+
+                div { class "docs-card"
+                    h3 "Custom Directives"
+                    p "TW Framework supports extending the language with custom directives. Directives are special instructions processed by th..."
+                }
+
+                div { class "docs-card"
+                    h3 "Style Guide"
+                    p "Consistent code style makes TW projects readable and maintainable. - **Readability first**: Code is read more than it is..."
+                }
+
+                div { class "docs-card"
+                    h3 "Syntax Reference"
+                    p "Every page starts with a `page { }` block: page { title 'My Page' layout 'main' render static } - `render` — `static` (b..."
+                }
+
+            }
+
+            div { class "docs-section"
+                h2 "Articles in this section"
+            }
+
+            div { class "docs-card"
+                h3 "Common Syntax Errors and Fixes"
+                p "This guide covers every syntax mistake you can make in `.tw` files and exactly how to fix them. // WRONG page { title 'H..."
+                p "File: 01-common-syntax-errors.md"
+            }
+
+            div { class "docs-card"
+                h3 "Component Patterns and Anti-Patterns"
+                p "Master component syntax in TW Framework with these proven patterns and common mistakes to avoid. // [home]/components/Bu..."
+                p "File: 02-component-patterns.md"
+            }
+
+            div { class "docs-card"
+                h3 "TW File Syntax"
+                p "A `.tw` file has up to four sections: page { title 'Page Title' layout 'main' render static } load '@./style/site.tss' h..."
+                p "File: 02-tw-syntax.md"
+            }
+
+            div { class "docs-card"
+                h3 "TSS (TW Style Sheets) Syntax Deep Dive"
+                p "Complete reference for `.tss` file syntax, selectors, properties, and common mistakes. /* CORRECT */ .selector { propert..."
+                p "File: 03-tss-syntax-deep-dive.md"
+            }
+
+            div { class "docs-card"
+                h3 "TWM (TW Modules) Syntax and Patterns"
+                p "Complete guide to `.twm` server module syntax, routing, request handling, and common errors. [home]/ api/ users/ route.t..."
+                p "File: 04-twm-api-syntax.md"
+            }
+
+            div { class "docs-card"
+                h3 "Data Binding and Reactivity"
+                p "Master variable declaration, interpolation, conditionals, loops, and reactive state in TW Framework. let name = 'John' l..."
+                p "File: 05-data-binding-reactivity.md"
+            }
+
+            div { class "docs-card"
+                h3 "Routing and Navigation"
+                p "Complete guide to file-based routing, dynamic routes, parameters, and navigation in TW Framework. TW Framework automatic..."
+                p "File: 06-routing-navigation.md"
+            }
+
+            div { class "docs-card"
+                h3 "Page Block and Meta Tags"
+                p "Complete reference for `page {}`, `head {}`, `seo {}`, and render modes in TW Framework. The `page` block is the first b..."
+                p "File: 07-page-block-meta-tags.md"
+            }
+
+            div { class "docs-card"
+                h3 "Build and Compilation Errors"
+                p "Comprehensive guide to every build error, compilation failure, and diagnostic in TW Framework. TW Framework uses a diagn..."
+                p "File: 08-build-compilation-errors.md"
+            }
+
+            div { class "docs-card"
+                h3 "JSON Data Integration"
+                p "Complete guide to using JSON data files with TW Framework pages. TW Framework automatically pairs `.tw` files with `.jso..."
+                p "File: 09-json-data-integration.md"
+            }
+
+            div { class "docs-card"
+                h3 "Advanced Syntax Patterns"
+                p "Advanced patterns, edge cases, and professional techniques for TW Framework syntax. let is_active = true let is_large = ..."
+                p "File: 10-advanced-syntax-patterns.md"
+            }
+
+            div { class "docs-card"
+                h3 "CSS Properties and Aliases"
+                p "`display`, `position`, `top`, `right`, `bottom`, `left`, `float`, `clear`, `overflow`, `overflow-x`, `overflow-y`, `z-in..."
+                p "File: 19-css-properties.md"
+            }
+
+            div { class "docs-card"
+                h3 "HTML Elements and Attributes"
+                p "`div`, `span`, `section`, `article`, `header`, `footer`, `nav`, `aside`, `main`, `figure`, `figcaption` `h1`, `h2`, `h3`..."
+                p "File: 20-html-elements.md"
+            }
+
+            div { class "docs-card"
+                h3 "Event Types"
+                p "| Event | Directive | Description | |---|---|---| | Click | `on:click` | Single click | | Double click | `on:dblclick` |..."
+                p "File: 21-events.md"
+            }
+
+            div { class "docs-card"
+                h3 "Lib Directory — Build-Time Functions"
+                p "TW Framework supports a `lib/` directory for shared server-side utility functions, similar to Next.js `@/lib`. These fun..."
+                p "File: 21-lib-directory.md"
+            }
+
+            div { class "docs-footer"
+                p "TW Framework v0.4.7 - Built with TW Framework"
+            }
+        }
+    }
+}

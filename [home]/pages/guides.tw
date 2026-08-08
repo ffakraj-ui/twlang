@@ -1,0 +1,338 @@
+page {
+    title "Guides & Tutorials - TW Framework Docs"
+    layout "main"
+    render static
+}
+
+load "@./style/global.tss"
+
+body {
+    div { class "docs-container"
+        div { class "docs-sidebar"
+            div { class "docs-sidebar-brand", "TW Framework" }
+            div { class "docs-sidebar-version", "v0.4.7 Documentation" }
+
+            div { class "docs-sidebar-section"
+                h3 "Getting Started"
+
+                a "Project Structure" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "CLI Command Reference" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "FAQ" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "Getting Started" { class "docs-sidebar-link", href "/getting-started" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Syntax & Language"
+
+                a "Common Syntax Errors and Fixes" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Component Patterns and Anti-Patterns" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TW File Syntax" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TSS (TW Style Sheets) Syntax Deep Dive" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TWM (TW Modules) Syntax and Patterns" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Data Binding and Reactivity" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Routing and Navigation" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Page Block and Meta Tags" { class "docs-sidebar-link", href "/syntax" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Components & Layouts"
+
+                a "Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layouts" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Middleware" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Advanced Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Hooks System" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Responsive Design" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Custom Error Pages" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layout Inheritance and Chains" { class "docs-sidebar-link", href "/components-layouts" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Data & APIs"
+
+                a "API Routes" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Authentication" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Rate Limiting" { class "docs-sidebar-link", href "/data-api" }
+
+                a "WebSockets" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Form Handling and Validation" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Data Fetching Patterns" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Static Assets" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Webhook Handling" { class "docs-sidebar-link", href "/data-api" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Deployment"
+
+                a "Deploy Adapters" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
+                a "SSR vs SSG vs Edge Rendering" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Deployment Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
+                a "CI/CD Pipeline" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Docker Production" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Docker" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Edge Deployment" { class "docs-sidebar-link", href "/deployment" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Advanced"
+
+                a "Code Splitting" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Dead Code Detection" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Dev Server" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Security" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Image Optimization" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Structured Data (Schema.org)" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Service Workers and PWA" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Lazy Loading" { class "docs-sidebar-link", href "/advanced" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Reference"
+
+                a "SEO and Meta Tags" { class "docs-sidebar-link", href "/reference" }
+
+                a "Built-in Search" { class "docs-sidebar-link", href "/reference" }
+
+                a "Environment Variables" { class "docs-sidebar-link", href "/reference" }
+
+                a "Build Pipeline" { class "docs-sidebar-link", href "/reference" }
+
+                a "TW Config Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "Error Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "LSP and Editor Support" { class "docs-sidebar-link", href "/reference" }
+
+                a "Glossary" { class "docs-sidebar-link", href "/reference" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Guides & Tutorials"
+
+                a "Migration Guide" { class "docs-sidebar-link docs-sidebar-link-active", href "/guides" }
+
+                a "Mobile Development" { class "docs-sidebar-link docs-sidebar-link-active", href "/guides" }
+
+                a "E-Commerce Template Guide" { class "docs-sidebar-link docs-sidebar-link-active", href "/guides" }
+
+                a "SaaS Landing Page Template" { class "docs-sidebar-link docs-sidebar-link-active", href "/guides" }
+
+                a "Internationalization (i18n)" { class "docs-sidebar-link docs-sidebar-link-active", href "/guides" }
+
+                a "Accessibility Guide" { class "docs-sidebar-link docs-sidebar-link-active", href "/guides" }
+
+                a "Tutorial: Building a Blog" { class "docs-sidebar-link docs-sidebar-link-active", href "/guides" }
+
+                a "Tutorial: Building a Docs Site" { class "docs-sidebar-link docs-sidebar-link-active", href "/guides" }
+
+            }
+
+        }
+
+        div { class "docs-content"
+            div { class "docs-header"
+                h1 "📚 Guides & Tutorials"
+                p "Templates, migration, tutorials"
+            }
+            div { class "docs-grid"
+
+                div { class "docs-card"
+                    h3 "Migration Guide"
+                    p "TW's syntax is HTML-like, so migration is straightforward: <div class='card'> <h1>Hello World</h1> <p>Welcome to my site..."
+                }
+
+                div { class "docs-card"
+                    h3 "Mobile Development"
+                    p "TW Framework is the only web framework designed to work on mobile devices. - **Python-based** — runs on Termux (Android)"
+                }
+
+                div { class "docs-card"
+                    h3 "E-Commerce Template Guide"
+                    p "Complete e-commerce site using TW Framework. my-store/ ├── [home]/ │   ├── pages/ │   │   ├── index.tw              → Ho..."
+                }
+
+                div { class "docs-card"
+                    h3 "SaaS Landing Page Template"
+                    p "page { title 'MyApp - Build Better', layout 'main', render static } body { section { class 'hero' h1 'Build Better Apps,..."
+                }
+
+                div { class "docs-card"
+                    h3 "Internationalization (i18n)"
+                    p "`[home]/data/translations/en.json`: { 'home.title': 'Welcome', 'nav.about': 'About' } `[home]/data/translations/hi.json`..."
+                }
+
+                div { class "docs-card"
+                    h3 "Accessibility Guide"
+                    p "Building accessible websites with TW Framework is straightforward when you follow these practices. Always use the correc..."
+                }
+
+                div { class "docs-card"
+                    h3 "Tutorial: Building a Blog"
+                    p "Build a complete blog with TW Framework in under 30 minutes. tw create my-blog cd my-blog Create `[home]/pages/blog/[slu..."
+                }
+
+                div { class "docs-card"
+                    h3 "Tutorial: Building a Docs Site"
+                    p "Build TW Framework's own documentation site using TW Framework. - Zero JavaScript by default = instant load - File-based..."
+                }
+
+                div { class "docs-card"
+                    h3 "Migrating from React / Next.js"
+                    p "Moving from React to TW Framework? This guide maps React concepts to TW equivalents. | React / Next.js | TW Framework | ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Tutorial: Building a Portfolio Site"
+                    p "Create a stunning developer portfolio with TW Framework. tw create my-portfolio cd my-portfolio [home]/ pages/ index.tw ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Progressive Web App (PWA) Guide"
+                    p "Turn your TW Framework site into an installable Progressive Web App. A Progressive Web App works offline, can be install..."
+                }
+
+                div { class "docs-card"
+                    h3 "Testing Guide"
+                    p "Ensure your TW Framework projects are reliable with comprehensive testing. /\ /  \     E2E Tests (Few) /----\ /      \  ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Theme Customization"
+                    p "TW Framework includes a powerful theme system supporting light, dark, and system modes. Enable themes in `tw.config`: na..."
+                }
+
+            }
+
+            div { class "docs-section"
+                h2 "Articles in this section"
+            }
+
+            div { class "docs-card"
+                h3 "Migration Guide"
+                p "TW's syntax is HTML-like, so migration is straightforward: <div class='card'> <h1>Hello World</h1> <p>Welcome to my site..."
+                p "File: 37-migration-guide.md"
+            }
+
+            div { class "docs-card"
+                h3 "Mobile Development"
+                p "TW Framework is the only web framework designed to work on mobile devices. - **Python-based** — runs on Termux (Android)"
+                p "File: 39-mobile-development.md"
+            }
+
+            div { class "docs-card"
+                h3 "E-Commerce Template Guide"
+                p "Complete e-commerce site using TW Framework. my-store/ ├── [home]/ │   ├── pages/ │   │   ├── index.tw              → Ho..."
+                p "File: 50-e-commerce-template.md"
+            }
+
+            div { class "docs-card"
+                h3 "SaaS Landing Page Template"
+                p "page { title 'MyApp - Build Better', layout 'main', render static } body { section { class 'hero' h1 'Build Better Apps,..."
+                p "File: 52-saas-landing-template.md"
+            }
+
+            div { class "docs-card"
+                h3 "Internationalization (i18n)"
+                p "`[home]/data/translations/en.json`: { 'home.title': 'Welcome', 'nav.about': 'About' } `[home]/data/translations/hi.json`..."
+                p "File: 73-i18n.md"
+            }
+
+            div { class "docs-card"
+                h3 "Accessibility Guide"
+                p "Building accessible websites with TW Framework is straightforward when you follow these practices. Always use the correc..."
+                p "File: accessibility-guide.md"
+            }
+
+            div { class "docs-card"
+                h3 "Tutorial: Building a Blog"
+                p "Build a complete blog with TW Framework in under 30 minutes. tw create my-blog cd my-blog Create `[home]/pages/blog/[slu..."
+                p "File: blog-tutorial.md"
+            }
+
+            div { class "docs-card"
+                h3 "Tutorial: Building a Docs Site"
+                p "Build TW Framework's own documentation site using TW Framework. - Zero JavaScript by default = instant load - File-based..."
+                p "File: docs-site-tutorial.md"
+            }
+
+            div { class "docs-card"
+                h3 "Migrating from React / Next.js"
+                p "Moving from React to TW Framework? This guide maps React concepts to TW equivalents. | React / Next.js | TW Framework | ..."
+                p "File: migration-from-react.md"
+            }
+
+            div { class "docs-card"
+                h3 "Tutorial: Building a Portfolio Site"
+                p "Create a stunning developer portfolio with TW Framework. tw create my-portfolio cd my-portfolio [home]/ pages/ index.tw ..."
+                p "File: portfolio-tutorial.md"
+            }
+
+            div { class "docs-card"
+                h3 "Progressive Web App (PWA) Guide"
+                p "Turn your TW Framework site into an installable Progressive Web App. A Progressive Web App works offline, can be install..."
+                p "File: pwa-guide.md"
+            }
+
+            div { class "docs-card"
+                h3 "Testing Guide"
+                p "Ensure your TW Framework projects are reliable with comprehensive testing. /\ /  \     E2E Tests (Few) /----\ /      \  ..."
+                p "File: testing-guide.md"
+            }
+
+            div { class "docs-card"
+                h3 "Theme Customization"
+                p "TW Framework includes a powerful theme system supporting light, dark, and system modes. Enable themes in `tw.config`: na..."
+                p "File: theme-customization.md"
+            }
+
+            div { class "docs-footer"
+                p "TW Framework v0.4.7 - Built with TW Framework"
+            }
+        }
+    }
+}

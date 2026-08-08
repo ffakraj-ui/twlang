@@ -1,29 +1,17 @@
-tw@responsive true
+page {
+    title "TW Framework Documentation"
+    layout "main"
+    render static
+}
 
-<!DOCTYPE html>
+load "@./style/global.tss"
 
-<html>
+head {
+    meta { charset "utf-8" }
+    meta { name "viewport", content "width=device-width, initial-scale=1" }
+    meta { name "description", content "TW Framework - Documentation for the zero-JS web framework" }
+}
 
-<head>
-
-<title>{title}</title>
-{head}
-{styles}
-
-</head>
-
-<body>
-
-load @./components/Header.tw
-
-{slot}
-
-load @./components/TwmodsSidebar.tw
-
-load @./components/Footer.tw
-
-{scripts}
-
-</body>
-
-</html>
+body {
+    div { class "docs-container" }
+}

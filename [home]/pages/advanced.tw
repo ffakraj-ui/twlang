@@ -1,0 +1,410 @@
+page {
+    title "Advanced - TW Framework Docs"
+    layout "main"
+    render static
+}
+
+load "@./style/global.tss"
+
+body {
+    div { class "docs-container"
+        div { class "docs-sidebar"
+            div { class "docs-sidebar-brand", "TW Framework" }
+            div { class "docs-sidebar-version", "v0.4.7 Documentation" }
+
+            div { class "docs-sidebar-section"
+                h3 "Getting Started"
+
+                a "Project Structure" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "CLI Command Reference" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "FAQ" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "Getting Started" { class "docs-sidebar-link", href "/getting-started" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Syntax & Language"
+
+                a "Common Syntax Errors and Fixes" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Component Patterns and Anti-Patterns" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TW File Syntax" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TSS (TW Style Sheets) Syntax Deep Dive" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TWM (TW Modules) Syntax and Patterns" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Data Binding and Reactivity" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Routing and Navigation" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Page Block and Meta Tags" { class "docs-sidebar-link", href "/syntax" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Components & Layouts"
+
+                a "Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layouts" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Middleware" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Advanced Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Hooks System" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Responsive Design" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Custom Error Pages" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layout Inheritance and Chains" { class "docs-sidebar-link", href "/components-layouts" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Data & APIs"
+
+                a "API Routes" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Authentication" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Rate Limiting" { class "docs-sidebar-link", href "/data-api" }
+
+                a "WebSockets" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Form Handling and Validation" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Data Fetching Patterns" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Static Assets" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Webhook Handling" { class "docs-sidebar-link", href "/data-api" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Deployment"
+
+                a "Deploy Adapters" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
+                a "SSR vs SSG vs Edge Rendering" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Deployment Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
+                a "CI/CD Pipeline" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Docker Production" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Docker" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Edge Deployment" { class "docs-sidebar-link", href "/deployment" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Advanced"
+
+                a "Code Splitting" { class "docs-sidebar-link docs-sidebar-link-active", href "/advanced" }
+
+                a "Dead Code Detection" { class "docs-sidebar-link docs-sidebar-link-active", href "/advanced" }
+
+                a "Dev Server" { class "docs-sidebar-link docs-sidebar-link-active", href "/advanced" }
+
+                a "Security" { class "docs-sidebar-link docs-sidebar-link-active", href "/advanced" }
+
+                a "Image Optimization" { class "docs-sidebar-link docs-sidebar-link-active", href "/advanced" }
+
+                a "Structured Data (Schema.org)" { class "docs-sidebar-link docs-sidebar-link-active", href "/advanced" }
+
+                a "Service Workers and PWA" { class "docs-sidebar-link docs-sidebar-link-active", href "/advanced" }
+
+                a "Lazy Loading" { class "docs-sidebar-link docs-sidebar-link-active", href "/advanced" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Reference"
+
+                a "SEO and Meta Tags" { class "docs-sidebar-link", href "/reference" }
+
+                a "Built-in Search" { class "docs-sidebar-link", href "/reference" }
+
+                a "Environment Variables" { class "docs-sidebar-link", href "/reference" }
+
+                a "Build Pipeline" { class "docs-sidebar-link", href "/reference" }
+
+                a "TW Config Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "Error Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "LSP and Editor Support" { class "docs-sidebar-link", href "/reference" }
+
+                a "Glossary" { class "docs-sidebar-link", href "/reference" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Guides & Tutorials"
+
+                a "Migration Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "Mobile Development" { class "docs-sidebar-link", href "/guides" }
+
+                a "E-Commerce Template Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "SaaS Landing Page Template" { class "docs-sidebar-link", href "/guides" }
+
+                a "Internationalization (i18n)" { class "docs-sidebar-link", href "/guides" }
+
+                a "Accessibility Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "Tutorial: Building a Blog" { class "docs-sidebar-link", href "/guides" }
+
+                a "Tutorial: Building a Docs Site" { class "docs-sidebar-link", href "/guides" }
+
+            }
+
+        }
+
+        div { class "docs-content"
+            div { class "docs-header"
+                h1 "⚡ Advanced"
+                p "Performance, caching, plugins, internals"
+            }
+            div { class "docs-grid"
+
+                div { class "docs-card"
+                    h3 "Code Splitting"
+                    p "TW Framework automatically splits JavaScript into chunks for optimal loading. During build, TW: 1. Scans each page for `..."
+                }
+
+                div { class "docs-card"
+                    h3 "Dead Code Detection"
+                    p "TW Framework can detect unused files in your project. tw dead Or during build: tw build --prod Dead code warnings appear..."
+                }
+
+                div { class "docs-card"
+                    h3 "Dev Server"
+                    p "tw dev Options: tw dev --host 0.0.0.0 --port 8080 --no-open | Flag | Default | Description | |---|---|---| | `--host` | ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Security"
+                    p "All env vars are server-only by default. Only allow-listed vars reach page HTML: // tw.config env { public 'API_URL' } T..."
+                }
+
+                div { class "docs-card"
+                    h3 "Image Optimization"
+                    p "TW Framework does not include built-in image optimization. Use pre-compressed images. img { src '/images/hero.webp' alt ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Structured Data (Schema.org)"
+                    p "head { script { type 'application/ld+json' } } head { script { type 'application/ld+json' } } body { article { h1 'Artic..."
+                }
+
+                div { class "docs-card"
+                    h3 "Service Workers and PWA"
+                    p "Create `[home]/static/sw.js`: const CACHE_NAME = 'tw-site-v1' const ASSETS = ['/', '/style.css'] self.addEventListener('..."
+                }
+
+                div { class "docs-card"
+                    h3 "Lazy Loading"
+                    p "img { src '/images/hero.jpg' alt 'Hero' loading 'lazy' width 1200 height 600 } img { src '/images/hero.jpg' srcset '/ima..."
+                }
+
+                div { class "docs-card"
+                    h3 "Animations and Transitions"
+                    p ".btn { bg #22c55e color white transition background 0.2s ease, transform 0.1s ease, box-shadow 0.3s ease &:hover { bg #1..."
+                }
+
+                div { class "docs-card"
+                    h3 "Content Security Policy"
+                    p "In `tw.config`: headers { rule { source '/**' set 'Content-Security-Policy' 'default-src 'self'; script-src 'self' 'unsa..."
+                }
+
+                div { class "docs-card"
+                    h3 "Debugging Guide"
+                    p "tw check [home]/pages/index.tw Prints diagnostics: errors, warnings, suggestions. tw tokens [home]/pages/index.tw Shows ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Compiler Internals"
+                    p ".tw file | v [Lexer] -> Tokens | v [Parser] -> AST | v [Semantic Analysis] -> Validated AST | v [IR] -> Intermediate Rep..."
+                }
+
+                div { class "docs-card"
+                    h3 "Ecosystem and Roadmap"
+                    p "- .tw markup language with lexer, parser, AST, IR - .tss stylesheet language with CSS aliases - .twm server-side JavaScr..."
+                }
+
+                div { class "docs-card"
+                    h3 "Router Internals"
+                    p "TW discovers routes by scanning `[home]/pages/`: 1. Walk all .tw files in pages/ 2. Convert file paths to URL routes 3. ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Build Report"
+                    p "tw build --prod --report - Pages compiled - Components resolved - Layouts applied - API routes - Build duration - Cache ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Content Management"
+                    p "Store content in JSON files for easy editing: // [home]/data/blog-posts.json [ { 'slug': 'getting-started', 'title': 'Ge..."
+                }
+
+                div { class "docs-card"
+                    h3 "Advanced Routing"
+                    p "Use [...slug] for catch-all routes: [home]/pages/ ├── docs/ │   └── [...path].tw     -> /docs/* (catches /docs/a, /docs/..."
+                }
+
+                div { class "docs-card"
+                    h3 "Incremental Cache"
+                    p "TW caches compiled pages in `.tw/` directory. On rebuild, TW checks: 1. Has the .tw file changed? (hash comparison) 2. H..."
+                }
+
+                div { class "docs-card"
+                    h3 "Hydration"
+                    p "Hydration attaches event listeners to server-rendered HTML. In TW, only elements with `on:*` or `bind:*` directives get ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Plugin Development"
+                    p "TW Framework has a plugin runtime that allows extending the compiler and framework. from tw_framework.plugin_runtime imp..."
+                }
+
+                div { class "docs-card"
+                    h3 "Best Practices"
+                    p "This guide covers recommended patterns and conventions for building production-grade websites with TW Framework. Keep yo..."
+                }
+
+                div { class "docs-card"
+                    h3 "Caching Strategies"
+                    p "Speed up your TW Framework site with smart caching at every layer. | Without Cache | With Cache | |---------------|-----..."
+                }
+
+                div { class "docs-card"
+                    h3 "Contributing to the Compiler"
+                    p "Want to hack on TW Framework's core? This guide covers the compiler architecture and how to contribute. Source (.tw) → L..."
+                }
+
+                div { class "docs-card"
+                    h3 "Monitoring and Logging"
+                    p "Keep your TW Framework applications healthy with proper monitoring and logging. | Metric | What It Tells You | |--------..."
+                }
+
+                div { class "docs-card"
+                    h3 "Performance Tuning"
+                    p "This guide covers advanced techniques to make your TW Framework sites blazing fast. Always use `--prod` for production: ..."
+                }
+
+            }
+
+            div { class "docs-section"
+                h2 "Articles in this section"
+            }
+
+            div { class "docs-card"
+                h3 "Code Splitting"
+                p "TW Framework automatically splits JavaScript into chunks for optimal loading. During build, TW: 1. Scans each page for `..."
+                p "File: 22-code-splitting.md"
+            }
+
+            div { class "docs-card"
+                h3 "Dead Code Detection"
+                p "TW Framework can detect unused files in your project. tw dead Or during build: tw build --prod Dead code warnings appear..."
+                p "File: 23-dead-code.md"
+            }
+
+            div { class "docs-card"
+                h3 "Dev Server"
+                p "tw dev Options: tw dev --host 0.0.0.0 --port 8080 --no-open | Flag | Default | Description | |---|---|---| | `--host` | ..."
+                p "File: 24-dev-server.md"
+            }
+
+            div { class "docs-card"
+                h3 "Security"
+                p "All env vars are server-only by default. Only allow-listed vars reach page HTML: // tw.config env { public 'API_URL' } T..."
+                p "File: 29-security.md"
+            }
+
+            div { class "docs-card"
+                h3 "Image Optimization"
+                p "TW Framework does not include built-in image optimization. Use pre-compressed images. img { src '/images/hero.webp' alt ..."
+                p "File: 47-image-optimization.md"
+            }
+
+            div { class "docs-card"
+                h3 "Structured Data (Schema.org)"
+                p "head { script { type 'application/ld+json' } } head { script { type 'application/ld+json' } } body { article { h1 'Artic..."
+                p "File: 48-structured-data.md"
+            }
+
+            div { class "docs-card"
+                h3 "Service Workers and PWA"
+                p "Create `[home]/static/sw.js`: const CACHE_NAME = 'tw-site-v1' const ASSETS = ['/', '/style.css'] self.addEventListener('..."
+                p "File: 50-service-workers.md"
+            }
+
+            div { class "docs-card"
+                h3 "Lazy Loading"
+                p "img { src '/images/hero.jpg' alt 'Hero' loading 'lazy' width 1200 height 600 } img { src '/images/hero.jpg' srcset '/ima..."
+                p "File: 53-lazy-loading.md"
+            }
+
+            div { class "docs-card"
+                h3 "Animations and Transitions"
+                p ".btn { bg #22c55e color white transition background 0.2s ease, transform 0.1s ease, box-shadow 0.3s ease &:hover { bg #1..."
+                p "File: 56-animations-and-transitions.md"
+            }
+
+            div { class "docs-card"
+                h3 "Content Security Policy"
+                p "In `tw.config`: headers { rule { source '/**' set 'Content-Security-Policy' 'default-src 'self'; script-src 'self' 'unsa..."
+                p "File: 58-content-security-policy.md"
+            }
+
+            div { class "docs-card"
+                h3 "Debugging Guide"
+                p "tw check [home]/pages/index.tw Prints diagnostics: errors, warnings, suggestions. tw tokens [home]/pages/index.tw Shows ..."
+                p "File: 60-debugging-guide.md"
+            }
+
+            div { class "docs-card"
+                h3 "Compiler Internals"
+                p ".tw file | v [Lexer] -> Tokens | v [Parser] -> AST | v [Semantic Analysis] -> Validated AST | v [IR] -> Intermediate Rep..."
+                p "File: 61-compiler-internals.md"
+            }
+
+            div { class "docs-card"
+                h3 "Ecosystem and Roadmap"
+                p "- .tw markup language with lexer, parser, AST, IR - .tss stylesheet language with CSS aliases - .twm server-side JavaScr..."
+                p "File: 63-ecosystem-roadmap.md"
+            }
+
+            div { class "docs-card"
+                h3 "Router Internals"
+                p "TW discovers routes by scanning `[home]/pages/`: 1. Walk all .tw files in pages/ 2. Convert file paths to URL routes 3. ..."
+                p "File: 64-router-internals.md"
+            }
+
+            div { class "docs-card"
+                h3 "Build Report"
+                p "tw build --prod --report - Pages compiled - Components resolved - Layouts applied - API routes - Build duration - Cache ..."
+                p "File: 65-build-report.md"
+            }
+
+            div { class "docs-footer"
+                p "TW Framework v0.4.7 - Built with TW Framework"
+            }
+        }
+    }
+}

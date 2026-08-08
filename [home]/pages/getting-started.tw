@@ -1,5 +1,5 @@
 page {
-    title "TW Framework Documentation"
+    title "Getting Started - TW Framework Docs"
     layout "main"
     render static
 }
@@ -8,167 +8,229 @@ load "@./style/global.tss"
 
 body {
     div { class "docs-container"
-
         div { class "docs-sidebar"
             div { class "docs-sidebar-brand", "TW Framework" }
             div { class "docs-sidebar-version", "v0.4.7 Documentation" }
+
             div { class "docs-sidebar-section"
                 h3 "Getting Started"
-                a "Project Structure" { class "docs-sidebar-link", href "/getting-started" }
-                a "CLI Command Reference" { class "docs-sidebar-link", href "/getting-started" }
-                a "FAQ" { class "docs-sidebar-link", href "/getting-started" }
-                a "Getting Started" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "Project Structure" { class "docs-sidebar-link docs-sidebar-link-active", href "/getting-started" }
+
+                a "CLI Command Reference" { class "docs-sidebar-link docs-sidebar-link-active", href "/getting-started" }
+
+                a "FAQ" { class "docs-sidebar-link docs-sidebar-link-active", href "/getting-started" }
+
+                a "Getting Started" { class "docs-sidebar-link docs-sidebar-link-active", href "/getting-started" }
+
             }
+
             div { class "docs-sidebar-section"
                 h3 "Syntax & Language"
+
                 a "Common Syntax Errors and Fixes" { class "docs-sidebar-link", href "/syntax" }
+
                 a "Component Patterns and Anti-Patterns" { class "docs-sidebar-link", href "/syntax" }
+
                 a "TW File Syntax" { class "docs-sidebar-link", href "/syntax" }
+
                 a "TSS (TW Style Sheets) Syntax Deep Dive" { class "docs-sidebar-link", href "/syntax" }
+
                 a "TWM (TW Modules) Syntax and Patterns" { class "docs-sidebar-link", href "/syntax" }
+
                 a "Data Binding and Reactivity" { class "docs-sidebar-link", href "/syntax" }
+
                 a "Routing and Navigation" { class "docs-sidebar-link", href "/syntax" }
+
                 a "Page Block and Meta Tags" { class "docs-sidebar-link", href "/syntax" }
+
             }
+
             div { class "docs-sidebar-section"
                 h3 "Components & Layouts"
+
                 a "Components" { class "docs-sidebar-link", href "/components-layouts" }
+
                 a "Layouts" { class "docs-sidebar-link", href "/components-layouts" }
+
                 a "Middleware" { class "docs-sidebar-link", href "/components-layouts" }
+
                 a "Advanced Components" { class "docs-sidebar-link", href "/components-layouts" }
+
                 a "Hooks System" { class "docs-sidebar-link", href "/components-layouts" }
+
                 a "Responsive Design" { class "docs-sidebar-link", href "/components-layouts" }
+
                 a "Custom Error Pages" { class "docs-sidebar-link", href "/components-layouts" }
+
                 a "Layout Inheritance and Chains" { class "docs-sidebar-link", href "/components-layouts" }
+
             }
+
             div { class "docs-sidebar-section"
                 h3 "Data & APIs"
+
                 a "API Routes" { class "docs-sidebar-link", href "/data-api" }
+
                 a "Authentication" { class "docs-sidebar-link", href "/data-api" }
+
                 a "Rate Limiting" { class "docs-sidebar-link", href "/data-api" }
+
                 a "WebSockets" { class "docs-sidebar-link", href "/data-api" }
+
                 a "Form Handling and Validation" { class "docs-sidebar-link", href "/data-api" }
+
                 a "Data Fetching Patterns" { class "docs-sidebar-link", href "/data-api" }
+
                 a "Static Assets" { class "docs-sidebar-link", href "/data-api" }
+
                 a "Webhook Handling" { class "docs-sidebar-link", href "/data-api" }
+
             }
+
             div { class "docs-sidebar-section"
                 h3 "Deployment"
+
                 a "Deploy Adapters" { class "docs-sidebar-link", href "/deployment" }
+
                 a "Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
                 a "SSR vs SSG vs Edge Rendering" { class "docs-sidebar-link", href "/deployment" }
+
                 a "Deployment Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
                 a "CI/CD Pipeline" { class "docs-sidebar-link", href "/deployment" }
+
                 a "Docker Production" { class "docs-sidebar-link", href "/deployment" }
+
                 a "Docker" { class "docs-sidebar-link", href "/deployment" }
+
                 a "Edge Deployment" { class "docs-sidebar-link", href "/deployment" }
+
             }
+
             div { class "docs-sidebar-section"
                 h3 "Advanced"
+
                 a "Code Splitting" { class "docs-sidebar-link", href "/advanced" }
+
                 a "Dead Code Detection" { class "docs-sidebar-link", href "/advanced" }
+
                 a "Dev Server" { class "docs-sidebar-link", href "/advanced" }
+
                 a "Security" { class "docs-sidebar-link", href "/advanced" }
+
                 a "Image Optimization" { class "docs-sidebar-link", href "/advanced" }
+
                 a "Structured Data (Schema.org)" { class "docs-sidebar-link", href "/advanced" }
+
                 a "Service Workers and PWA" { class "docs-sidebar-link", href "/advanced" }
+
                 a "Lazy Loading" { class "docs-sidebar-link", href "/advanced" }
+
             }
+
             div { class "docs-sidebar-section"
                 h3 "Reference"
+
                 a "SEO and Meta Tags" { class "docs-sidebar-link", href "/reference" }
+
                 a "Built-in Search" { class "docs-sidebar-link", href "/reference" }
+
                 a "Environment Variables" { class "docs-sidebar-link", href "/reference" }
+
                 a "Build Pipeline" { class "docs-sidebar-link", href "/reference" }
+
                 a "TW Config Reference" { class "docs-sidebar-link", href "/reference" }
+
                 a "Error Reference" { class "docs-sidebar-link", href "/reference" }
+
                 a "LSP and Editor Support" { class "docs-sidebar-link", href "/reference" }
+
                 a "Glossary" { class "docs-sidebar-link", href "/reference" }
+
             }
+
             div { class "docs-sidebar-section"
                 h3 "Guides & Tutorials"
+
                 a "Migration Guide" { class "docs-sidebar-link", href "/guides" }
+
                 a "Mobile Development" { class "docs-sidebar-link", href "/guides" }
+
                 a "E-Commerce Template Guide" { class "docs-sidebar-link", href "/guides" }
+
                 a "SaaS Landing Page Template" { class "docs-sidebar-link", href "/guides" }
+
                 a "Internationalization (i18n)" { class "docs-sidebar-link", href "/guides" }
+
                 a "Accessibility Guide" { class "docs-sidebar-link", href "/guides" }
+
                 a "Tutorial: Building a Blog" { class "docs-sidebar-link", href "/guides" }
+
                 a "Tutorial: Building a Docs Site" { class "docs-sidebar-link", href "/guides" }
+
             }
+
         }
 
         div { class "docs-content"
-            div { class "docs-hero"
-                h1 "TW Framework"
-                p "Write .tw and .tss. Ship a full website. Zero JavaScript by default."
-                a "Get Started" { class "btn", href "/getting-started" }
-            }
             div { class "docs-header"
-                h1 "Documentation"
-                p "Browse guides, syntax references, and tutorials for TW Framework."
+                h1 "🚀 Getting Started"
+                p "Install, setup, and first steps"
             }
-
             div { class "docs-grid"
-                a { class "docs-card", href "/getting-started"
-                    h3 "🚀 Getting Started"
-                    p "Install, setup, and first steps"
-                    p "4 articles"
+
+                div { class "docs-card"
+                    h3 "Project Structure"
+                    p "my-site/ ├── tw.config              # Project configuration ├── package.json ├── vercel.json            # (optional) ├──..."
                 }
-                a { class "docs-card", href "/syntax"
-                    h3 "📝 Syntax & Language"
-                    p ".tw, .tss, .twm syntax and types"
-                    p "24 articles"
+
+                div { class "docs-card"
+                    h3 "CLI Command Reference"
+                    p "tw create <name> [--directory <dir>] Scaffolds a new TW project with `[home]/`, `tw.config`, and starter pages. tw init ..."
                 }
-                a { class "docs-card", href "/components-layouts"
-                    h3 "🧩 Components & Layouts"
-                    p "Reusable components, layouts, middleware"
-                    p "8 articles"
+
+                div { class "docs-card"
+                    h3 "FAQ"
+                    p "TW Framework v0.4.5+ is stable for static sites and landing pages. API routes and middleware are functional but still ma..."
                 }
-                a { class "docs-card", href "/data-api"
-                    h3 "🔌 Data & APIs"
-                    p "API routes, auth, forms, database"
-                    p "15 articles"
+
+                div { class "docs-card"
+                    h3 "Getting Started"
+                    p "pip install tw-framework Requires Python 3.9+. tw create my-site cd my-site This scaffolds a starter project with a home..."
                 }
-                a { class "docs-card", href "/deployment"
-                    h3 "🚢 Deployment"
-                    p "Vercel, Netlify, Docker, CI/CD"
-                    p "12 articles"
-                }
-                a { class "docs-card", href "/advanced"
-                    h3 "⚡ Advanced"
-                    p "Performance, caching, plugins, internals"
-                    p "25 articles"
-                }
-                a { class "docs-card", href "/reference"
-                    h3 "📖 Reference"
-                    p "Config, errors, SEO, env vars"
-                    p "11 articles"
-                }
-                a { class "docs-card", href "/guides"
-                    h3 "📚 Guides & Tutorials"
-                    p "Templates, migration, tutorials"
-                    p "13 articles"
-                }
+
             }
 
             div { class "docs-section"
-                h2 "What is TW Framework?"
-                p "TW Framework is a custom language and framework for building websites. It has its own lexer, parser, AST, IR, and code generator. No React, no Virtual DOM, no runtime framework. Just clean HTML, CSS, and JS that the browser actually needs."
+                h2 "Articles in this section"
             }
-            div { class "docs-section"
-                h2 "Key Features"
-                ul {
-                    li "Zero JS by default - pages load instantly"
-                    li "Type safety - let count: number = 5"
-                    li "Lib directory - shared server-side functions"
-                    li "Reactive bindings - on:click, bind:value"
-                    li "File-based routing and layouts"
-                    li "API routes with .twm modules"
-                    li "Deploy to Vercel, Netlify, Cloudflare"
-                    li "Build on your phone with Termux"
-                }
+
+            div { class "docs-card"
+                h3 "Project Structure"
+                p "my-site/ ├── tw.config              # Project configuration ├── package.json ├── vercel.json            # (optional) ├──..."
+                p "File: 01-project-structure.md"
             }
+
+            div { class "docs-card"
+                h3 "CLI Command Reference"
+                p "tw create <name> [--directory <dir>] Scaffolds a new TW project with `[home]/`, `tw.config`, and starter pages. tw init ..."
+                p "File: 05-cli-reference.md"
+            }
+
+            div { class "docs-card"
+                h3 "FAQ"
+                p "TW Framework v0.4.5+ is stable for static sites and landing pages. API routes and middleware are functional but still ma..."
+                p "File: 38-faq.md"
+            }
+
+            div { class "docs-card"
+                h3 "Getting Started"
+                p "pip install tw-framework Requires Python 3.9+. tw create my-site cd my-site This scaffolds a starter project with a home..."
+                p "File: getting-started.md"
+            }
+
             div { class "docs-footer"
                 p "TW Framework v0.4.7 - Built with TW Framework"
             }

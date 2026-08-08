@@ -1,0 +1,360 @@
+page {
+    title "Data & APIs - TW Framework Docs"
+    layout "main"
+    render static
+}
+
+load "@./style/global.tss"
+
+body {
+    div { class "docs-container"
+        div { class "docs-sidebar"
+            div { class "docs-sidebar-brand", "TW Framework" }
+            div { class "docs-sidebar-version", "v0.4.7 Documentation" }
+
+            div { class "docs-sidebar-section"
+                h3 "Getting Started"
+
+                a "Project Structure" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "CLI Command Reference" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "FAQ" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "Getting Started" { class "docs-sidebar-link", href "/getting-started" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Syntax & Language"
+
+                a "Common Syntax Errors and Fixes" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Component Patterns and Anti-Patterns" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TW File Syntax" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TSS (TW Style Sheets) Syntax Deep Dive" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TWM (TW Modules) Syntax and Patterns" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Data Binding and Reactivity" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Routing and Navigation" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Page Block and Meta Tags" { class "docs-sidebar-link", href "/syntax" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Components & Layouts"
+
+                a "Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layouts" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Middleware" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Advanced Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Hooks System" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Responsive Design" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Custom Error Pages" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layout Inheritance and Chains" { class "docs-sidebar-link", href "/components-layouts" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Data & APIs"
+
+                a "API Routes" { class "docs-sidebar-link docs-sidebar-link-active", href "/data-api" }
+
+                a "Authentication" { class "docs-sidebar-link docs-sidebar-link-active", href "/data-api" }
+
+                a "Rate Limiting" { class "docs-sidebar-link docs-sidebar-link-active", href "/data-api" }
+
+                a "WebSockets" { class "docs-sidebar-link docs-sidebar-link-active", href "/data-api" }
+
+                a "Form Handling and Validation" { class "docs-sidebar-link docs-sidebar-link-active", href "/data-api" }
+
+                a "Data Fetching Patterns" { class "docs-sidebar-link docs-sidebar-link-active", href "/data-api" }
+
+                a "Static Assets" { class "docs-sidebar-link docs-sidebar-link-active", href "/data-api" }
+
+                a "Webhook Handling" { class "docs-sidebar-link docs-sidebar-link-active", href "/data-api" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Deployment"
+
+                a "Deploy Adapters" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
+                a "SSR vs SSG vs Edge Rendering" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Deployment Troubleshooting" { class "docs-sidebar-link", href "/deployment" }
+
+                a "CI/CD Pipeline" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Docker Production" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Docker" { class "docs-sidebar-link", href "/deployment" }
+
+                a "Edge Deployment" { class "docs-sidebar-link", href "/deployment" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Advanced"
+
+                a "Code Splitting" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Dead Code Detection" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Dev Server" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Security" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Image Optimization" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Structured Data (Schema.org)" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Service Workers and PWA" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Lazy Loading" { class "docs-sidebar-link", href "/advanced" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Reference"
+
+                a "SEO and Meta Tags" { class "docs-sidebar-link", href "/reference" }
+
+                a "Built-in Search" { class "docs-sidebar-link", href "/reference" }
+
+                a "Environment Variables" { class "docs-sidebar-link", href "/reference" }
+
+                a "Build Pipeline" { class "docs-sidebar-link", href "/reference" }
+
+                a "TW Config Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "Error Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "LSP and Editor Support" { class "docs-sidebar-link", href "/reference" }
+
+                a "Glossary" { class "docs-sidebar-link", href "/reference" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Guides & Tutorials"
+
+                a "Migration Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "Mobile Development" { class "docs-sidebar-link", href "/guides" }
+
+                a "E-Commerce Template Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "SaaS Landing Page Template" { class "docs-sidebar-link", href "/guides" }
+
+                a "Internationalization (i18n)" { class "docs-sidebar-link", href "/guides" }
+
+                a "Accessibility Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "Tutorial: Building a Blog" { class "docs-sidebar-link", href "/guides" }
+
+                a "Tutorial: Building a Docs Site" { class "docs-sidebar-link", href "/guides" }
+
+            }
+
+        }
+
+        div { class "docs-content"
+            div { class "docs-header"
+                h1 "🔌 Data & APIs"
+                p "API routes, auth, forms, database"
+            }
+            div { class "docs-grid"
+
+                div { class "docs-card"
+                    h3 "API Routes"
+                    p "API routes are server-side endpoints defined in `.twm` files. [home]/api/ ├── hello.twm              → GET/POST /api/hel..."
+                }
+
+                div { class "docs-card"
+                    h3 "Authentication"
+                    p "TW Framework provides built-in authentication via middleware. // [home]/middleware.tw rule 'protect-dashboard' { match '..."
+                }
+
+                div { class "docs-card"
+                    h3 "Rate Limiting"
+                    p "TW Framework has built-in rate limiting via middleware using a token bucket algorithm. // [home]/middleware.tw rule 'api..."
+                }
+
+                div { class "docs-card"
+                    h3 "WebSockets"
+                    p "TW Framework supports WebSocket connections for real-time features. Create a WebSocket handler file: [home]/ws/ ├── chat..."
+                }
+
+                div { class "docs-card"
+                    h3 "Form Handling and Validation"
+                    p "page { title 'Contact', render static } body { form { on:submit 'handleSubmit(event)' method 'POST' action '/api/contact..."
+                }
+
+                div { class "docs-card"
+                    h3 "Data Fetching Patterns"
+                    p "page { title 'Products' render server } script { export async function getProducts() { const response = await fetch('htt..."
+                }
+
+                div { class "docs-card"
+                    h3 "Static Assets"
+                    p "Place static files in `[home]/static/`: [home]/ ├── static/ │   ├── favicon.ico │   ├── robots.txt │   ├── manifest.json"
+                }
+
+                div { class "docs-card"
+                    h3 "Webhook Handling"
+                    p "export async function POST(request) { const event = request.body const signature = request.headers['x-signature'] if (!v..."
+                }
+
+                div { class "docs-card"
+                    h3 "Streaming Responses"
+                    p "export function GET(request) { return { status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'n..."
+                }
+
+                div { class "docs-card"
+                    h3 "Email Sending"
+                    p "export async function POST(request) { const { to, subject, message } = request.body const response = await fetch('https:..."
+                }
+
+                div { class "docs-card"
+                    h3 "API Integration Patterns"
+                    p "Connect your TW Framework site to external APIs and services. Fetch data at build time for static pages: page { title 'W..."
+                }
+
+                div { class "docs-card"
+                    h3 "Authentication Patterns"
+                    p "Implement secure user authentication in TW Framework. Store session IDs in cookies. Best for traditional server-rendered..."
+                }
+
+                div { class "docs-card"
+                    h3 "Database Integration"
+                    p "Connect TW Framework to databases for dynamic content and APIs. TW Framework works with any Python-compatible database: ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Error Handling Patterns"
+                    p "Robust error handling is essential for production TW applications. This guide covers patterns for handling errors at eve..."
+                }
+
+                div { class "docs-card"
+                    h3 "WebSockets"
+                    p "TW's dev and production servers support real-time WebSocket connections out of the box. Add a Python file under [home]/w..."
+                }
+
+            }
+
+            div { class "docs-section"
+                h2 "Articles in this section"
+            }
+
+            div { class "docs-card"
+                h3 "API Routes"
+                p "API routes are server-side endpoints defined in `.twm` files. [home]/api/ ├── hello.twm              → GET/POST /api/hel..."
+                p "File: 25-api-routes.md"
+            }
+
+            div { class "docs-card"
+                h3 "Authentication"
+                p "TW Framework provides built-in authentication via middleware. // [home]/middleware.tw rule 'protect-dashboard' { match '..."
+                p "File: 26-auth.md"
+            }
+
+            div { class "docs-card"
+                h3 "Rate Limiting"
+                p "TW Framework has built-in rate limiting via middleware using a token bucket algorithm. // [home]/middleware.tw rule 'api..."
+                p "File: 27-rate-limiting.md"
+            }
+
+            div { class "docs-card"
+                h3 "WebSockets"
+                p "TW Framework supports WebSocket connections for real-time features. Create a WebSocket handler file: [home]/ws/ ├── chat..."
+                p "File: 28-websockets.md"
+            }
+
+            div { class "docs-card"
+                h3 "Form Handling and Validation"
+                p "page { title 'Contact', render static } body { form { on:submit 'handleSubmit(event)' method 'POST' action '/api/contact..."
+                p "File: 45-form-handling.md"
+            }
+
+            div { class "docs-card"
+                h3 "Data Fetching Patterns"
+                p "page { title 'Products' render server } script { export async function getProducts() { const response = await fetch('htt..."
+                p "File: 46-data-fetching.md"
+            }
+
+            div { class "docs-card"
+                h3 "Static Assets"
+                p "Place static files in `[home]/static/`: [home]/ ├── static/ │   ├── favicon.ico │   ├── robots.txt │   ├── manifest.json"
+                p "File: 54-static-assets.md"
+            }
+
+            div { class "docs-card"
+                h3 "Webhook Handling"
+                p "export async function POST(request) { const event = request.body const signature = request.headers['x-signature'] if (!v..."
+                p "File: 60-webhooks.md"
+            }
+
+            div { class "docs-card"
+                h3 "Streaming Responses"
+                p "export function GET(request) { return { status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'n..."
+                p "File: 69-streaming.md"
+            }
+
+            div { class "docs-card"
+                h3 "Email Sending"
+                p "export async function POST(request) { const { to, subject, message } = request.body const response = await fetch('https:..."
+                p "File: 72-email-sending.md"
+            }
+
+            div { class "docs-card"
+                h3 "API Integration Patterns"
+                p "Connect your TW Framework site to external APIs and services. Fetch data at build time for static pages: page { title 'W..."
+                p "File: api-integration-patterns.md"
+            }
+
+            div { class "docs-card"
+                h3 "Authentication Patterns"
+                p "Implement secure user authentication in TW Framework. Store session IDs in cookies. Best for traditional server-rendered..."
+                p "File: authentication-patterns.md"
+            }
+
+            div { class "docs-card"
+                h3 "Database Integration"
+                p "Connect TW Framework to databases for dynamic content and APIs. TW Framework works with any Python-compatible database: ..."
+                p "File: database-integration.md"
+            }
+
+            div { class "docs-card"
+                h3 "Error Handling Patterns"
+                p "Robust error handling is essential for production TW applications. This guide covers patterns for handling errors at eve..."
+                p "File: error-handling-patterns.md"
+            }
+
+            div { class "docs-card"
+                h3 "WebSockets"
+                p "TW's dev and production servers support real-time WebSocket connections out of the box. Add a Python file under [home]/w..."
+                p "File: websocket.md"
+            }
+
+            div { class "docs-footer"
+                p "TW Framework v0.4.7 - Built with TW Framework"
+            }
+        }
+    }
+}
