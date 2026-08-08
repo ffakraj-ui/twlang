@@ -244,6 +244,39 @@ let count: number = 5
 let count: string = "hello"
 ```
 
+
+## Lib Function Errors
+
+### Lib function error: Node.js is required
+
+```
+Error: Lib function error: Node.js is required to execute lib functions at build time but was not found.
+```
+
+**Cause:** A `let` statement calls a lib function, but Node.js is not installed.
+
+**Fix:** Install Node.js v18+ and ensure `node` is on your PATH.
+
+### Lib function error: Function not found
+
+```
+Error: Lib function `getApp` failed: Function 'getApp' not found.
+```
+
+**Cause:** The function name does not match any function in the loaded `.twm` file.
+
+**Fix:** Check the function name spelling, or load the correct `.twm` file.
+
+### Lib function error: Execution failed
+
+```
+Error: Lib function `getApp` failed: TypeError: Cannot read property of undefined
+```
+
+**Cause:** The function ran but threw a JavaScript error.
+
+**Fix:** Check the function logic in your `.twm` file.
+
 ## Vercel Deployment Errors
 
 ### externally-managed-environment

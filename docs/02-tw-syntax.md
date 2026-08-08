@@ -115,6 +115,20 @@ let count = 5
 let name = "World"
 ```
 
+
+## Lib Function Calls
+
+Functions from loaded `.twm` lib files can be called directly in `let` statements. The function executes at **build time** and the result is baked into the page.
+
+```tw
+load @./lib/getApps.twm
+
+let app = getApp("whatsapp")
+let name: string = getApp("whatsapp").name
+```
+
+See [Lib Directory](21-lib-directory.md) for full documentation.
+
 ## Comments
 
 ```tw

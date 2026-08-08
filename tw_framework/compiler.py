@@ -20,6 +20,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 from .common import content_hash, log
+from .lib_executor import LibExecutionError, execute_lib_function, is_function_call
 
 logger = logging.getLogger(__name__)
 
@@ -2434,6 +2435,45 @@ def _collect_used_component_names(nodes, found=None) -> Any:
     return found
 
 
+
+# --- Lib function execution ---
+_LIB_MODULES = {}
+
+
+def register_lib_module(source, module_id=""):
+    try:
+        from .twm_parser import parse_twm_functions
+        funcs = parse_twm_functions(source)
+        for fn in funcs:
+            _LIB_MODULES[fn["name"]] = {
+                "source": source,
+                "module_id": module_id or fn["name"],
+            }
+    except Exception:
+        pass
+
+
+def _try_execute_lib_function(func_name, raw_args, token=None):
+    if func_name not in _LIB_MODULES:
+        return func_name + "(" + raw_args + ")"
+    mod_info = _LIB_MODULES[func_name]
+    try:
+        result = execute_lib_function(
+            mod_info["source"],
+            func_name,
+            raw_args,
+            module_id=mod_info["module_id"],
+        )
+        return result
+    except LibExecutionError as exc:
+        raise CompilerError(
+            "Lib function error: " + exc.message,
+            token=token,
+            suggestion=exc.suggestion or "Check the .twm lib file for errors.",
+            code="TW2401",
+        )
+
+
 VALID_TYPES = {"string", "number", "boolean", "array", "object", "null", "any"}
 
 
@@ -2501,6 +2541,12 @@ def parse_let(tokens, i) -> Any:
     if peek(tokens, i) and peek(tokens, i).type == "WORD" and peek(tokens, i).value == "=":
         i += 1
     value, i = parse_value_token(tokens, i)
+
+    # If value is a string that looks like a function call, try to execute it
+    if isinstance(value, str):
+        call_info = is_function_call(value)
+        if call_info:
+            value = _try_execute_lib_function(call_info["name"], call_info["raw_args"], name_token)
 
     # Type-check the value against the annotation at parse time
     if type_annotation:
@@ -3160,6 +3206,11 @@ def build_tw_ast(tokens, base_dir, file_path, source) -> Any:
                 page.loaded_sheets.append(build_tss_ast_from_text(read_text_file(load_info["full_path"])))
             elif load_info["kind"] == "module":
                 page.loaded_modules.append(load_info["full_path"])
+                try:
+                    mod_source = read_text_file(load_info["full_path"])
+                    register_lib_module(mod_source, module_id=load_info["full_path"])
+                except Exception:
+                    pass
             i += 1
             continue
 

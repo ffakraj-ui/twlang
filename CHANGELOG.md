@@ -2,7 +2,13 @@
 
 All notable changes to TW Framework are documented here.
 
-## v0.4.6
+
+## v0.4.7
+
+- **Added: Lib directory system** — shared server-side utility functions via `lib/` folder (`.twm` files). Load with `load @./lib/file.twm` and call in `let` statements: `let app = getApps("whatsapp")`. Functions execute at build time via Node.js bridge, results baked into static HTML. Works with type safety annotations. See `docs/21-lib-directory.md`.
+
+
+## v0.4.5
 
 - **Added: Type safety / type annotations** — `let` variables and `state` block entries now support optional TypeScript-style type annotations: `let count: number = 5`, `let name: string = "World"`, `state { count: number = 0 }`. The compiler validates values against declared types at parse time and during semantic analysis, raising clear errors like `Type error: count is annotated as number but got string.` on mismatch. Valid types: `string`, `number`, `boolean`, `array`, `object`, `null`, `any`. Annotations are optional — existing `.tw` files work unchanged.
 
