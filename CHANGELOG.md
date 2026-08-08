@@ -3,6 +3,13 @@
 All notable changes to TW Framework are documented here.
 
 
+## v0.4.10
+
+- **Added: Inline JSON in `let` statements** — `let` now supports inline JSON objects and arrays directly: `let items = [{"id": 1, "name": "First"}, {"id": 2, "name": "Second"}]`, `let config = {"key": "value", "num": 42}`, `let matrix = [[1, 2], [3, 4]]`. Previously the parser treated `{` as a block-opening token and failed with TW1000. The `collect_until_eol` function now tracks brace depth separately from bracket depth, correctly distinguishing JSON object literals from TW block syntax.
+- **Added: Tailwind CSS utility classes in `.tss` files** — TSS files now support Tailwind utility classes alongside normal TSS syntax. Write `flex items-center gap-2 p-4` or `display flex; align-items center; gap 8px` — both work. Supports spacing (p-*, m-*, gap-*), colors (bg-red-500, text-blue-600), flexbox (flex, items-center, justify-between), grid (grid-cols-3), typography (text-xl, font-bold), shadows, borders, rounded corners, positioning, and more. Falls back to normal TSS parsing when not all words are Tailwind classes.
+- **Fixed: `create_base_context` no longer overwrites `let` variables** — if a `let` variable named `config`, `site`, or `env` is defined, it takes priority over the site config defaults.
+
+
 ## v0.4.7
 
 - **Added: Lib directory system** — shared server-side utility functions via `lib/` folder (`.twm` files). Load with `load @./lib/file.twm` and call in `let` statements: `let app = getApps("whatsapp")`. Functions execute at build time via Node.js bridge, results baked into static HTML. Works with type safety annotations. See `docs/21-lib-directory.md`.

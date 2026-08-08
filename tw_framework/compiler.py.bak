@@ -13,15 +13,6 @@ import logging
 import contextlib
 import tempfile
 import threading
-
-# Tailwind CSS utility class support for .tss files
-try:
-    from .tailwind_map import expand_tailwind_line, expand_tailwind_class
-except ImportError:
-    def expand_tailwind_line(line):
-        return None
-    def expand_tailwind_class(cls):
-        return None
 import concurrent.futures
 import unicodedata
 import errno
@@ -2182,47 +2173,21 @@ def collect_until_eol(tokens, i, stop_on_block_open=False) -> Any:
     Collect tokens into an expression string until newline / block end.
     - STRING tokens are re-quoted to preserve valid JSON/Python literal parsing.
     - Supports multi-token literals like: ["a", "b",]
-    - Supports inline JSON objects: let x = {"key": "value"}
     """
     parts = []
-    depth = 0  # bracket/paren nesting [ ]
-    brace_depth = 0  # JSON object brace nesting { }
+    depth = 0  # bracket/paren nesting
     while i < len(tokens):
         tok = tokens[i]
-        if tok.type == "WORD" and tok.value == ";" and depth == 0 and brace_depth == 0:
+        if tok.type == "WORD" and tok.value == ";" and depth == 0:
             break
-        if tok.type == "NL" and depth == 0 and brace_depth == 0:
+        if tok.type == "NL" and depth == 0:
             break
         if tok.type == "BRACE":
-            if tok.value == "{" and depth == 0 and brace_depth == 0:
-                # If stop_on_block_open and we already have parts, this { starts a new TW block
-                if stop_on_block_open and parts:
-                    break
-                # If not stop_on_block_open, { at top level is always a TW block
-                if not stop_on_block_open:
-                    break
-                # stop_on_block_open=True and parts is empty: this { starts a JSON object literal
-                brace_depth += 1
-                parts.append(tok.value)
-                i += 1
-                continue
-            elif tok.value == "{" and brace_depth > 0:
-                brace_depth += 1
-                parts.append(tok.value)
-                i += 1
-                continue
-            elif tok.value == "}" and brace_depth > 0:
-                brace_depth -= 1
-                parts.append(tok.value)
-                i += 1
-                continue
-            elif tok.value == "}" and depth == 0:
+            if tok.value == "}" and depth == 0:
                 break
-            # depth > 0 — inside brackets, treat { } as JSON object delimiters
-            if depth > 0:
-                parts.append(tok.value)
-                i += 1
-                continue
+            if stop_on_block_open and tok.value == "{" and depth == 0:
+                break
+            # NOTE: `{`/`}` are reserved for TW blocks; we don't treat them as value tokens here.
             break
 
         if tok.type == "WORD":
@@ -3352,23 +3317,6 @@ def _is_new_tss_declaration(item) -> bool:
     parts = item.split(None, 1)
     if parts and ":" in parts[0].rstrip(";"):
         return True
-    # Check if it looks like Tailwind utility classes (each word is a known utility)
-    # If so, it's a new declaration line, not a continuation
-    if parts:
-        words = parts[0].split()
-        if len(words) > 0:
-            from_tailwind = True
-            for w in words:
-                if not expand_tailwind_class(w):
-                    from_tailwind = False
-                    break
-            if from_tailwind:
-                return True
-    # Check if first word is a known CSS property or alias
-    if parts:
-        first_word = parts[0].strip(":;,")
-        if first_word.lower() in CSS_PROPERTIES or first_word.lower() in CSS_ALIASES:
-            return True
     return False
 
 
@@ -3403,23 +3351,10 @@ def _split_tss_body_items(body) -> Any:
 def _parse_tss_rule(selector, body) -> Any:
     rule = RuleNode(selector)
     for item in _split_tss_body_items(body):
-        # Nested rule (media query, pseudo-class, etc.)
         if "{" in item and item.rstrip().endswith("}"):
             nested_sheet = build_tss_ast_from_text(item)
             rule.children.extend(nested_sheet.rules)
             continue
-
-        # ── Tailwind CSS utility class support ──
-        # Try to expand the entire item as Tailwind utility classes.
-        # e.g. `flex items-center gap-2 p-4` → multiple CSS declarations.
-        # Falls back to normal TSS parsing if not all words are Tailwind classes.
-        tw_decls = expand_tailwind_line(item)
-        if tw_decls is not None:
-            for prop, val in tw_decls:
-                rule.declarations.append((prop, val))
-            continue
-
-        # ── Normal TSS property: value parsing ──
         parts = item.split(None, 1)
         prop = parts[0].strip(":;,")
         val = parts[1].strip().strip(";") if len(parts) > 1 else "true"
@@ -4652,13 +4587,9 @@ def create_base_context(page_ast, tw_path) -> Any:
             raise CompilerError(str(e), file_path=tw_path)
         context[key] = payload
     config = load_config()
-    # Only set config/site/env from site config if not already defined by let vars
-    if "config" not in context:
-        context["config"] = config
-    if "site" not in context:
-        context["site"] = config
-    if "env" not in context:
-        context["env"] = get_public_env(config)
+    context["config"] = config
+    context["site"] = config
+    context["env"] = get_public_env(config)
     return context
 
 
