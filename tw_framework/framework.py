@@ -2978,15 +2978,17 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
                     page_metadata_map[compiler.page_cache_key(page_info)] = page_metadata
 
                     # Check incremental cache
-                    cached = cache.get(compiler.page_cache_key(page_info))
-                    if cached is not None and isinstance(cached, dict):
-                        cached_sig = cached.get("signature")
-                        current_sig = compiler.compute_dependency_signature(dependencies)
-                        if cached_sig == current_sig:
-                            # Cache hit: skip compilation
-                            skipped += 1
-                            log(f"  ⏭️  {compiler.safe_relpath(page_info['path'], compiler.PROJECT_ROOT)} (cache hit)")
-                            continue
+                    # --force bypasses the incremental cache-hit check entirely
+                    if not force:
+                        cached = cache.get(compiler.page_cache_key(page_info))
+                        if cached is not None and isinstance(cached, dict):
+                            cached_sig = cached.get("signature")
+                            current_sig = compiler.compute_dependency_signature(dependencies)
+                            if cached_sig == current_sig:
+                                # Cache hit: skip compilation
+                                skipped += 1
+                                log(f"  ⏭️  {compiler.safe_relpath(page_info['path'], compiler.PROJECT_ROOT)} (cache hit)")
+                                continue
 
                     needs_build, reason = compiler.should_rebuild_page(page_info, dependencies, manifest, options)
                     if needs_build:
@@ -3217,6 +3219,11 @@ def clean_project_outputs(project_root: str) -> None:
     for path in [compiler.PUBLIC_DIR, compiler.INTERNAL_DIR]:
         if os.path.exists(path):
             shutil.rmtree(path)
+
+    # Also clear the incremental build cache (.tw/cache/)
+    # so that --clean guarantees a true fresh rebuild.
+    cache = IncrementalCache(project_root)
+    cache.clear()
 
     os.makedirs(compiler.CACHE_DIR, exist_ok=True)
     os.makedirs(compiler.MANIFEST_DIR, exist_ok=True)

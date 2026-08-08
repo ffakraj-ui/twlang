@@ -3,8 +3,10 @@
 All notable changes to TW Framework are documented here.
 
 
-## v0.4.10
+## v0.5.0
 
+- **Fixed: `tw build --clean` now properly invalidates the incremental cache** — previously `--clean` removed the `dist/` output directory but did not clear `.tw/cache/`, so the subsequent build would still find old cache entries and report `(cache hit)` instead of recompiling from scratch. `clean_project_outputs()` now calls `IncrementalCache.clear()` to wipe all cached page signatures before the build starts.
+- **Fixed: `tw build --force` now bypasses the incremental cache-hit check entirely** — previously `--force` was passed to `BuildOptions` but the cache-hit check ran *before* `should_rebuild_page()` was consulted, so pages could still be skipped based on stale cache signatures even when `--force` was set. The cache lookup is now wrapped in `if not force:` so that `--force` guarantees every page is recompiled.
 - **Added: Inline JSON in `let` statements** — `let` now supports inline JSON objects and arrays directly: `let items = [{"id": 1, "name": "First"}, {"id": 2, "name": "Second"}]`, `let config = {"key": "value", "num": 42}`, `let matrix = [[1, 2], [3, 4]]`. Previously the parser treated `{` as a block-opening token and failed with TW1000. The `collect_until_eol` function now tracks brace depth separately from bracket depth, correctly distinguishing JSON object literals from TW block syntax.
 - **Added: Tailwind CSS utility classes in `.tss` files** — TSS files now support Tailwind utility classes alongside normal TSS syntax. Write `flex items-center gap-2 p-4` or `display flex; align-items center; gap 8px` — both work. Supports spacing (p-*, m-*, gap-*), colors (bg-red-500, text-blue-600), flexbox (flex, items-center, justify-between), grid (grid-cols-3), typography (text-xl, font-bold), shadows, borders, rounded corners, positioning, and more. Falls back to normal TSS parsing when not all words are Tailwind classes.
 - **Fixed: `create_base_context` no longer overwrites `let` variables** — if a `let` variable named `config`, `site`, or `env` is defined, it takes priority over the site config defaults.

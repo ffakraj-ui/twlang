@@ -328,7 +328,7 @@ For full deployment details, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Important Version Notes
 
-### v0.4.5+ (current)
+### v0.5.0+ (current)
 
 - LSP server with autocomplete and live diagnostics
 - `--prod` flag is safe and recommended (HTML references auto-updated after filename hashing)
