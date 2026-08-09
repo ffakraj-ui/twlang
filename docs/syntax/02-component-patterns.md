@@ -23,7 +23,7 @@ button {
 ### Usage
 
 ```tw
-// [home]/pages/index.tw
+// [home]/index.tw
 import "Button"
 
 body {
@@ -333,7 +333,7 @@ Card {
 ### Relative Imports
 
 ```tw
-// From [home]/pages/blog/index.tw
+// From [home]/blog/index.tw
 import "../../components/Card"
 import "../../components/Header"
 ```

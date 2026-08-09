@@ -1,6 +1,30 @@
 # Changelog
 
-## v0.8.2 (2026-08-10)
+## v0.8.35 (2026-08-10)
+
+### Documentation Overhaul
+- All 200+ markdown files updated with correct `pip install tw-framework` (was `pip install -e .`)
+- All `render` mode references updated: now lists `static`, `server`, `edge`, `interactive`, `dynamic` (was "only static valid")
+- All `tw init` references replaced with `tw create` (App Router CLI)
+- All `[home]/pages/` path references replaced with `[home]/` (App Router structure)
+- All "NOT a JavaScript/Node framework" notes updated to reflect npm package support
+- Old version references (0.1.0, 0.3.4) updated to 0.8.355
+- npm role updated: "only for .twm" → "used for client-side packages via tw install AND .twm"
+- LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.35
+- GitHub URL: `https://github.com/ffakraj-ui/twlang` (consistent across all files)
+
+### Bug Fixes (carried forward from v0.8.1–v0.8.355)
+- Route path double-nesting fix (sitemap.xml, __TW_DATA__, HTML metadata)
+- NPM package manager detection (was dead code, now live)
+- React loader script (both branches were identical, now version-aware)
+- ReactCompat wired to build pipeline via _inject_react_integration()
+- LOAD_RE regex fix (on:load was matched as load directive)
+- Counter template bare string fix
+- Duplicate deploy metadata call removed
+- Client bundler: transitive deps, esbuild fallback warning, topological sort
+- Module boundaries: fetch() is client-safe, .twm always SERVER
+
+## v0.8.355 (2026-08-10)
 
 ### Bug Fixes
 
@@ -13,6 +37,9 @@
 - Sitemap.xml now lists correct clean URLs (`/about` instead of `/about/about`)
 - RSS feed entries also fixed (same root cause)
 
+#### README Quick Start Fix
+- `pip install tw-framework` (dev-only) replaced with `pip install tw-framework` (PyPI public install)
+
 #### Previous v0.8.1 Fixes (carried forward)
 - `detect_package_manager()` — was dead code, now actually used by `install_packages()`, `remove_packages()`, `ensure_dependencies()`
 - `get_react_loader_script()` — both branches were identical, now returns different output based on installed React version and CDN/bundle mode
@@ -20,6 +47,11 @@
 - `LOAD_RE` regex — `on:load` was matched as `load` directive, fixed with negative lookbehind
 - Counter template — bare strings `"+"`/`"-"` replaced with `text "+"`/`text "-"`
 - Duplicate `generate_deploy_metadata()` call removed from `cli.py`
+
+## v0.8.2 (2026-08-10)
+
+### Bug Fixes
+- Route path double-nesting fix (same as v0.8.355, initial attempt)
 
 ## v0.8.1 (2026-08-10)
 

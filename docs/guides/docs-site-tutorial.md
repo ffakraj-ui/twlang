@@ -207,7 +207,7 @@ pre {
 
 ## Step 5: Content Pages
 
-`[home]/pages/docs/routing.tw`:
+`[home]/docs/routing.tw`:
 
 ```tw
 page {
@@ -221,7 +221,7 @@ body {
     p "TW Framework uses file-based routing. Each .tw file becomes a route."
 
     h2 "Basic Routes"
-    p "Create a file in [home]/pages/ to define a route."
+    p "Create a file in [home]/ to define a route."
 
     CodeBlock {
         language "tw"
@@ -233,7 +233,7 @@ body {
 
     CodeBlock {
         language "tw"
-        code "// [home]/pages/blog/[slug].tw\npage {\n    title \"{post.title}\"\n}\n\nbody {\n    h1 \"{post.title}\"\n    article \"{post.body}\"\n}"
+        code "// [home]/blog/[slug].tw\npage {\n    title \"{post.title}\"\n}\n\nbody {\n    h1 \"{post.title}\"\n    article \"{post.body}\"\n}"
     }
 
     h2 "Catch-All Routes"
@@ -241,7 +241,7 @@ body {
 
     CodeBlock {
         language "tw"
-        code "// [home]/pages/docs/[...slug].tw\n// Matches /docs/getting-started, /docs/api/rest, etc."
+        code "// [home]/docs/[...slug].tw\n// Matches /docs/getting-started, /docs/api/rest, etc."
     }
 }
 ```
@@ -256,7 +256,7 @@ import os
 import json
 import re
 
-DOCS_DIR = "[home]/pages/docs"
+DOCS_DIR = "[home]/docs"
 INDEX = []
 
 def extract_content(filepath):

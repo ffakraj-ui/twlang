@@ -24,13 +24,13 @@ name: My Site
 
 ### "Build produces 0 pages"
 
-**Cause:** No `.tw` files in `[home]/pages/`.
+**Cause:** No `.tw` files in `[home]/`.
 
 **Fix:**
 ```bash
 mkdir -p [home]/pages
 # Create index.tw
-echo 'page { title "Home" } body { h1 "Hello" }' > [home]/pages/index.tw
+echo 'page { title "Home" } body { h1 "Hello" }' > [home]/index.tw
 ```
 
 ### Build hangs / is very slow

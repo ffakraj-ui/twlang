@@ -277,7 +277,7 @@ body {
 }
 ```
 
-**Compiler Error:** `TW2405: Component 'NonExistent' not found. Searched in: [home]/components/, [home]/pages/.`
+**Compiler Error:** `TW2405: Component 'NonExistent' not found. Searched in: [home]/components/, [home]/.`
 
 **Fix:** Ensure the component file exists in the components directory.
 

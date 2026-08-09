@@ -9,7 +9,7 @@ TW Framework automatically creates routes from your file structure.
 ### Basic Routes
 
 ```
-[home]/pages/
+[home]/
   index.tw      →  /
   about.tw      →  /about
   contact.tw    →  /contact
@@ -18,7 +18,7 @@ TW Framework automatically creates routes from your file structure.
 ### Nested Routes
 
 ```
-[home]/pages/
+[home]/
   blog/
     index.tw    →  /blog
     post.tw     →  /blog/post
@@ -27,7 +27,7 @@ TW Framework automatically creates routes from your file structure.
 ### Common Mistake: Wrong File Extension
 
 ```
-[home]/pages/
+[home]/
   about.html    →  NOT a route (must be .tw)
   about.txt     →  NOT a route
 ```
@@ -39,13 +39,13 @@ TW Framework automatically creates routes from your file structure.
 ### Single Parameter
 
 ```
-[home]/pages/
+[home]/
   blog/
     [slug].tw   →  /blog/hello-world, /blog/my-post
 ```
 
 ```tw
-// [home]/pages/blog/[slug].tw
+// [home]/blog/[slug].tw
 page {
     title "{post.title}"
     render static
@@ -62,14 +62,14 @@ body {
 ### Multiple Parameters
 
 ```
-[home]/pages/
+[home]/
   shop/
     [category]/
       [product].tw  →  /shop/electronics/iphone-15
 ```
 
 ```tw
-// [home]/pages/shop/[category]/[product].tw
+// [home]/shop/[category]/[product].tw
 page {
     title "{product.name}"
     render static
@@ -85,7 +85,7 @@ body {
 
 ```tw
 // WRONG — Using wrong parameter name
-// File: [home]/pages/blog/[slug].tw
+// File: [home]/blog/[slug].tw
 
 body {
     h1 "{post.title}"  // Should be {slug} or loaded data
@@ -96,7 +96,7 @@ body {
 
 ```tw
 // CORRECT
-// [home]/pages/blog/[slug].tw
+// [home]/blog/[slug].tw
 let post = load_json "posts/{slug}"
 
 body {
@@ -107,13 +107,13 @@ body {
 ## Catch-All Routes
 
 ```
-[home]/pages/
+[home]/
   docs/
     [...slug].tw  →  /docs/getting-started, /docs/api/rest
 ```
 
 ```tw
-// [home]/pages/docs/[...slug].tw
+// [home]/docs/[...slug].tw
 page {
     title "Documentation"
     render static
@@ -127,7 +127,7 @@ body {
 ### Common Mistake: Catch-All Not Last
 
 ```
-[home]/pages/
+[home]/
   docs/
     [...slug].tw
     api.tw          →  This will NEVER match — catch-all catches everything first
@@ -136,7 +136,7 @@ body {
 **Fix:** Place specific routes before catch-all, or use different structure.
 
 ```
-[home]/pages/
+[home]/
   docs/
     api.tw          →  /docs/api
     [...slug].tw    →  /docs/anything-else
@@ -147,14 +147,14 @@ body {
 ### JSON Data Files
 
 ```
-[home]/pages/
+[home]/
   blog/
     [slug].tw
     [slug].json     →  Data source for [slug].tw
 ```
 
 ```json
-// [home]/pages/blog/[slug].json
+// [home]/blog/[slug].json
 [
   {
     "slug": "hello-world",
@@ -170,7 +170,7 @@ body {
 ```
 
 ```tw
-// [home]/pages/blog/[slug].tw
+// [home]/blog/[slug].tw
 page {
     title "{post.title}"
     render static
@@ -316,7 +316,7 @@ function get(request):
 ## 404 Pages
 
 ```tw
-// [home]/pages/404.tw
+// [home]/404.tw
 page {
     title "Page Not Found"
     render static
@@ -339,7 +339,7 @@ body {
 More specific routes take precedence:
 
 ```
-[home]/pages/
+[home]/
   blog/
     index.tw      →  /blog (specific)
     [slug].tw     →  /blog/:slug (dynamic)
@@ -350,7 +350,7 @@ More specific routes take precedence:
 ### Common Mistake: Overlapping Routes
 
 ```
-[home]/pages/
+[home]/
   [slug].tw     →  /:slug
   about.tw      →  /about (NEVER reached — [slug] catches everything)
 ```
@@ -358,7 +358,7 @@ More specific routes take precedence:
 **Fix:** Restructure to avoid overlap.
 
 ```
-[home]/pages/
+[home]/
   about.tw      →  /about
   posts/
     [slug].tw   →  /posts/:slug

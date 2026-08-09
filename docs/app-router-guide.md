@@ -37,7 +37,7 @@ This generates:
 The framework auto-detects which routing system to use:
 
 - If `[home]/page.tw` or `[home]/layout.tw` exists → **App Router mode**
-- If `[home]/pages/` exists → **Legacy mode**
+- If `[home]/` exists → **Legacy mode**
 
 Both modes work simultaneously. You can migrate gradually.
 
@@ -486,7 +486,7 @@ Create `[home]/layout.tw` (App Router layout) alongside your existing `[home]/la
 
 ### Step 2: Add page.tw files
 
-For each page in `[home]/pages/`, create a corresponding `[home]/page.tw` or `[home]/about/page.tw`.
+For each page in `[home]/`, create a corresponding `[home]/page.tw` or `[home]/about/page.tw`.
 
 ### Step 3: Use `children` instead of `{slot}`
 
@@ -498,6 +498,6 @@ Rename `route.twm` to `route.tw` (optional — both work).
 
 ### Step 5: Remove legacy dirs
 
-Once all pages are migrated, delete `[home]/pages/` and `[home]/layouts/`.
+Once all pages are migrated, delete `[home]/` and `[home]/layouts/`.
 
 See `MIGRATION_V0.7.0.md` for detailed steps.

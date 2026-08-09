@@ -30,7 +30,7 @@ my-portfolio/
 ## Homepage
 
 ```tw
-// [home]/pages/index.tw
+// [home]/index.tw
 page {
     title "John Doe - Developer"
     layout "main"
@@ -70,7 +70,7 @@ body {
 ## Projects Page
 
 ```tw
-// [home]/pages/projects.tw
+// [home]/projects.tw
 page {
     title "Projects - John Doe"
     layout "main"
@@ -108,7 +108,7 @@ body {
 ## Contact Form
 
 ```tw
-// [home]/pages/contact.tw
+// [home]/contact.tw
 page {
     title "Contact - John Doe"
     layout "main"

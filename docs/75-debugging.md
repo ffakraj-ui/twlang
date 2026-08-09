@@ -3,8 +3,8 @@
 ## tw check
 
 ```bash
-tw check [home]/pages/index.tw
-tw check [home]/pages/index.tw --diagnostics
+tw check [home]/index.tw
+tw check [home]/index.tw --diagnostics
 tw check [home]/style.tss
 ```
 
@@ -27,9 +27,9 @@ Shows: pages, components, layouts, API routes, middleware rules.
 ## tw tokens / tw ast / tw ir
 
 ```bash
-tw tokens [home]/pages/index.tw
-tw ast [home]/pages/index.tw
-tw ir [home]/pages/index.tw
+tw tokens [home]/index.tw
+tw ast [home]/index.tw
+tw ir [home]/index.tw
 ```
 
 ## Build Debug Mode
@@ -51,7 +51,7 @@ export function GET(request) {
 ## Common Debugging Scenarios
 
 ### Page renders blank
-1. Check `tw check [home]/pages/index.tw`
+1. Check `tw check [home]/index.tw`
 2. Verify `page {}` block exists
 3. Verify `body {}` block exists
 4. Check for unclosed braces

@@ -80,7 +80,7 @@ TW Framework supports two routing systems:
 - Layouts nest automatically by directory structure.
 - API routes use `route.tw` instead of `page.tw`.
 - The routing is handled by `app_router.discover_routes()` and `app_router.match_route()`.
-- Auto-detection: if `[home]/page.tw` or `[home]/layout.tw` exists → App Router mode; if `[home]/pages/` exists → Legacy mode.
+- Auto-detection: if `[home]/page.tw` or `[home]/layout.tw` exists → App Router mode; if `[home]/` exists → Legacy mode.
 - See `docs/app-router.md` for the full guide.
 
 ### 2.4 How Components Work

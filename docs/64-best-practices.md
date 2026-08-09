@@ -12,7 +12,7 @@ div { class "hero", h1 "{title}" }
 ### Group related pages
 
 ```
-[home]/pages/
+[home]/
 ├── blog/
 │   ├── index.tw
 │   ├── [slug].tw

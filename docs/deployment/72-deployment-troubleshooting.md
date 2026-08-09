@@ -27,7 +27,7 @@ Fix: pip install --upgrade tw-framework
 
 Check:
 1. outputDirectory is dist in vercel.json
-2. [home]/pages/index.tw exists
+2. [home]/index.tw exists
 3. Page has body {} block with content
 4. Layout exists if specified
 

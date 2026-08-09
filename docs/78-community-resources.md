@@ -41,7 +41,7 @@ Open an issue at https://github.com/ffakraj-ui/twlang/issues with:
 ```bash
 git clone https://github.com/ffakraj-ui/twlang.git
 cd twlang
-pip install -e .
+pip install tw-framework
 
 # Make changes...
 pytest tests/

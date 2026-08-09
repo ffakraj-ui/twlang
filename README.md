@@ -2,18 +2,27 @@
 
 A high-performance, HTML-first web framework with Virtual DOM, App Router, and Zero-JS static sites.
 
-**v0.8.1** — NPM Package Manager, React Compatibility, Security Module, Enhanced Lib System
+**v0.8.35** — NPM Package Manager, React Compatibility, esbuild Bundling, Security Module, Route Fixes
 
 ## Quick Start
 
 ```bash
-pip install -e .
+pip install tw-framework
 tw create my-site
 cd my-site
 tw build
 ```
 
-## What's New in v0.8.1
+That's it. Your static site is in `dist/` — deploy it anywhere.
+
+> **Pre-release / development install:** `pip install tw-framework` from a clone of this repo.
+
+## What's New in v0.8.35
+
+### Route Path Fix (Critical)
+- App Router route paths no longer double-nested (`/about/about` → `/about`)
+- Fixed in `sitemap.xml`, `__TW_DATA__` JSON, HTML metadata comments, and RSS feed
+- All three route generators (`route_path_from_page_info`, `route_from_static_page`, `route_from_dynamic_page`) now consistent
 
 ### NPM Package Manager (like Next.js)
 Install, remove, and list npm packages directly from the TW CLI:
@@ -27,6 +36,7 @@ tw remove react                    # Remove a package
 tw list                            # List installed packages
 tw list --detailed                 # Show installed versions
 ```
+Auto-detects npm, pnpm, yarn, and bun from lockfiles.
 
 ### React Compatibility
 Use React alongside TW's native VDOM for islands of interactivity:
@@ -47,6 +57,10 @@ body {
     script { on:load "__tw.react.mount('Counter', 'react-root')" }
 }
 ```
+React bootstrap and loader scripts are automatically injected during build.
+
+### esbuild Integration
+Complex npm packages (like `dayjs`, `chart.js`) are bundled for the browser using esbuild, with an IIFE fallback when esbuild is not installed.
 
 ### Security Module
 Built-in CSP nonce generation, secure HTTP headers, input sanitization, and CSRF protection.

@@ -36,7 +36,7 @@ Dead Code Report:
   Unused layouts:
     - [home]/layouts/legacy.tw
   Orphaned pages:
-    - [home]/pages/old-promo.tw
+    - [home]/old-promo.tw
 ```
 
 ## Removing Dead Code

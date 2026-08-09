@@ -44,8 +44,8 @@ def test_no_js_for_static_pages():
 ## Using tw check
 
 ```bash
-tw check [home]/pages/index.tw
-tw check [home]/pages/index.tw --diagnostics
+tw check [home]/index.tw
+tw check [home]/index.tw --diagnostics
 ```
 
 ## CI Pipeline

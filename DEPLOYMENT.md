@@ -27,7 +27,7 @@ your-project/
 The `tw.config` file is required. Both must exist at the project root.
 Without `[home]/`, the build fails with: `RuntimeError: TW project root not found.`
 
-The root page must be `[home]/pages/index.tw` for the site to load at `/`.
+The root page must be `[home]/index.tw` for the site to load at `/`.
 
 ---
 

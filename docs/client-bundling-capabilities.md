@@ -99,7 +99,7 @@ export function formatDate(date) {
 
 ```bash
 # Install TW framework
-pip install -e .
+pip install tw-framework
 
 # Install npm packages
 tw install dayjs react react-dom

@@ -5,7 +5,7 @@
 Use [...slug] for catch-all routes:
 
 ```
-[home]/pages/
+[home]/
 ├── docs/
 │   └── [...path].tw     -> /docs/* (catches /docs/a, /docs/a/b, /docs/a/b/c)
 ```
@@ -26,7 +26,7 @@ TW resolves routes in this order:
 ### Single param
 
 ```
-[home]/pages/users/[id].tw -> /users/123
+[home]/users/[id].tw -> /users/123
 ```
 
 ```tw
@@ -39,7 +39,7 @@ body {
 ### Multiple params
 
 ```
-[home]/pages/blog/[category]/[slug].tw -> /blog/tech/hello-world
+[home]/blog/[category]/[slug].tw -> /blog/tech/hello-world
 ```
 
 ```tw
@@ -66,8 +66,8 @@ URL: /products?page=2&sort=price
 
 | File | Purpose |
 |---|---|
-| [home]/pages/404.tw | Custom 404 page |
-| [home]/pages/500.tw | Custom 500 error page |
+| [home]/404.tw | Custom 404 page |
+| [home]/500.tw | Custom 500 error page |
 
 ## Redirects and Rewrites
 

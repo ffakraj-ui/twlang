@@ -53,7 +53,7 @@ Tokens:
 ### View Tokens
 
 ```bash
-tw tokens [home]/pages/index.tw
+tw tokens [home]/index.tw
 ```
 
 ## Parser
@@ -61,7 +61,7 @@ tw tokens [home]/pages/index.tw
 Builds an AST from tokens. View it:
 
 ```bash
-tw ast [home]/pages/index.tw
+tw ast [home]/index.tw
 ```
 
 ### AST Node Types
@@ -80,7 +80,7 @@ tw ast [home]/pages/index.tw
 ## IR (Intermediate Representation)
 
 ```bash
-tw ir [home]/pages/index.tw
+tw ir [home]/index.tw
 ```
 
 ## Semantic Analysis
@@ -88,7 +88,7 @@ tw ir [home]/pages/index.tw
 Validates the AST, checks for undefined variables, validates components:
 
 ```bash
-tw check [home]/pages/index.tw --diagnostics
+tw check [home]/index.tw --diagnostics
 ```
 
 ## Error Codes

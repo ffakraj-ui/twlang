@@ -6,11 +6,11 @@ TW Framework uses file-based routing — your folder structure determines the UR
 
 | File | URL |
 |---|---|
-| `[home]/pages/index.tw` | `/` |
-| `[home]/pages/about.tw` | `/about` |
-| `[home]/pages/contact.tw` | `/contact` |
-| `[home]/pages/blog/index.tw` | `/blog` |
-| `[home]/pages/blog/post.tw` | `/blog/post` |
+| `[home]/index.tw` | `/` |
+| `[home]/about.tw` | `/about` |
+| `[home]/contact.tw` | `/contact` |
+| `[home]/blog/index.tw` | `/blog` |
+| `[home]/blog/post.tw` | `/blog/post` |
 
 ## Dynamic Routes
 
@@ -18,14 +18,14 @@ Use `[param]` syntax for dynamic segments:
 
 | File | URL | Param |
 |---|---|---|
-| `[home]/pages/[slug].tw` | `/hello` | `slug = "hello"` |
-| `[home]/pages/blog/[slug].tw` | `/blog/my-post` | `slug = "my-post"` |
-| `[home]/pages/users/[id].tw` | `/users/123` | `id = "123"` |
+| `[home]/[slug].tw` | `/hello` | `slug = "hello"` |
+| `[home]/blog/[slug].tw` | `/blog/my-post` | `slug = "my-post"` |
+| `[home]/users/[id].tw` | `/users/123` | `id = "123"` |
 
 ## Nested Dynamic Routes
 
 ```
-[home]/pages/
+[home]/
 ├── [slug].tw                    → /:slug
 ├── blog/
 │   ├── index.tw                 → /blog
@@ -103,7 +103,7 @@ Folders in parentheses are excluded from the URL:
 The framework auto-detects which routing system to use:
 
 - If `[home]/page.tw` or `[home]/layout.tw` exists → **App Router mode**
-- If `[home]/pages/` exists → **Legacy mode**
+- If `[home]/` exists → **Legacy mode**
 
 Both modes are fully supported. See `docs/app-router.md` for the full guide.
 
@@ -149,14 +149,14 @@ pretty_urls: true
 TW detects route collisions during build and warns:
 
 ```
-⚠ Route collision: /blog detected from both [home]/pages/blog/index.tw and [home]/pages/blog.tw
+⚠ Route collision: /blog detected from both [home]/blog/index.tw and [home]/blog.tw
 ```
 
 Fix by removing one of the conflicting files.
 
 ## 404 Pages
 
-Create `[home]/pages/404.tw` for a custom 404 page:
+Create `[home]/404.tw` for a custom 404 page:
 
 ```tw
 page { title "Not Found" }

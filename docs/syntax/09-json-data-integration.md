@@ -9,7 +9,7 @@ TW Framework automatically pairs `.tw` files with `.json` files of the same name
 ### File Pairing
 
 ```
-[home]/pages/
+[home]/
   blog/
     [slug].tw      -> Template
     [slug].json    -> Data source
@@ -22,7 +22,7 @@ TW Framework automatically pairs `.tw` files with `.json` files of the same name
 For `[slug].tw`, the JSON must be an **array of objects**. Each object needs a `slug` field matching the route parameter.
 
 ```json
-// [home]/pages/blog/[slug].json
+// [home]/blog/[slug].json
 [
   {
     "slug": "hello-world",
@@ -140,7 +140,7 @@ For `[slug].tw`, the JSON must be an **array of objects**. Each object needs a `
 ### Using in Templates
 
 ```tw
-// [home]/pages/blog/[slug].tw
+// [home]/blog/[slug].tw
 page {
     title "{post.title}"
     render static
@@ -194,7 +194,7 @@ body {
 ### Non-Dynamic JSON Loading
 
 ```tw
-// [home]/pages/products.tw
+// [home]/products.tw
 page {
     title "Products"
     render static
@@ -210,7 +210,7 @@ body {
 ```
 
 ```json
-// [home]/pages/products.json
+// [home]/products.json
 [
   {"name": "Widget", "price": 19.99},
   {"name": "Gadget", "price": 29.99}
@@ -221,7 +221,7 @@ body {
 
 ```tw
 // WRONG
-let products = load_json "[home]/pages/products.json"
+let products = load_json "[home]/products.json"
 ```
 
 **Compiler Error:** `TW3007: Invalid path for load_json. Use relative path without extension.`
@@ -302,7 +302,7 @@ let products = load_json "products"
 **Fix:** Paginate or split into multiple files.
 
 ```
-[home]/pages/
+[home]/
   blog/
     page-1.json     // Items 1-100
     page-2.json     // Items 101-200
@@ -329,7 +329,7 @@ body {
 ## JSON Data with Multiple Parameters
 
 ```
-[home]/pages/
+[home]/
   shop/
     [category]/
       [product].tw
@@ -337,7 +337,7 @@ body {
 ```
 
 ```json
-// [home]/pages/shop/[category]/[product].json
+// [home]/shop/[category]/[product].json
 [
   {
     "category": "electronics",
@@ -355,7 +355,7 @@ body {
 ```
 
 ```tw
-// [home]/pages/shop/[category]/[product].tw
+// [home]/shop/[category]/[product].tw
 page {
     title "{item.name}"
     render static

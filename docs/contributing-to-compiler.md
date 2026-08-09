@@ -75,7 +75,7 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install in editable mode
-pip install -e .
+pip install tw-framework
 
 # Install dev dependencies
 pip install pytest pytest-cov black flake8 mypy
@@ -193,7 +193,7 @@ def test_issue_42_nested_components():
 Enable verbose logging:
 
 ```bash
-TW_DEBUG=1 tw build [home]/pages/index.tw
+TW_DEBUG=1 tw build [home]/index.tw
 ```
 
 This prints:
@@ -217,7 +217,7 @@ This prints:
 import cProfile
 from tw_framework.compiler import compile_file_pipeline
 
-cProfile.run('compile_file_pipeline("[home]/pages/index.tw")', 'stats.prof')
+cProfile.run('compile_file_pipeline("[home]/index.tw")', 'stats.prof')
 ```
 
 Analyze with `snakeviz`:

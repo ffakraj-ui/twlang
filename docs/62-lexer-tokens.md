@@ -42,7 +42,7 @@ One-character: `[](),:=+-*/.%<>!`
 ## View Tokens
 
 ```bash
-tw tokens [home]/pages/index.tw
+tw tokens [home]/index.tw
 ```
 
 Output:

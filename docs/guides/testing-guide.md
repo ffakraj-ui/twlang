@@ -184,20 +184,20 @@ def test_invalid_product(client):
 from tw_framework.compiler import compile_file_pipeline
 
 def test_home_page():
-    result = compile_file_pipeline('[home]/pages/index.tw')
+    result = compile_file_pipeline('[home]/index.tw')
 
     assert result.html is not None
     assert '<!DOCTYPE html>' in result.html
     assert '<html' in result.html
 
 def test_404_page():
-    result = compile_file_pipeline('[home]/pages/404.tw')
+    result = compile_file_pipeline('[home]/404.tw')
 
     assert '404' in result.html or 'Not Found' in result.html
 
 def test_dynamic_route():
     result = compile_file_pipeline(
-        '[home]/pages/blog/[slug].tw',
+        '[home]/blog/[slug].tw',
         context={'post': {'title': 'Test', 'body': 'Content'}}
     )
 
@@ -445,7 +445,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .
+          pip install tw-framework
           pip install pytest pytest-cov pytest-asyncio playwright
           playwright install
 

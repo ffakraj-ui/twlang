@@ -16,7 +16,7 @@ v0.8.1 is a **fully backward-compatible** release. No code changes are required 
 
 ```bash
 cd your-project
-pip install -e . --upgrade
+pip install tw-framework --upgrade
 ```
 
 Or if you installed from a package:
@@ -263,7 +263,7 @@ The `tw.config` file is automatically updated when you use `tw install`. If it d
 
 Run:
 ```bash
-pip install -e .
+pip install tw-framework
 python -m pytest tests/ -v
 ```
 

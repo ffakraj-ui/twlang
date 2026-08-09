@@ -49,11 +49,11 @@
 ## View AST
 
 ```bash
-tw ast [home]/pages/index.tw
+tw ast [home]/index.tw
 ```
 
 ## View IR
 
 ```bash
-tw ir [home]/pages/index.tw
+tw ir [home]/index.tw
 ```

@@ -137,7 +137,7 @@ script {
 
 ## Step 3: Offline Page
 
-Create `[home]/pages/offline.tw`:
+Create `[home]/offline.tw`:
 
 ```tw
 page {

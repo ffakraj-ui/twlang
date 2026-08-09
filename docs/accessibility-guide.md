@@ -302,7 +302,7 @@ video {
 
 ```bash
 # Run TW diagnostics
-tw check [home]/pages/index.tw
+tw check [home]/index.tw
 
 # Use Lighthouse in Chrome DevTools
 # Or install axe-core

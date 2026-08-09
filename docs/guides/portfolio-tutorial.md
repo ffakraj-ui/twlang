@@ -206,7 +206,7 @@ section {
 
 ## Step 4: Projects Page
 
-`[home]/pages/projects.tw`:
+`[home]/projects.tw`:
 
 ```tw
 page {
@@ -298,7 +298,7 @@ div {
 
 ## Step 6: Contact Form
 
-`[home]/pages/contact.tw`:
+`[home]/contact.tw`:
 
 ```tw
 page {

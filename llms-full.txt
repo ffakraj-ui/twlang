@@ -1,49 +1,6 @@
-# TW Framework – Extracted Information
-
-## Dockerfile
-
-- Base image: `nginx:alpine`
-- Copies `dist` to `/usr/share/nginx/html`
-- Exposes port `80`
-- Command: `nginx -g daemon off;`
-
-## netlify.toml
-
-- Build command: `tw build --prod`
-- Publish directory: `dist`
-
-## package.json
-
-- Name: `twlang-main`
-- Private: `true`
-- Version: `0.1.0`
-- Scripts:
-  - `dev`: `tw dev`
-  - `build`: `tw build`
-  - `export`: `tw export`
-  - `preview`: `tw preview`
-  - `clean`: `tw clean`
-  - `doctor`: `tw doctor`
-  - `info`: `tw info`
-  - `deploy`: `tw deploy`
-
-## CONTRIBUTING.md
-
-- Two AST representations:
-  - Legacy compiler AST in `tw_framework/compiler.py` centered around `PageNode` and legacy `ElementNode`
-  - Newer structured AST in `tw_framework/ast_nodes.py` centered around `Program`, `PageMeta`, and newer node dataclasses
-- Bridge between both worlds lives in `tw_framework/parser.py`
-  - `parse_text()` and `parse_file()` still call legacy tokenizer/parser from `compiler.py`
-  - `from_legacy_page()` converts resulting `PageNode` into modern `Program`
-  - `_convert_node()` recursively maps legacy node shapes into `ast_nodes.py` dataclasses
-- If you add a new node/property to legacy parser, update `_convert_node()` and `from_legacy_page()` at the same time
-- When debugging parser/compiler disagreements, inspect both legacy object and `Program` output
-- If a feature is only wired in `compiler.py`, do not assume it automatically appears in `tw ast` or lowering pipeline
-- If a feature is only added to `ast_nodes.py`, do not assume runtime builder can consume it yet
-- Safe workflow:
-  - Add or update tests in `tests/` with every parser/compiler change
-  - Prefer small compatibility shims over broad rewrites unless intentionally removing legacy path
-  - Document new directives or filename conventions in `docs/spec/tw-grammar.md`
+# TW Framework – Extracted Information (v0.8.35)
+# Source: https://github.com/ffakraj-ui/twlang
+# Generated: 2026-08-10
 
 ## pyproject.toml
 
@@ -52,7 +9,7 @@
   - Build backend: `setuptools.build_meta`
 - Project:
   - Name: `tw-framework`
-  - Version: `0.3.4`
+  - Version: `0.8.3`
   - Description: `TW framework CLI with create, dev, build, and deploy commands`
   - Readme: `README.md`
   - Requires-Python: `>=3.9`
@@ -66,1167 +23,147 @@
   - Packages: `["tw_framework", "tw_framework.adapters"]`
   - Package data: `tw_framework = ["*.js"]`
 
-## DOCUMENTATION.md
-
-### 1. Project Overview
-
-- Project Name: TW Framework (TWMODS Site)
-- Purpose: Static‑site generator and server‑side rendering framework that compiles `.tw` pages and `.twm` API routes into deployable output. Includes built‑in dev server, production build pipeline, and adapters for Vercel, Netlify, and Cloudflare. Current project is a premium APK catalog website (TWMODS).
-- Main Features:
-  - Page routing via file‑system (`.tw` files in `pages/`)
-  - Component system (`.tw` components in `components/`)
-  - Layout system (`.tw` layouts in `layouts/`)
-  - Styling via `.tss` files (TW Style Sheets)
-  - API routes via `.twm` files (TW Modules)
-  - Middleware system (`middleware.tw`)
-  - Hot‑reload dev server
-  - Production build with minification, pre‑compression, and route manifest
-  - Deployment adapters for Vercel, Netlify, Cloudflare
-- Target Users: Developers building static or server‑rendered websites, AI agents that need to understand the project structure, and maintainers.
-- Architecture Overview: Written in Python (compiler, CLI, dev server) and JavaScript (runtime helpers, API runner). Source files (`.tw`, `.twm`, `.tss`) are compiled into static HTML, CSS, and JavaScript bundles. Build pipeline orchestrated by `tw_framework/framework.py`.
-- Technology Stack:
-  - Python 3.11+ (compiler, CLI, dev server)
-  - Node.js 18+ (API runner, TypeScript compilation)
-  - JavaScript (runtime helpers, client‑side bundles)
-  - CSS (via `.tss` files)
-  - HTML (output)
-
-### 2. TW Framework Explanation
-
-#### 2.1 What TW Framework Is
-
-- Static‑site generator and server‑side rendering framework.
-- Uses custom file format (`.tw`) for pages and components, and `.twm` for API routes.
-- Compiles files into deployable output (HTML, CSS, JS) and provides development server with live reload.
-
-#### 2.2 How `.tw` Files Work
-
-- `.tw` files are page templates or components.
-- Custom syntax includes:
-  - `page { ... }` block for page metadata (title, layout, etc.)
-  - `head { ... }` for `<head>` content
-  - `body { ... }` for the main content
-  - `import "ComponentName"` to include components
-  - `{slot}` placeholder for layout content
-  - `{title}`, `{head}`, `{styles}`, `{scripts}` placeholders
-- Example (`pages/index.tw`):
-  ```
-  page {
-    title "TWMODS | Premium APK Catalog"
-    layout "main"
-    render static
-  }
-  body {
-    h1 { text "Welcome to TWMODS" }
-  }
-  ```
-
-#### 2.3 How Routing Works
-
-- Routes derived from file system under `pages/`.
-- `pages/index.tw` → `/`
-- `pages/about.tw` → `/about`
-- `pages/services.tw` → `/services`
-- `pages/contact.tw` → `/contact`
-- `pages/work.tw` → `/work`
-- Dynamic routes supported via `[param]` in filenames (e.g., `pages/blog/[slug].tw`).
-- Routing handled by `compiler.discover_pages()` and `TWProject.resolve_route()`.
-
-#### 2.4 How Components Work
-
-- Components are `.tw` files placed in `components/`.
-- Imported into pages using `import "ComponentName"`.
-- Components can accept parameters via attributes (e.g., `Button { label "Click" }`).
-- Component system compiled by pipeline and produces reusable HTML/JS.
-
-#### 2.5 How Styling Works (`.tss`)
-
-- `.tss` files are TW Style Sheets.
-- Use CSS‑like syntax with support for variables, nesting, and imports.
-- Global stylesheet is `style.tss` in project root.
-- Component‑specific styles can be placed in `components/ComponentName.tss`.
-- Compiler reads `.tss` files and outputs a single CSS file.
-
-#### 2.6 How Build Pipeline Works
-
-- Build triggered by `tw build` (or `build_hidden_site()` in `framework.py`).
-- Steps:
-  1. Load configuration (`tw.config`)
-  2. Discover pages and components
-  3. Compile each page (modular pipeline or legacy)
-  4. Generate route manifest, API manifest, sitemap, RSS, robots.txt
-  5. Pre‑compress output (gzip, brotli)
-  6. Run deployment adapters (if specified)
-- Output placed in `dist/` (or custom `--out-dir`).
-
-#### 2.7 How SSR Works
-
-- Dev server (`tw dev`) runs Python HTTP server that compiles pages on‑the‑fly.
-- Injects live‑reload script into HTML.
-- For production, pages are pre‑rendered to static HTML (SSG). No runtime SSR server included; output is static.
-
-#### 2.8 How Static Export Works
-
-- `tw build` produces fully static `dist/` directory.
-- All pages rendered to `.html` files.
-- Assets copied to `dist/assets/`.
-- Output can be served by any static file server (nginx, Vercel, Netlify, Cloudflare Pages).
-
-#### 2.9 How API Routes Work
-
-- API routes are `.twm` files placed in `api/`.
-- Each `.twm` file exports functions named after HTTP methods (`get`, `post`, `put`, `patch`, `delete`, `options`) or a generic `handler`.
-- Functions receive a `request` object and return a response.
-- Runtime (`twm_api_runner.js`) executes compiled module via Node.js.
-- Example (`api/hello.twm`):
-  ```
-  fn get(request) {
-    return { json: { message: "Hello" } }
-  }
-  ```
-
-### 3. Complete Project Structure
-
-- `/pages/` – Page templates (.tw)
-- `/components/` – Reusable components (.tw)
-- `/layouts/` – Layout templates (.tw)
-- `/api/` – API routes (.twm)
-- `/public/` – Static assets (images, fonts, etc.)
-- `/dist/` – Build output (generated)
-- `/tw_framework/` – Framework source code (Python)
-- `/tw.config` – Project configuration
-- `/middleware.tw` – Middleware rules
-- `/style.tss` – Global stylesheet
-- `/package.json` – Node.js dependencies
-- `/DOCUMENTATION.md` – This file
-- `/README.md` – Quick start guide
-
-### Explanation of Key Files
-
-- `tw.config`: Project configuration (name, routing, headers, redirects, rewrites, images, bundler, server settings).
-- `middleware.tw`: Middleware rules for bot protection, origin checks, rate limiting, authentication, path protection.
-- `style.tss`: Global CSS variables and base styles.
-- `package.json`: Node.js dependencies (e.g., `firebase-admin` for API routes).
-- `tw_framework/framework.py`: Contains `TWProject`, `TWDevState`, `TWFileWatcher`, dev server, build function, CLI argument parsing.
-- `tw_framework/compiler.py`: Contains page discovery, compilation pipeline, asset handling, route manifest generation.
-- `tw_framework/twm_parser.py`: Parses `.twm` files and compiles them to CommonJS modules.
-- `tw_framework/twm_api_runner.js`: Node.js script that loads a compiled `.twm` module, installs runtime helpers, and executes the handler.
-
-### 4. Website Implementation Details
-
-- Home Page (`pages/index.tw`): Landing page for TWMODS premium APK catalog. UI Sections: Hero, Hot Apps, Popular Downloads, Latest Premium APKs, Recommended For You, New, Browse Categories, Search, Request App. Components Used: `Header`, `Footer` (via layout), `Button` (inferred). Data Flow: Static content. Styling Classes: `.twmods-home`, `.home-hero`, `.catalog-grid`, `.app-card`, `.wide-card`, `.category-grid`, `.search-bar-shell`, `.request-banner`. User Interactions: Clicking CTA buttons navigates to sections or external links.
-- About Page (`pages/about.tw`): Information about Veridian Systems (company). UI Sections: Hero, Positioning, Team grid, Metric panels, CTA banner. Components Used: `Header`, `Footer` (via layout). Data Flow: Static content. Styling Classes: `.page-hero`, `.split-grid`, `.team-grid`, `.metric-grid`, `.cta-banner`.
-- Services Page (`pages/services.tw`): List of services offered by Veridian Systems. UI Sections: Hero, Service cards (three cards), Delivery model section with timeline, CTA banner. Components Used: `Header`, `Footer` (via layout). Data Flow: Static content. Styling Classes: `.page-hero`, `.card-grid`, `.service-card`, `.split-grid`, `.timeline`, `.cta-banner`.
-- Contact Page (`pages/contact.tw`): Contact form and direct actions. UI Sections: Hero, Contact grid with direct actions (email, phone) and enquiry form, Service cards for email, call, work page, Suggested message format panel. Components Used: `Header`, `Footer` (via layout). Data Flow: Static content; email and phone links are direct `mailto:` and `tel:`. Styling Classes: `.page-hero`, `.contact-grid`, `.contact-card`, `.contact-form`, `.card-grid`, `.highlight-panel`.
-- Work Page (`pages/work.tw`): Portfolio/projects showcase. UI Sections: Hero, Case study grid (four cards), Quote card, CTA banner. Components Used: `Header`, `Footer` (via layout). Data Flow: Static content. Styling Classes: `.page-hero`, `.case-grid`, `.case-card`, `.quote-card`, `.cta-banner`.
-
-### 5. UI/UX Documentation
-
-#### 5.1 Design System
-
-- Colors:
-  - Primary: `#2563eb` (blue)
-  - Secondary: `#10b981` (green)
-  - Background: `#f6f8fc` (light), `#081120` (dark)
-  - Text: `#0f172a` (light), `#e5eefb` (dark)
-  - Accent: `#f59e0b` (amber)
-- Typography:
-  - Font family: `Inter, system-ui, sans-serif`
-  - Headings: `font-weight: 700`
-  - Body: `font-weight: 400`, `line-height: 1.6`
-- Spacing: 4px base unit (e.g., `padding: 1rem = 16px`)
-- Component Patterns:
-  - Cards: rounded corners (`border-radius: 8px`), shadow (`box-shadow: 0 2px 8px rgba(0,0,0,0.1)`)
-  - Buttons: rounded, hover effect, focus ring
-  - Navigation: horizontal list, active state underline
-
-#### 5.2 Header (`components/Header.tw`)
-
-- Fixed top bar with brand logo, navigation links, theme toggle, and CTA buttons.
-- Responsive: collapses to mobile footer navigation on small screens.
-- Dark mode toggle button calls `__twToggleTheme`.
-
-#### 5.3 Footer (`components/Footer.tw`)
-
-- Four columns: brand, explore links, categories, quick links.
-- Bottom bar with copyright and powered‑by badge.
-- Mobile footer navigation bar at bottom.
-
-#### 5.4 Navigation
-
-- Desktop: horizontal links in header.
-- Mobile: bottom navigation bar (`.mobile-footer-nav`).
-
-#### 5.5 Cards
-
-- Used for app listings, services, case studies.
-- Structure: cover (with icon, badge, size), body (title, subtitle, description, meta).
-
-#### 5.6 Buttons
-
-- Primary: filled background, white text.
-- Secondary: outlined.
-- Ghost: minimal style.
-- Sizes: small, medium, large.
-
-#### 5.7 Sections
-
-- Each page is divided into `<section>` elements with consistent padding.
-- Sections have class `.section` and optional `.section-soft` for softer background.
-
-#### 5.8 Responsive Behavior
-
-- Breakpoints: 640px (sm), 768px (md), 1024px (lg), 1280px (xl).
-- Mobile: single column layout, reduced padding.
-- Desktop: multi‑column grid, larger spacing.
-
-### 6. API Documentation
-
-- `/api/health` – GET – Response: `{ "status": "ok" }` – Auth: None
-- `/api/echo` – POST – Request: JSON body (any) – Response: Echoes the request body – Auth: None
-- `/api/users` – GET – Request: None – Response: Array of user objects – Auth: JWT token required (header `Authorization: Bearer <token>`)
-- `/api/products` – GET – Request: Query params: `?category=...` – Response: Array of product objects – Auth: None
-- `/api/auth/login` – POST – Request: `{ "email": "...", "password": "..." }` – Response: `{ "token": "..." }` – Auth: None
-- `/api/auth/profile` – GET – Request: None – Response: User profile object – Auth: JWT token required
-- `/api/forms/contact` – POST – Request: `{ "name": "...", "email": "...", "message": "..." }` – Response: `{ "success": true }` – Auth: None
-- `/api/meta` – GET – Request: None – Response: Site metadata (name, version, etc.) – Auth: None
-- `/api/status` – GET – Request: None – Response: `{ "uptime": ..., "version": "..." }` – Auth: None
-- `/api/delay` – GET – Request: Query param: `?ms=2000` – Response: `{ "delayed": true, "ms": 2000 }` – Auth: None
-- `/api/upload` – POST – Request: Multipart form data (file) – Response: `{ "url": "..." }` – Auth: JWT token required
-- `/api/webhook` – POST – Request: JSON body (any) – Response: `{ "received": true }` – Auth: Secret header `X-Webhook-Secret`
-- Error Responses: All APIs return standard HTTP status codes:
-  - `200` – Success
-  - `400` – Bad request
-  - `401` – Unauthorized
-  - `403` – Forbidden
-  - `404` – Not found
-  - `405` – Method not allowed
-  - `429` – Rate limited
-  - `500` – Internal server error
-  - Error body: `{ "error": "message" }`
-
-### 7. Middleware & Security
-
-#### 7.1 `middleware.tw` System
-
-- Defines rules applied to every incoming request during development and production (via build output). Rules evaluated in order.
-
-#### 7.2 Bot Protection
-
-- Rule: `blocked-bots`
-- Match: `/**`
-- User‑Agent: Allows `googlebot`, `bingbot`, `gptbot`; blocks `curl/`, `wget/`, `python-requests`, `scrapy`; blocks empty user‑agent.
-- Response: 403 Forbidden
-
-#### 7.3 Path Protection
-
-- Rule: `scanner-paths`
-- Match: `/**`
-- Path: Blocks prefixes like `/wp-admin`, `/wp-login`, `/.env`, `/.git`; blocks extensions `.php`, `.env`, `.bak`, `.sql`; blocks traversal and null bytes.
-- Response: 404 Not Found
-
-#### 7.4 Admin Authentication
-
-- Rule: `admin-auth`
-- Match: `/admin/**`
-- Auth: Requires cookie `admin_token` with a valid JWT signed by `JWT_SECRET` environment variable.
-- Response: 401 Unauthorized
-
-#### 7.5 API Origin Protection
-
-- Rule: `api-origin`
-- Match: `/api/**`
-- Methods: GET, POST
-- Origin: Allows `https://twmods.in` and `http://localhost:3000`; requires origin; allows referer.
-- Response: 403 Forbidden with JSON error
-
-#### 7.6 Rate Limiting
-
-- Rule: `api-rate-limit`
-- Match: `/api/**`
-- Rate: 60 requests per 60 seconds, identity based on path (first two segments).
-- Response: 429 Too Many Requests
-
-#### 7.7 Security Considerations
-
-- All middleware rules applied in dev server and also compiled into build output (via Vercel/Netlify/Cloudflare config).
-- JWT secrets should be stored in environment variables, not in code.
-- CORS headers are not set by default; API origin rule provides basic protection.
-- Middleware system is extensible; new rules can be added to `middleware.tw`.
-
-### 8. Build and Deployment
-
-#### 8.1 Commands
-
-| Command | Description |
-|---------|-------------|
-| `tw dev` | Start development server with live reload |
-| `tw build` | Production build to `dist/` |
-| `tw preview` | Serve the built output locally |
-| `tw export` | Alias for `tw build` |
-| `tw doctor` | Check project health |
-| `tw info` | Display project information |
-| `tw clean` | Remove build artifacts |
-| `tw deploy` | Build and deploy to a provider |
-
-#### 8.2 Development Workflow
-
-1. Run `tw dev` (default port 3000).
-2. Edit `.tw`, `.tss`, `.twm` files; browser auto‑reloads.
-3. Test API routes via `curl` or browser.
-
-#### 8.3 Production Workflow
-
-1. Run `tw build --prod` (or `tw build` with minification).
-2. Output is in `dist/`.
-3. Deploy using one of the adapters.
-
-#### 8.4 Deployment Process
-
-- **Vercel:** `tw deploy --provider vercel --prod`
-- **Netlify:** `tw deploy --provider netlify --prod`
-- **Cloudflare:** `tw deploy --provider cloudflare --prod`
-- **GitHub Pages:** `tw deploy --provider github-pages` (generates workflow file)
-- **Docker:** `tw deploy --provider docker` (builds Docker image)
-
-#### 8.5 Adapter Details
-
-- **Vercel:** Generates `.vercel/output/config.json` and copies static files. API routes become serverless functions.
-- **Netlify:** Generates `netlify.toml` and copies functions to `netlify/functions/`.
-- **Cloudflare:** Generates `_routes.json` and `_worker.js` for Cloudflare Pages.
-
-### 9. Configuration
-
-#### 9.1 `tw.config`
-
-- Main configuration file uses a custom DSL. Key sections:
-  - `name`: Project name
-  - `pretty_urls`: Enable clean URLs (no `.html` extension)
-  - `modular_pipeline`: Use the new compilation pipeline
-  - `theme`: `system`, `light`, or `dark`
-  - `server.external_packages`: Node.js packages available in API routes
-  - `images.remote_patterns`: Allowed image domains
-  - `bundler.client_externals`: Packages excluded from client bundle
-  - `headers.rule`: Custom HTTP headers per path
-  - `redirects.rule`: URL redirects
-  - `rewrites.rule`: URL rewrites
-
-#### 9.2 Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `JWT_SECRET` | Secret for JWT signing (used in middleware) |
-| `TW_CSRF_SECRET` | Secret for CSRF token generation |
-| `VERCEL_TOKEN` | Vercel API token for deployment |
-| `TW_WATCH_INTERVAL` | File watcher polling interval (seconds) |
-| `TW_TWM_TIMEOUT` | Timeout for API route execution (seconds) |
-
-#### 9.3 JWT Secrets
-
-- Used by `middleware.tw` for admin authentication.
-- Set via environment variable `JWT_SECRET`.
-- Middleware reads `jwt_secret_env` to get the variable name.
-
-#### 9.4 API Configuration
-
-- API routes defined in `api/` directory.
-- Each `.twm` file compiled to a Node.js module.
-- Runtime (`twm_api_runner.js`) provides helpers: `http`, `env`, `secrets`, `pkg`, `firebase`.
-
-#### 9.5 Plugin Configuration
-
-- Plugins managed by `ExtensionManager` in `plugin_runtime.py`.
-- Not yet documented in detail; see `tw_framework/plugin_runtime.py`.
-
-#### 9.6 Deployment Adapters
-
-- Adapters in `tw_framework/adapters/`.
-- Each adapter has a `generate_*_output()` function that takes `dist_dir`, `config`, `project_root`.
-- Build loop calls appropriate adapter based on `--adapter` flag.
-
-### 10. Developer Guide
-
-#### 10.1 Best Practices
-
-- Keep pages small; use components for reusable UI.
-- Use `.tss` for global styles; component styles can be inline or in separate `.tss` files.
-- Always test API routes with `tw dev` before deployment.
-- Use environment variables for secrets; never hardcode them.
-- Run `tw doctor` before deployment to catch common issues.
-
-#### 10.2 Naming Conventions
-
-- Pages: `kebab-case.tw` (e.g., `about-us.tw`)
-- Components: `PascalCase.tw` (e.g., `Button.tw`)
-- API routes: `kebab-case.twm` (e.g., `user-profile.twm`)
-- Stylesheets: `kebab-case.tss` (e.g., `button.tss`)
-
-#### 10.3 Recommended Workflow
-
-1. Create a new page in `pages/`.
-2. Add components in `components/`.
-3. Style with `.tss` files.
-4. Test with `tw dev`.
-5. Build with `tw build`.
-6. Deploy with `tw deploy --provider <name>`.
-
-#### 10.4 Common Mistakes
-
-- Forgetting to import a component in a page.
-- Using top‑level statements in `.twm` files (only function definitions allowed).
-- Not setting `JWT_SECRET` environment variable when using admin middleware.
-- Running `tw build` without first installing Node.js dependencies (`npm install`).
-
-## vercel.json
-
-- Build command: `python3 -m venv .venv && .venv/bin/pip install . && .venv/bin/python -m tw_framework.cli build --prod`
-- Output directory: `dist`
-
-## SECURITY.md
-
-- Trust model:
-  - TW exposes security-related primitives such as middleware headers, rate limiting, CSRF helpers, cookie transport settings, and SSR cache controls.
-  - These primitives are opt-in. Framework provides mechanisms; application policy stays with developer.
-  - API handlers expected in `[home]/api/**/route.twm` and run as trusted server project code.
-- Default fixes:
-  - Path containment checks use real path-boundary validation instead of prefix-only checks.
-  - Static and preview file serving use path-within checks to avoid sibling-prefix traversal mistakes.
-  - Additional MIME mappings registered for common modern asset types.
-  - Edge-page cache keys include request variation by default to avoid leaking cached SSR output across sessions.
-- Operator guidance:
-  - Set `TW_CSRF_SECRET` or `SECRET_KEY` in production if you use CSRF helpers.
-  - Use `cookies.secure: auto` or `true` in HTTPS deployments.
-  - Prefer explicit `cache_by` selectors for personalized edge pages when you want a narrower cache key than the default.
-  - Review project plugins and `.twm` API files before deploying, because they execute with full server trust.
-
-## tw.config
-
-- name: `TWLang Site`
-- pretty_urls: `true`
-- modular_pipeline: `true`
-- theme: `system`
-- server:
-  - external_packages: `["firebase-admin", "firebase-admin/app", "firebase-admin/database", "google-auth-library", "google-play-scraper"]`
-- images:
-  - remote_patterns: `[{ protocol: "https", hostname: "**" }]`
-  - unoptimized: `true`
-- bundler:
-  - client_externals: `["firebase-admin", "firebase-admin/app", "firebase-admin/database", "google-auth-library", "google-play-scraper"]`
-  - fallback:
-    - fs: `false`
-    - net: `false`
-    - tls: `false`
-    - http: `false`
-    - https: `false`
-    - path: `false`
-    - stream: `false`
-    - crypto: `false`
-    - os: `false`
-    - zlib: `false`
-- headers:
-  - rule:
-    - source: `/api/download/**`
-    - set: `"Cache-Control" "no-store, no-cache, private"`
-    - set: `"Pragma" "no-cache"`
-  - rule:
-    - source: `/api/admin/**`
-    - set: `"Cache-Control" "no-store, no-cache, private"`
-    - set: `"Pragma" "no-cache"`
-  - rule:
-    - source: `/admin/**`
-    - set: `"Cache-Control" "no-store, no-cache, private"`
-    - set: `"Pragma" "no-cache"`
-  - rule:
-    - source: `/static/**`
-    - set: `"Cache-Control" "public, max-age=31536000, immutable"`
-  - rule:
-    - source: `/**`
-    - set: `"Cache-Control" "public, s-maxage=3600, stale-while-revalidate=86400"`
-- redirects:
-  - rule:
-    - source: `/app/:slug`
-    - destination: `/:slug`
-    - permanent: `true`
-  - rule:
-    - source: `/private-team/:slug`
-    - destination: `/team/:slug`
-    - permanent: `true`
-- rewrites:
-  - rule:
-    - source: `/games`
-    - destination: `/category/games`
-  - rule:
-    - source: `/popular`
-    - destination: `/category/popular`
-  - rule:
-    - source: `/:slug`
-    - destination: `/app/:slug`
-
-## API_TESTING_GUIDE.md
-
-- API structure:
-  - All API files now `[home]/api/**/route.twm` format
-  - Example: `[home]/api/users/route.twm` → `/api/users`
-  - Root listing: `[home]/api/route.twm` → `/api`
-  - Example detailed doc: `docs/api/echo-api.md`
-  - Server-side `.twm` scripting doc: `docs/api/twm-api.md`
-- Available APIs:
-  | Endpoint | Method | Use |
-  | --- | --- | --- |
-  | `/api` | `GET` | Saare testing endpoints ki listing |
-  | `/api/health` | `GET` | Health check |
-  | `/api/echo` | `GET, POST, PUT, PATCH, DELETE, OPTIONS` | Request echo aur payload inspect |
-  | `/api/users` | `GET, POST, PUT, PATCH, DELETE` | CRUD testing |
-  | `/api/products` | `GET` | Pagination, filter, sort |
-  | `/api/auth/login` | `POST` | Demo login |
-  | `/api/auth/profile` | `GET` | Bearer token protected route |
-  | `/api/forms/contact` | `POST` | Validation testing |
-  | `/api/meta` | `GET, OPTIONS` | Headers, cookies, trace id, CORS |
-  | `/api/status` | `GET, POST` | Custom status code response |
-  | `/api/delay` | `GET` | Delay / timeout simulation |
-  | `/api/upload` | `POST` | Raw body testing |
-  | `/api/webhooks/test` | `POST` | Webhook receiver testing |
-- Quick test examples: (curl commands provided)
-- Notes:
-  - `users` data `[home]/api/_data/users.json` me persist hoti hai.
-  - `POST`, `PUT`, `PATCH`, `DELETE` sab directly test kiye ja sakte hain.
-  - `application/json`, `application/x-www-form-urlencoded`, aur raw text payloads cover kiye gaye hain.
-  - Legacy `.tw`, `.py`, aur `_py` API variants hata diye gaye hain.
-
-## IMPLEMENTED_FEATURES.md
-
-- Stronger routing:
-  - nested routes
-  - route groups via folders like `(marketing)`
-  - catch-all routes `[...slug].tw`
-  - optional catch-all routes `[[...slug]].tw`
-  - page-level `redirect`
-  - page-level `rewrite`
-  - custom `404.tw` and `500.tw` remain supported
-- Static hosting quality-of-life:
-  - `pretty_urls: true` in `tw.config` → `/about` outputs as `dist/about/index.html` (clean URLs on static hosts)
-  - dev server also accepts `/about/index.html` requests
-- Nested layouts (multi-layer):
-  - `layout "base > docs"` or repeated `layout` directives
-  - first layout = outer document, remaining layouts = inner wrappers (fragments around `{slot}`)
-- Theme (Dark/Light/System):
-  - `theme: system|dark|light` in `tw.config`
-  - adds `data-theme` on `<html>` + `window.__twToggleTheme()` / `window.__twSetTheme(mode)`
-- Search (static-friendly):
-  - `search: true` in `tw.config`
-  - build outputs `dist/_tw/search-index.json`
-  - pages auto-include a small search runtime exposing `window.__twSearch(query)`
-- Components improvements:
-  - components can live in nested folders under `[home]/components/**`
-  - component resolver will auto-find `Button.tw` even if it's in a subfolder (best with unique names)
-  - recursive component rendering now throws a clear compiler error (prevents `maximum recursion depth exceeded`)
-  - Capitalized HTML tags like `Section {}` are now auto-treated as `<section>` (compiler won't assume missing `components/Section.tw`)
-  - component load/recursion errors now report the callsite file + line/column when possible
-- DX / error-proofing:
-  - placeholders now support moustache style: `{{brandName}}` (gets interpolated same as `{brandName}`)
-  - writing `<nav>` style tags now shows a clear compiler error + fix hint
-  - `.tss` numeric shorthands like `padding 12 18` now become `padding: 12px 18px;`
-- Rendering metadata:
-  - `page { render static | server | edge }`
-  - `page { revalidate 60 }`
-  - route manifest output in `dist/_tw/route-manifest.json`
-- API routes:
-  - automatic `/api/*` endpoint mapping from `[home]/api/*.tw`
-  - method blocks: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`
-  - response directives: `status`, `json`, `text`, `html`, `redirect`, `header`, `cookie`
-- Middleware:
-  - `middleware.tw`
-  - `use { match ... }`
-  - `auth`, `redirect`, `rewrite`, `header`, `cookie`
-- Environment variables:
-  - `.env`
-  - `.env.local`
-  - `.env.production`
-  - exposed in templates/API as `env.KEY`
-  - `.twm` runtime helpers: `env.get()`, `env.require()`, `secrets.get()`, `secrets.require()`
-- Server-side `.twm` runtime helpers:
-  - `async fn` handlers supported
-  - built-in `http.get/post/put/patch/delete`
-  - `pkg.require("package-name")` for project-installed npm packages
-  - Firebase Admin helper via `firebase.app()/firestore()/auth()`
-- Performance and output:
-  - HTML/CSS minify
-  - JS chunk minify
-  - route manifest
-  - API manifest
-  - asset fingerprinting for copied assets
-  - gzip output
-  - brotli output when `brotli` package is available
-- SEO output:
-  - `sitemap.xml`
-  - `robots.txt`
-  - `rss.xml`
-  - canonical auto-generation when `site_url` exists
-  - JSON-LD via `head.seo.json_ld`
-- Deploy support:
-  - Vercel
-  - Cloudflare Pages
-  - Netlify
-  - GitHub Pages workflow file
-  - Dockerfile
-- CLI:
-  - `tw build --watch`
-  - `tw build --analyze`
-  - `tw build --clean`
-  - `tw build --prod`
-- Important notes:
-  - `render server` and `render edge` are implemented as framework-level route metadata plus dev/runtime behavior. Static export still emits HTML output for compatibility.
-  - API routes are fully available in the dev server. Static build emits API manifests, but dynamic APIs still require a runtime host.
-  - Middleware is active in the dev server and designed around route guarding, rewrites, headers, and cookies.
-
-## README.md
-
-- Description: A custom language + framework for building websites — write `.tw` / `.tss`, ship a full site.
-- Badges: PyPI version, PyPI downloads, License: MIT, GitHub stars.
-- Getting Started:
-  - `pip install tw-framework`
-  - `tw create my-site`
-  - `cd my-site`
-  - `tw dev`
-  - Open `http://127.0.0.1:3000`
-- CLI Commands:
-  | Command | Description |
-  |---------|-------------|
-  | `tw create <name>` | Scaffold a new TW project |
-  | `tw dev` | Start the dev server with live reload |
-  | `tw build` | Generate a production build |
-  | `tw preview` | Preview the production build locally |
-  | `tw doctor` | Run project health checks |
-  | `tw deploy` | Build and deploy to a hosting provider |
-  | `tw check <file>` | Print diagnostics for a `.tw` file |
-- Features:
-  - 📄 File-based routing — pages and dynamic routes (`[slug].tw`) from your folder structure
-  - ⚡ Reactive bindings — `on:click`, `bind:value` for interactivity without writing raw JS
-  - 🔌 API routes — `.twm` server functions for GET/POST/etc., colocated with your pages
-  - 🛡️ Middleware — auth, rate limiting, origin checks, custom headers — all declarative
-  - 🎨 `.tss` stylesheets — CSS with a friendlier syntax, animations, and variables
-  - 🔍 Built-in search — automatic search index generation, no extra setup
-  - 🚀 Zero-config deploys — Vercel, Netlify, and Cloudflare Pages adapters included
-- Deploying:
-  - Vercel — connect your GitHub repo, TW's `vercel.json` handles the rest.
-  - GitHub Pages — enable Pages (Source → GitHub Actions) and push; the included workflow builds and deploys automatically.
-- Contributing: Issues and pull requests welcome. If you find a bug, please open an issue with a minimal reproduction.
-- License: MIT
-
-## CHANGELOG.md
-
-- [0.3.4] Fixed: Dynamic-page incremental cache entries stored as a list (one per generated slug) rather than a dict. Cache-check code assumed dict shape for every page and crashed with `'list' object has no attribute 'get'` when building dynamic routes. Now guards for dict shape and safely falls through to full rebuild otherwise.
-- [0.3.3] Fixed: `response { header ... }` / `response { cookie ... }` block inside a middleware rule used same greedy line-parsing bug as top-level `header`/`cookie` keys (fixed in 0.2.5), but this occurrence was missed. Two values on one line (`header "X" "Y"`) inside a `response { }` block now parse correctly instead of crashing.
-- [0.3.2] Fixed:
-  - Decimal number tokenization — numeric literals like `3.14` were split into three tokens (`3`, `.`, `14`) because `.` was always treated as a standalone operator. Any bare decimal value in a `.tw` file was corrupted on output (e.g. `data-ratio 3.14` rendered as `data-ratio="3 . 14"`).
-  - `data-tw-on` / `data-tw-bind` JSON corruption — these framework-generated attributes (holding JSON for reactive event handlers) were being passed back through general string-interpolation step, which mis-parsed leading `{` as a template expression and re-serialized value as Python dict repr (single-quoted keys) instead of valid JSON. This broke `on:click` handlers on any element that also had other attributes. Framework-generated `data-tw-*` attributes are no longer re-interpolated.
-  - Boolean attribute rendering — a bare `true`/`false` value rendered as Python's `str(True)` → `"True"` (capital T), which is not valid for HTML/JS boolean conventions. Booleans now render as lowercase `"true"` / `"false"`.
-- [0.3.1] Fixed:
-  - Major: single-line elements with multiple properties (e.g. `a { href "/" target "_blank" text "Home" }`) had every property after the first swallowed into the first property's value, because property-value parser only treated a quoted string as "complete" when directly followed by a newline or `}`. On the same line, the next property name looked like a continuation of the previous value and was consumed by it. A quoted string value is now always treated as complete on its own.
-- [0.3.0] Fixed:
-  - `.tss` stylesheet values wrapped in quotes (needed for multi-word CSS values like `animation "pulse 2s infinite"` or `transform "translateY(-6px)"`) kept their literal quote characters in compiled CSS output, producing invalid CSS (`animation: "pulse 2s infinite";`). Quoted `.tss` values are now unwrapped before being written out.
-- [0.2.9] Fixed:
-  - Dev-mode search index builder's HTML-to-text extractor (`strip_html_to_text`) had double-escaped regex patterns (`\\s` instead of `\s`) for stripping `<script>`/`<style>` blocks. Because patterns never actually matched, raw inline JavaScript and page's `__TW_DATA__` JSON blob leaked into every search result's excerpt text.
-- [0.2.8] Fixed:
-  - `pyproject.toml` only listed Python packages under `[tool.setuptools]`, so `twm_api_runner.js` asset file (required to execute `.twm` API routes) was never included in built wheel. Every API route failed with `Missing twm_api_runner.js (framework installation is incomplete)` on a fresh `pip install`. Added `[tool.setuptools.package-data]` to include `*.js` files.
-- [0.2.7] Fixed:
-  - Reactive directives `on:click` / `bind:value` were never usable: tokenizer split `on:click` into three tokens (`on`, `:`, `click`) since `:` was always a standalone operator, and even after fixing tokenizer, property classifier didn't recognize `on:` / `bind:` / `show:` / `tw-*` prefixed names as valid attributes (reactivity.py explicitly expects these). Both tokenizer and property classifier were fixed.
-  - Default `tw create` starter project's `search` page relies on a raw `script { ... }` block, which is blocked by default for safety. Enabled `allow_raw_script: true` in starter's `tw.config` so example works out of the box.
-- [0.2.6] Fixed:
-  - Kebab-case attribute names (`aria-label`, `data-foo`) were split into multiple tokens by tokenizer, since `-` was always treated as a standalone operator. This broke any accessibility or `data-*` attribute — including in default `tw create` template itself (`ThemeToggle.tw`'s `aria-label`).
-- [0.2.5] Fixed:
-  - Middleware crash: default `middleware.tw` template's `auth "cookie" "redirect"` and `header "name" "value"` directives put two values on one line. Value parser used line-greedy collector for first value, which consumed both values, leaving nothing for second and crashing every request with `RuntimeError: Expected value token`. This affected every project created with `tw create`, since crashing directives were in default template.
-  - String quote corruption: parsed string literal values (e.g. `match "/dashboard/**"`) retained their literal surrounding quote characters instead of being unquoted, so middleware path-matching rules like `match` never matched real request paths.
-  - Removed duplicate `doctor` subcommand registration in CLI that crashed argument parsing (`conflicting subparser: doctor`).
-  - Fixed diagnostic-formatting pipeline mismatch across three files (`compiler.py`, `diagnostics.py`, `error_formatter.py`) where rich `Diagnostic` fields error formatter expected had been stripped from simplified `Diagnostic` dataclass. Any compiler error — valid or not — crashed instead of showing readable message.
-  - `pyproject.toml` only declared top-level `tw_framework` package, so `tw_framework.adapters` subpackage (Vercel/Netlify/Cloudflare deploy adapters) was missing from installed package, breaking every deploy-related import.
-
-## [home]/api/_data/users.json
-
-- JSON data file containing an array of user objects.
-- Each user has: `id`, `name`, `email`, `role`, `active`.
-- Example content:
-  ```json
-  [
-    { "id": 1, "name": "Aarav", "email": "aarav@example.com", "role": "admin", "active": true },
-    { "id": 2, "name": "Sara", "email": "sara@example.com", "role": "tester", "active": true },
-    { "id": 3, "name": "Kabir", "email": "kabir@example.com", "role": "user", "active": false }
-  ]
-  ```
-
-## [home]/api/route.twm
-
-- Root API listing endpoint.
-- Exports `fn get(request)`.
-- Returns JSON with project name, message, timestamp, and list of endpoints.
-- Endpoints listed: Health, Echo, Users CRUD, Products, Auth Login, Auth Profile, Contact Form, Meta, Status, Delay, Upload, Webhook Test, Math.
-
-## [home]/api/health/route.twm
-
-- Health check API endpoint.
-- Exports `fn get(request)`.
-- Returns JSON with:
-  - `ok: true`
-  - `service: "twlang-api-suite"`
-  - `method: request.method`
-  - `path: request.path`
-  - `timestamp: new Date().toISOString()`
-  - `query: request.query || {}`
-
-## [home]/api/users/route.twm
-
-- CRUD API for users.
-- Exports functions: `get`, `post`, `put`, `patch`, `delete`.
-- Uses helper functions: `seedUsers`, `dataFile`, `ensureUsers`, `saveUsers`, `nextId`, `findUser`, `nowIso`.
-- Data persisted in `[home]/api/_data/users.json`.
-- `get(request)`: Returns all users, optionally filtered by `id`, `role`, `active` query params.
-- `post(request)`: Creates a new user. Requires `name` and `email` in body. Returns 201 on success, 400 if missing fields, 409 if email already exists.
-- `put(request)`: Replaces a user. Requires `id`, `name`, `email` in body. Returns 200 on success, 400 if missing `id`, 404 if user not found.
-- `patch(request)`: Partially updates a user. Requires `id` in body. Updates `name`, `email`, `role`, `active` if present. Returns 200 on success, 400 if missing `id`, 404 if user not found.
-- `delete(request)`: Deletes a user. Requires `id` in body or query. Returns 200 on success, 400 if missing `id`, 404 if user not found.
-
-## [home]/components/Button.tw
-
-- Simple component.
-- Uses `let label "Button"` and `let link ""`.
-- Renders `<a href="{link}">{label}</a>`.
-
-## [home]/style.tss
-
-- Global stylesheet.
-- Defines CSS custom properties (variables) for light and dark themes.
-- Light theme variables: `--bg-color`, `--surface-color`, `--surface-strong`, `--text-color`, `--muted-color`, `--border-color`, `--primary-color`, `--primary-soft`, `--footer-bg`.
-- Dark theme (via `:root[data-theme="dark"]`) overrides same variables.
-- Base body styles: `margin: 0`, `background: var(--bg-color)`, `color: var(--text-color)`, `font-family: Inter, system-ui, sans-serif`.
-- Additional body styles: `font-family: system-ui, sans-serif; margin: 0; padding: 0; background: #f9fafb; color: #1a1a2e;`.
-- `nav` styles: `background: #1e293b; padding: 1rem;`.
-- `nav a` styles: `color: #60a5fa; margin-right: 1rem;`.
-
-## docs/api/echo-api.md
-
-- Documentation for `/api/echo` endpoint.
-- Endpoint: `GET/POST/PUT/PATCH/DELETE/OPTIONS /api/echo`.
-- File: `[home]/api/echo/route.twm`.
-- Minimal example:
-  ```tw
-  fn post(request) {
-    return {
-      status: 201,
-      json: {
-        ok: true,
-        method: request.method,
-        path: request.path,
-        query: request.query || {},
-        headers: request.headers || {},
-        cookies: request.cookies || {},
-        body: request.body || {}
-      }
-    };
-  }
-  ```
-- Interpolation: `{expr}` syntax.
-- API context: `request` object available with `method`, `path`, `query`, `body`, `headers`, `cookies`, `env`.
-- Run: `python3 -m pip install -e . --break-system-packages` then `tw serve --host 0.0.0.0 --port 8787`.
-- Quick tests: curl commands provided.
-- Use cases: quick mocks, CRUD, validation, auth checks, headers-cookies inspection, dynamic logic.
-
-## docs/api/twm-api.md
-
-- Documentation for server-side TW scripting APIs (`.twm`).
-- Routing rule: Folder `[home]/api/`.
-  - `[home]/api/route.twm` → `/api`
-  - `[home]/api/health/route.twm` → `/api/health`
-  - `[home]/api/auth/login/route.twm` → `/api/auth/login`
-- Rule: Har endpoint ka file name `route.twm` hoga. Folder path hi URL path decide karega. API layer me Python handlers supported nahi hain.
-- Handler functions: `.twm` file me top-level pe sirf functions allowed hain (top-level code allowed nahi). You can define:
-  - `async fn get(request) { ... }`
-  - `async fn post(request) { ... }`
-  - `fn get(request) { ... }`
-  - `fn post(request) { ... }`
-  - `fn put(request) { ... }`
-  - `fn patch(request) { ... }`
-  - `fn delete(request) { ... }`
-  - `fn options(request) { ... }`
-  - Or generic: `fn handler(request) { ... }`
-- Request object (JS): `request.method`, `request.path`, `request.query`, `request.body`, `request.headers`, `request.cookies`, `request.env`.
-- Built-in helpers: `http.get(url, options?)`, `http.post(url, body?, options?)`, `http.put(url, body?, options?)`, `http.patch(url, body?, options?)`, `http.delete(url, options?)`, `env.KEY`, `env.get("KEY")`, `env.require("KEY")`, `secrets.KEY`, `secrets.get("KEY")`, `secrets.require("KEY")`, `pkg.require("firebase-admin")`, `firebase.app()`, `firebase.firestore()`, `firebase.auth()`.
-- `http.*` helpers async hote hain, isliye unke liye `async fn` use karo.
-- Response return formats:
-  - Simple string: `return "ok";`
-  - Auto JSON (object): `return { ok: true, hello: "world" };`
-  - Explicit response object: `{ status, headers, cookies, json, text, html, body + content_type }`
-  - Tuple style: `[body, status, headers]`
-- Run + test: `python3 -m pip install -e . --break-system-packages` then `tw serve --host 0.0.0.0 --port 8787`.
-- `package.json` dependencies: starter `package.json` me `dependencies` aur `devDependencies` blocks scaffold hote hain, to user direct npm packages add kar sakta hai.
-- Firebase Admin SDK: `firebase-admin` package install, credentials env me dena. Supported env inputs: `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_SERVICE_ACCOUNT_PATH`, `FIREBASE_ADMIN_CREDENTIALS_JSON`, `FIREBASE_ADMIN_CREDENTIALS_PATH`, `GOOGLE_APPLICATION_CREDENTIALS`, optional `FIREBASE_PROJECT_ID`.
-- Notes: `.twm` Node.js ke through execute hota hai (server-side). Built-in `http.*` helpers ke liye Node.js `18+` recommended hai. `.twm` handlers trusted server code hain; API layer me ab single convention `route.twm` hi use hota hai.
-
-## docs/spec/tw-grammar.md
-
-- TW Grammar specification.
-- Top level:
-  ```
-  file := page_block? layout_stmt* load_stmt* lifecycle_stmt* script_module_block* let_stmt* head_block? state_block? body_block
-  page_block := "page" "{" page_field* "}"
-  head_block := "head" "{" head_stmt* "}"
-  state_block := "state" "{" state_entry* "}"
-  body_block := "BODY" "{" node* "}"
-  script_module_block := "SCRIPT" "{" twm_source "}"
-  lifecycle_stmt := "on" "load" "init" identifier
-  ```
-- Page fields:
-  ```
-  page_field := "title" string
-             | "layout" string_or_word
-             | "render" ("static" | "server" | "edge")
-             | "revalidate" number
-             | "cache_by" string_or_word
-             | "cache_size" number
-             | "redirect" string
-             | "rewrite" string
-  ```
-- `layout` also supports chaining with `>` in legacy-compatible source, for example `layout "outer > inner"`.
-- `cache_by` is an opt-in cache key selector for SSR/edge pages, for example `cache_by cookie:session_id`.
-- Directives:
-  ```
-  import_stmt := "import" string
-  load_stmt   := "load" string
-              | "load" at_path
-  at_path     := "@" path_token
-  lifecycle_stmt := "on" "load" "init" identifier
-  ```
-- `import "Header"` declares a component dependency and makes `Header {}` usable in the page/component body.
-- `import "ui/Button"` supports nested component folders under `[home]/components/`.
-- `load "foo.tss"` current file ke same folder se resolve hota hai.
-- `load @./styles/foo.tss` `[home]` se resolve hota hai.
-- `load "@../components/CTA"` can point directly to a component file path; the `.tw` extension is optional when the target is unambiguous.
-- `load` may appear in pages, components, and layouts.
-- `load` resolves paths with these aliases:
-  - `@file` means "resolve from the project root"
-  - `@./file` means "resolve from `[home]`"
-  - `@../file` means "go up from the current file folder, then resolve normally"
-- `.tss` files loaded through `load` are merged into rendered output.
-- `.json` files loaded through `load` are tracked as dependencies and may feed page data workflows.
-- `.tw` files loaded through `load` are treated as component dependencies and improve path clarity in diagnostics.
-- `.twm` files loaded through `load` are compiled into a page JS bundle and registered into the TW module registry. No functions auto-run.
-- `on load init <name>` registers an explicit client-side lifecycle call (similar to React's `useEffect(..., [])`), implemented as `window.__twInvoke("<name>")` after DOMContentLoaded.
-- Nodes:
-  ```
-  node := element
-       | component
-       | let_stmt
-       | if_block
-       | for_block
-       | each_block
-       | script_block
-  ```
-- Elements:
-  ```
-  element := tag string? "{" element_item* "}"
-  element_item := attr_stmt | style_stmt | event_stmt | router_stmt | text_stmt | node
-  text_stmt := "text" value
-  ```
-- Components:
-  ```
-  component := ComponentName string? "{" component_item* "}"
-  component_item := prop_stmt | node
-  ```
-- Component names must not contain null bytes, `..`, or absolute paths. Path-like imports are always resolved relative to `[home]/components/`.
-- Control flow:
-  ```
-  if_block   := "if" expression "{" node* "}" ("else" "{" node* "}")?
-  for_block  := "for" identifier "in" expression "{" node* "}"
-  each_block := "each" expression "as" identifier "{" node* "}"
-  let_stmt   := "let" identifier "="? value
-  ```
-- Notes:
-  - Component names start with a capital letter.
-  - HTML-like `<div>` syntax is not supported. Use `div { ... }`.
-  - Expressions use the `{expr}` form for interpolation.
-  - Events may be written as either `click handlerName` or `onclick handlerName`. Both compile to `onclick="..."`
-  - `script { src "..."; strategy afterInteractive|beforeInteractive|lazyOnload }` injects an external script with an explicit loading strategy (Next.js `<Script>`-like). Raw JS `script { ... }` blocks are disabled by default and require `allow_raw_script: true` in `tw.config`.
-  - Dynamic routes are filename-based:
-    - `[id].tw` for a single segment
-    - `[...slug].tw` for catch-all segments
-    - `[[...slug]].tw` for optional catch-all segments
-  - Dynamic route data comes from a sibling `.json` file, for example `[id].json`.
-
-## middleware.tw
-
-- Middleware rules file.
-- Rule `blocked-bots`:
-  - Match: `/**`
-  - `user_agent`: allow `["googlebot", "bingbot", "gptbot"]`, block `["curl/", "wget/", "python-requests", "scrapy"]`, `empty_is_blocked true`
-  - `response`: status 403, html `<h1>403 Forbidden</h1>`
-- Rule `scanner-paths`:
-  - Match: `/**`
-  - `path`: prefixes `["/wp-admin", "/wp-login", "/.env", "/.git"]`, contains `["/phpmyadmin", "/xmlrpc"]`, extensions `[".php", ".env", ".bak", ".sql"]`, `single_segment_max 100`, `deny_traversal true`, `deny_null_bytes true`
-  - `response`: status 404, text "Not Found"
-- Rule `admin-auth`:
-  - Match: `/admin/**`
-  - `auth`: cookie `"admin_token"`, `jwt_secret_env "JWT_SECRET"`
-  - `response`: status 401, text "Unauthorized"
-- Rule `api-origin`:
-  - Match: `/api/**`
-  - Methods: `["GET", "POST"]`
-  - `origin`: allow `["https://twmods.in", "http://localhost:3000"]`, `require true`, `allow_referer true`
-  - `response`: status 403, json `{ error: "Access Denied" }`
-- Rule `api-rate-limit`:
-  - Match: `/api/**`
-  - `rate_limit`: requests 60, window 60, identity "path", bucket_segments 2
-  - `response`: status 429, json `{ error: "Too many requests" }`
-
-## tw_framework/ast_nodes.py
-
-- Defines AST node dataclasses.
-- `Attribute`: `name: str`, `value: Any`
-- `attribute_to_dict(attribute)`: converts Attribute to dict.
-- `serialize_value(value)`: serializes any value to JSON-compatible form.
-- `HeadModel`: `metas: List[Dict[str, Any]]`, `icon: Optional[str]`, `seo: Dict[str, Any]`
-- `PageMeta`: `title: str`, `layout: Optional[str]`, `layouts: List[str]`, `render_mode: str`, `revalidate: Optional[int]`, `redirect_to: Optional[str]`, `rewrite_to: Optional[str]`, `responsive: bool`
-- `BaseNode`: `kind: str`
-- `TextNode(BaseNode)`: `value: str`
-- `LetNode(BaseNode)`: `name: str`, `value: Any`
-- `IfNode(BaseNode)`: `condition: str`, `children: List[BaseNode]`, `else_children: List[BaseNode]`
-- `ForNode(BaseNode)`: `var_name: str`, `iterable: str`, `children: List[BaseNode]`
-- `ScriptNode(BaseNode)`: `raw_js: str`
-- `ElementNode(BaseNode)`: `tag: str`, `text: Optional[str]`, `attrs: List[Attribute]`, `styles: List[Attribute]`, `events: List[Attribute]`, `router: Dict[str, Any]`, `children: List[BaseNode]`
-- `ComponentNode(BaseNode)`: `name: str`, `props: List[Attribute]`, `children: List[BaseNode]`
-- `Program`: `meta: PageMeta`, `head: HeadModel`, `lets: Dict[str, Any]`, `state: Dict[str, Any]`, `body: List[BaseNode]`, `loaded_sheets: List[Any]`, `loaded_json: List[Dict[str, Any]]`, `source_path: str`, `legacy_page: Any`
-- `Program.to_dict()`: returns dict representation.
-- `node_to_dict(node)`: converts any BaseNode to dict.
-
-## tw_framework/compiler.py
-
-- (Extensive file; key elements already covered in other sections. Additional details:)
-- `PROJECT_ROOT = "../MySite"` (default)
-- `HOME_DIR = os.path.join(PROJECT_ROOT, "[home]")`
-- `COMPONENTS_DIR`, `PAGES_DIR`, `ASSETS_DIR`, `LAYOUTS_DIR`, `API_DIR`, `INDEX_FILE`, `STYLE_FILE`, `CONFIG_FILE`
-- `INTERNAL_DIR`, `CACHE_DIR`, `MANIFEST_DIR`, `COMPILER_DIR`
-- `PUBLIC_DIR`, `BUILD_DIR`, `PUBLIC_ASSETS_DIR`, `CHUNKS_DIR`, `CHUNKS_PUBLIC_DIR`, `CHUNKS_URL_PREFIX`
-- `BUILD_MANIFEST_FILE`, `HASH_DB_FILE`, `DEPENDENCY_GRAPH_FILE`
-- `DEFAULT_WORKERS = max(1, min(32, os.cpu_count() or 1))`
-- `MINIFY_OUTPUT = False`
-- `CURRENT_ENV_NAME = "development"`
-- `ASSET_URL_MAP = {}`
-- `BUILD_MANIFEST_VERSION = 2`
-- `DEPENDENCY_GRAPH_VERSION = 2`
-- `ROUTE_GROUP_DIR_RE = re.compile(r"^\(.*\)$")`
-- `VOID_TAGS`, `BOOLEAN_ATTRS`, `CSS_PROPERTIES`, `CSS_ALIASES`, `NUMERIC_CSS`, `HTML_ATTRIBUTES`, `EVENTS`, `ROUTER_KEYS`
-- `NUM_RE`, `INTERPOLATION_RE`, `SCRIPT_PLACEHOLDER_RE`, `TWM_SCRIPT_PLACEHOLDER_RE`, `TAG_NAME_RE`, `DYNAMIC_FILE_RE`, `CATCH_ALL_FILE_RE`, `OPTIONAL_CATCH_ALL_FILE_RE`
-- `INLINE_SCRIPTS`, `INLINE_TWM_SCRIPTS`, `_SCRIPT_COUNTER`, `_TWM_SCRIPT_COUNTER`
-- `_CHUNK_CACHE`, `_CHUNK_CACHE_MAX_DEFAULT = 2048`
-- `_COMPONENT_AST_CACHE`, `_COMPONENT_EXISTS_CACHE`, `_COMPONENT_PATH_CACHE`, `_LAYOUT_CACHE`, `_LAYOUT_META_CACHE`, `_COMPONENT_DEP_GRAPH_CACHE`, `_COMPONENT_STYLESHEET_PATHS`
-- `_CHUNK_LOCK`, `_SCRIPT_LOCK`, `_CACHE_LOCK`
-- `LAYOUT_RESPONSIVE_RE`, `IMPORT_RE`, `LAYOUT_RE`, `LOAD_RE`, `COMPONENT_LOAD_RE`, `LAYOUT_LOAD_RE`
-- `BuildOptions`: `force: bool`, `workers: int`
-- `Token`: `type`, `value`, `line`, `col`
-- `Diagnostic`: severity, code, message, file_path, line, col, end_line, end_col, suggestion, notes, phase, exception_type, category, relative_path, absolute_path, source_snippet, highlight, reason, expected, found, why, doc_link, parser_state, traceback
-- `CompilerError(Exception)`: message, token, file_path, suggestion, code, notes, category, parser_state
-- `DiagnosticEmitter`: formats diagnostics.
-- `print_diagnostic(diagnostic, debug)`
-- `_mojibake_score`, `_repair_common_mojibake`, `normalize_source_text`, `read_text_file`
-- `get_incremental_cache`, `get_dependency_graph`, `get_framework_version`, `detect_tw_project`
-- `normalize_path`, `resolve_source_path`, `minify_html_content`, `minify_css_content`, `minify_js_content`
-- `parse_config_scalar`, `get_config_value`, `normalize_route_directory`, `resolve_static_asset_url`, `safe_relpath`
-- `load_build_manifest`, `save_build_manifest`, `save_dependency_graph`
-- `file_fingerprint`, `compute_dependency_signature`, `collect_dependency_fingerprints`, `describe_dependency_delta`
-- `page_cache_key`, `cleanup_outputs`, `remove_deleted_page_outputs`
-- `PageNode`, `HeadNode`, `ElementNode`, `ComponentNode`, `ForNode`, `IfNode`, `LetNode`, `ScriptNode`, `ScriptTagNode`, `StyleSheetNode`, `RuleNode`
-- `is_identifier_boundary_char`, `tokenize`, `tokenize_tw`
-- `classify_known_prop`, `normalize_css_prop`, `normalize_attr_name`
-- `component_exists`, `is_component_name`, `resolve_component_path`, `component_name_from_path`
-- `resolve_load_target`, `extract_directives_from_source`
-- `collect_component_dependencies`, `collect_page_dependencies`
-- `route_path_from_page_info`, `collect_page_metadata`, `create_request_context`, `build_page_context`
-- `parse_literal_value`, `to_bool`, `resolve_path`, `_transform_logic_operators`, `_safe_eval`, `evaluate_expression`
-- `PLACEHOLDER_MOUSTACHE_RE`, `RESERVED_EXPR_NAMES`, `extract_placeholder_expressions`, `ExpressionNameCollector`, `collect_expression_names`
-- `build_diagnostic`, `collect_known_scope_names`, `analyze_expression_symbols`, `analyze_interpolated_text`, `_append_unique_diagnostic`, `analyze_nodes_semantics`, `analyze_page_semantics`
-- `eval_condition`, `interpolate`, `_append_px_if_numeric`, `_split_css_tokens_outside_parens`, `_normalize_css_function_args`, `_normalize_border_like_value`, `_normalize_shadow_value`, `_normalize_at_rule_selector`, `finalize_css_value`
-- `classify_known_keywords`, `peek`, `collect_until_block`, `collect_until_eol`, `is_statement_separator`, `parse_value_token`, `unknown_property_error`, `looks_like_child_start`
-- `extract_component_load_directive`, `load_component_ast`, `load_layout`, `resolve_layout_loads`, `get_layout_meta`, `load_external_stylesheet`
-- `write_chunk`, `parse_import`, `_collect_used_component_names`, `parse_let`, `parse_if`, `parse_for`, `parse_each`, `_try_parse_script_tag_config`, `parse_script_placeholder`, `parse_twm_script_placeholder`, `parse_property_value`, `parse_element_or_component`, `parse_child_statement`, `parse_element_block`, `parse_component_block`, `build_elements`, `parse_head_block`, `parse_page_block`, `build_tw_ast`, `_attach_component_stylesheets`
-- `_split_tss_body_items`, `_parse_tss_rule`, `build_tss_ast_from_text`
-- `render_value`, `html_escape`, `js_escape`, `safe_clone`, `render_attrs`, `render_events`, `render_router`, `render_inline_style`, `_format_css_selector`, `_render_css_rule`, `render_css`, `render_head_extras`
-- `get_router_runtime_url`, `get_search_runtime_url`, `build_theme_inline_script`, `maybe_optimize_image`, `_build_declarative_script_loader_js`, `render_elements_html`
-- `_build_tw_signature`, `build_default_document`, `build_redirect_document`
-- `_LAYOUT_VAR_RE`, `interpolate_layout_template`, `apply_layout_template`, `_inject_reactivity_runtime`, `_inject_on_load_inits`, `render_html`
-- `parse_layout_chain`, `apply_layout_fragment`
-- `_LOAD_JSON_KEY_RE`, `load_external_json`, `infer_json_context_key`, `load_page_data`, `load_page_ast_from_file`, `load_dynamic_items`, `classify_dynamic_route_file`, `resolve_dynamic_segments`
-- `load_config`, `discover_pages`, `copy_assets`, `verify_api_isolated`, `read_global_stylesheet`, `create_base_context`, `build_one_page`
-- `parse_cli_args`, `get_page_manifest_entry`, `should_rebuild_page`, `update_page_manifest_entry`, `build_page_job`, `print_compiler_error`, `main`
-- `_token_to_dict`, `_diagnostic_to_payload`, `_summarize_diagnostics_payload`, `_pipeline_metadata_from_program`, `compile_text_pipeline`, `compile_file_pipeline`
-
-## tw_framework/diagnostics.py
-
-- `Diagnostic` dataclass: `severity`, `code`, `message`, `file_path`, `line`, `col`, `suggestion`, `notes`, `phase`, `exception_type`, `category`, `relative_path`, `absolute_path`, `source_snippet`, `highlight`, `reason`, `expected`, `found`, `why`, `doc_link`, `parser_state`, `traceback`
-- `Diagnostic.from_legacy(item)`: converts legacy diagnostic to new format.
-- `Diagnostic.to_dict()`: returns dict.
-- `format_advanced_error(diag, project_root)`: formats diagnostic with all required fields.
-- `DiagnosticBag`: `items: List[Diagnostic]`, `add(diagnostic)`, `extend(diagnostics)`, `has_errors` property, `to_list()`.
-
-## tw_framework/framework.py
-
-- (Extensive file; key elements already covered in other sections. Additional details:)
-- `SCRIPT_DIR`, `DEFAULT_PROJECT_ROOT`, `DEFAULT_INTERNAL_OUTPUT`, `DEFAULT_DEV_HOST`, `DEFAULT_DEV_PORT`, `DEFAULT_PREVIEW_PORT`, `HIDDEN_FRAMEWORK_DIR`, `WATCH_EXTENSIONS`
-- `BuildSummary`: `built`, `skipped`, `removed`, `errors`, `output_dir`, `warnings`, `route_collisions`
-- `RouteMatch`: `page_info`, `params`, `item`, `route_path`
-- `configure_compiler_paths(project_root)`: sets compiler module globals.
-- `compiler_output_context(output_root)`: context manager to temporarily change compiler output paths.
-- `invalidate_compiler_caches()`: clears all compiler caches.
-- `use_modular_pipeline(config)`: checks env or config for modular pipeline flag.
-- `normalize_url_path(path)`, `strip_trailing_slash(path)`, `route_from_static_page(page_info)`, `route_from_dynamic_page(page_info, item)`
-- `build_page_with_modular_pipeline(page_info, css_url)`, `build_page_job_modular(page_info, css_url)`
-- `special_page_name_for_status(status_code)`, `inject_dev_client(html_text)`, `render_error_html(title, message, status_code)`, `format_compiler_error(page_path, err)`
-- `safe_read_binary(path)`, `is_path_within(root_path, candidate_path)`
-- `_normalize_config_headers(raw_value)`, `get_security_headers(config)`, `get_cookie_secure_mode(config)`, `request_uses_https(request_headers, server_port)`, `render_cookie_header(name, value, *, config, request_headers, server_port)`
-- `_csrf_secret()`, `_csrf_session_hint(request)`, `generate_csrf_token(request)`, `verify_csrf_token(token, request, *, max_age)`
-- `TokenBucketRateLimiter`: `capacity`, `window_seconds`, `refill_rate`, `_state`, `_lock`, `allow(bucket_key)`
-- `parse_env_file(path)`, `load_project_env(project_root, mode)`, `parse_cookie_header(raw_value)`, `match_path_pattern(path, pattern)`, `middleware_file_candidates(project_root)`
-- `parse_value_token(tokens, i)`, `parse_single_value_token(tokens, i)`, `parse_middleware_rules(project_root)`
-- `_middleware_header(request_headers, name, default)`, `_middleware_list(value)`, `_middleware_referer_origin(referer)`, `_jwt_b64url_decode(value)`, `_verify_hs256_jwt(token, secret)`, `_build_middleware_response(rule, result, *, default_status, default_text, default_content_type, extra_headers)`
-- `discover_api_routes()`, `discover_twm_api_handlers()`, `_compile_twm_api_handler_to_cache(handler_path)`, `execute_twm_api_handler(handler_path, method, url_path, headers, body)`
-- `parse_api_route_file(tw_path)`, `render_api_value(value, context)`, `decode_request_body(handler)`
-- `TWProject`: `project_root`, `_lock`, `env`, `config`, `modular_pipeline`, `extensions`, `_rate_limiters`
-  - `source_root`, `list_source_files()`, `source_signature()`, `invalidate()`, `discover_pages()`, `find_special_page(status_code)`, `resolve_asset(url_path)`, `build_dev_search_index()`, `resolve_route(raw_path)`, `_get_rate_limiter(rule)`, `_resolve_rate_limit_identity(request_headers, request_meta)`, `apply_middleware(raw_path, request_headers, request_meta, method)`, `resolve_api_route(raw_path)`, `execute_api_route(api_route, method, url_path, headers, body)`, `compile_match_response(match, dev_mode, depth)`, `compile_match_to_html(match, dev_mode)`, `compile_special_page(status_code, dev_mode)`
-- `TWDevState`: `project`, `version`, `stop_event`, `lock`, `bump()`, `current_version()`
-- `TWFileWatcher(threading.Thread)`: `state`, `interval`, `rescan_ticks`, `_tick`, `_files`, `_stats`, `backend`, `_inotify_fd`, `_wd_to_dir`, `_debounce_s`, `_refresh_file_list()`, `_can_use_inotify()`, `_inotify_setup()`, `_inotify_refresh_watches(libc)`, `_inotify_read_events()`, `run()`
-- `make_dev_handler(state)`: returns `TWDevHandler` class.
-- `ThreadedTCPServer`
-- `run_dev_server(project_root, host, port)`
-- `build_preview_candidates(output_dir, path)`, `make_preview_handler(output_dir)`, `run_preview_server(output_dir, host, port)`
-- `compile_typescript_sources(project_root, output_dir)`, `ensure_project_metadata(project_root)`, `sync_runtime_chunks_to_output()`, `write_hidden_cache_files(dependency_map, metadata_map)`, `write_text_file(path, content)`
-- `route_records_for_build()`, `write_route_artifacts(output_dir)`, `strip_html_to_text(html_text)`, `write_search_index(output_dir, routes)`
-- `precompress_output(output_dir)`, `ensure_deploy_support_files(project_root)`, `generate_deploy_metadata(output_dir, config)`
-- `build_hidden_site(project_root, output_dir, force, workers, minify, strict, adapters, debug)`: returns `BuildSummary`
-- `clean_project_outputs(project_root)`, `inspect_project(project_root)`, `doctor_project(project_root)`
-- `deploy_with_vercel(output_dir, production)`, `deploy_with_cloudflare(output_dir, project_name)`, `deploy_with_netlify(output_dir)`, `deploy_with_docker(project_root, production)`, `run_deploy(project_root, output_dir, provider, production, dry_run)`
-- `parse_args()`, `main()`
-
-## tw_framework/parser.py
-
-- Bridge between legacy compiler and modern AST.
-- `_legacy()`: returns `compiler` module.
-- `_convert_node(node)`: converts legacy node to modern AST node.
-- `_normalize_scalar(value)`: normalizes scalar values.
-- `from_legacy_page(page, source_path)`: converts legacy `PageNode` to `Program`.
-- `parse_text(text, base_dir, file_path, debug)`: parses text using legacy tokenizer/parser, returns `Program`.
-- `parse_file(path, debug)`: reads file and calls `parse_text`.
-- `build_tw_ast(tokens, base_dir, file_path, source)`: calls legacy `compiler.build_tw_ast`.
-- `build_tss_ast_from_text(text)`: calls legacy `compiler.build_tss_ast_from_text`.
-- `program_to_dict(program)`: calls `program.to_dict()`.
-- `nodes_to_dict(nodes)`: calls `node_to_dict` for each node.
-
-## tw_framework/plugin_runtime.py
-
-- `HOOK_ALIASES`: maps `before_build` to `beforeBuild`, `after_build` to `afterBuild`, `before_route` to `beforeRoute`, `after_route` to `afterRoute`.
-- `LoadedExtension`: `name`, `path`, `module`
-- `PluginAPI`: `manager`, `extension_name`
-  - `register_hook(event_name, handler)`
-  - `hook(event_name, handler)`
-  - `get_config()`
-  - `get_env()`
-  - `get_project_root()`
-- `ExtensionManager`: `project_root`, `config`, `env`, `extensions`, `hooks`, `errors`
-  - `refresh(config, env)`
-  - `discover_extension_paths()`
-  - `dependency_paths()`
-  - `emit(event_name, **payload)`
-  - `register_hook(event_name, handler, extension_name)`
-  - `_extension_roots()`
-  - `_normalize_event_name(event_name)`
-  - `_configured_allowlist()`
-  - `_apply_allowlist(paths)`
-  - `_warn_extension_execution(paths)`
-  - `_load_extension(path)`
-
-## tw_framework/twm_api_runner.js
-
-- Node.js script for executing `.twm` API routes.
-- Usage: `node twm_api_runner.js /abs/path/to/compiled_module.cjs`
-- Reads request JSON from stdin, prints ONE JSON response to stdout.
-- Functions:
-  - `findProjectRoot(startPath)`
-  - `readJsonFile(filePath, fallbackValue)`
-  - `normalizeHeaderValue(headers, key)`
-  - `createTimeoutSignal(timeoutMs)`
-  - `normalizeHttpData(rawText, headers)`
-  - `buildHttpHelpers(defaultHeaders)`: returns `request`, `get`, `post`, `put`, `patch`, `delete`
-  - `buildValueHelper(values, label)`: returns `get`, `has`, `require`, `all`, plus Proxy for direct access
-  - `createProjectRequire(projectRoot)`
-  - `createPackageHelper(projectRoot)`: returns `json()`, `has(name)`, `require(name)`, `resolve(name)`
-  - `parseServiceAccount(rawValue, projectRoot)`
-  - `createFirebaseHelper(projectRoot, envHelper, packageHelper)`: returns `admin`, `app`, `firestore`, `auth`, `messaging`, `storage`
-  - `installRuntimeHelpers(request, compiledPath)`: sets `globalThis.http`, `globalThis.env`, `globalThis.secrets`, `globalThis.pkg`, `globalThis.firebase`, `globalThis.helpers`
-  - `toPairs(headers)`
-  - `normalizeResult(result)`: handles string, object, tuple, explicit response object
-  - `methodList(mod)`
-  - `main()`: loads module, reads stdin, executes handler, writes response
-
-## tw_framework/twm_parser.py
-
-- Parses `.twm` files.
-- `_IDENT_RE`, `_FUNC_HEADER_RE`
-- `TWMParseError(Exception)`
-- `_scan_matching_brace(source, open_brace_index)`: finds matching closing brace with JS-like string/comment awareness.
-- `parse_twm_functions(source)`: returns list of dicts with `name`, `params`, `body`, `async`. Enforces no top-level statements.
-- `compile_twm_module_to_js(source, *, module_id)`: compiles to browser JS with `window.__twRegister`.
-- `compile_twm_module_to_cjs(source, *, module_id)`: compiles to CommonJS module for Node.js.
-- `build_page_twm_bundle_js(sources, *, page_source_path)`: produces per-page JS bundle with registry, registration, and invocation.
-- `_js_string(value)`: escapes string for JS.
-
-## [home]/components/Button.tw
-
-- (Already covered above)
-
-## [home]/style.tss
-
-- (Already covered above)
-
-## docs/api/echo-api.md
-
-- (Already covered above)
-
-## docs/api/twm-api.md
-
-- (Already covered above)
-
-## docs/spec/tw-grammar.md
-
-- (Already covered above)
-
-## middleware.tw
-
-- (Already covered above)
-
-## tw_framework/ast_nodes.py
-
-- (Already covered above)
-
-## tw_framework/compiler.py
-
-- (Already covered above)
-
-## tw_framework/diagnostics.py
-
-- (Already covered above)
-
-## tw_framework/framework.py
-
-- (Already covered above)
-
-## tw_framework/parser.py
-
-- (Already covered above)
-
-## tw_framework/plugin_runtime.py
-
-- (Already covered above)
-
-## tw_framework/twm_api_runner.js
-
-- (Already covered above)
-
-## tw_framework/twm_parser.py
-
-- (Already covered above)
+## package.json
+
+- Name: `twlang-main`
+- Private: `true`
+- Version: `0.8.3`
+- Scripts:
+  - `dev`: `tw dev`
+  - `build`: `tw build`
+  - `export`: `tw export`
+  - `preview`: `tw preview`
+  - `clean`: `tw clean`
+  - `doctor`: `tw doctor`
+  - `info`: `tw info`
+  - `deploy`: `tw deploy`
+
+## Dockerfile
+
+- Base image: `nginx:alpine`
+- Copies `dist` to `/usr/share/nginx/html`
+- Exposes port `80`
+- Command: `nginx -g daemon off;`
+
+## netlify.toml
+
+- Build command: `tw build --prod`
+- Publish directory: `dist`
+
+## GitHub Actions CI/CD
+
+- `.github/workflows/publish.yml` — triggers on `v*` tags
+- Publishes to PyPI automatically on tag push
+- Repo: `https://github.com/ffakraj-ui/twlang.git`
+
+## CONTRIBUTING.md
+
+- Two AST representations:
+  - Legacy compiler AST in `tw_framework/compiler.py` centered around `PageNode` and legacy `ElementNode`
+  - Newer structured AST in `tw_framework/ast_nodes.py` centered around `Program`, `PageMeta`, and newer node dataclasses
+- Bridge between both worlds lives in `tw_framework/parser.py`
+  - `parse_text()` and `parse_file()` still call legacy tokenizer/parser from `compiler.py`
+  - `from_legacy_page()` converts resulting `PageNode` into modern `Program`
+  - `_convert_node()` recursively maps legacy node shapes into `ast_nodes.py` dataclasses
+- If you add a new node/property to legacy parser, update `_convert_node()` and `from_legacy_page()` at the same time
+- When debugging parser/compiler disagreements, inspect both legacy object and `Program` output
+- Safe workflow:
+  - Add or update tests in `tests/` with every parser/compiler change
+  - Prefer small compatibility shims over broad rewrites unless intentionally removing legacy path
+  - Document new directives or filename conventions in `docs/spec/tw-grammar.md`
+
+## Framework Modules (v0.8.35)
+
+| Module | Purpose |
+|--------|---------|
+| `compiler.py` | Main compiler — lexer, parser, HTML renderer, route path generation, React integration injection |
+| `framework.py` | Build pipeline, dev server, route discovery, sitemap/RSS, deploy metadata, modular pipeline |
+| `cli.py` | CLI — create, build, dev, serve, install, remove, list, info, dead |
+| `npm_manager.py` | NPM package manager — pnpm/yarn/bun auto-detection, install/remove/list |
+| `react_compat.py` | React compatibility — bootstrap JS, loader script, version detection, CDN/bundle |
+| `client_bundler.py` | Client-side bundler — esbuild + IIFE fallback, topological sort, import maps |
+| `esbuild_integration.py` | esbuild detection, version caching, bundling integration |
+| `security.py` | CSP nonces, secure HTTP headers, input sanitization, CSRF protection |
+| `module_boundaries.py` | Server/client module classification — .twm always SERVER, fetch() is client-safe |
+| `twm_parser.py` | .twm parser — imports, exports, async/await, type annotations, dict return |
+| `lib_executor.py` | .twm execution — createRequire bridge, env/secrets/firebase helpers |
+| `js_interop.py` | JS interop — import maps, client bundling delegation to ClientBundler |
+| `reactivity.py` | Reactive bindings — state, events, bind:*, show:*, tw-text, tw-html, tw-for |
+| `render_html.py` | HTML document builder, runtime context |
+| `tss_parser.py` | TSS stylesheet parser |
+| `common.py` | Shared utilities — log, content_hash, read_text_file |
+| `dependency_graph.py` | Page dependency tracking, build caching |
+| `icons.py` | Built-in 60+ SVG icons |
+
+## v0.8.35 Bug Fixes (all carried forward)
+
+### Route Path Double-Nesting (Critical)
+- `route_path_from_page_info()` in `compiler.py` — App Router pages had `rel_dir` and `name` both set to same value (e.g. "about"), producing `/about/about` in sitemap.xml, `__TW_DATA__` JSON, and HTML metadata. Fixed by checking `url_path` first and skipping duplicate `name` append.
+- `route_from_static_page()` and `route_from_dynamic_page()` in `framework.py` — same fix applied.
+- All three route generators now produce consistent URLs: `/about`, `/contact`, `/counter`, `/react`.
+
+### NPM Package Manager Detection
+- `detect_package_manager()` was dead code — defined but never called. Now `install_packages()`, `remove_packages()`, `ensure_dependencies()` all use `find_package_manager()` which calls `detect_package_manager()`.
+- Supports npm, pnpm, yarn, bun with correct command generation (`add`/`remove`/`install`).
+
+### React Loader Script
+- `get_react_loader_script()` — both branches returned identical output. Now:
+  - Installed + CDN → uses installed React version (react@17/18/19, not hardcoded)
+  - Installed + no CDN → points to `/js/react-bundle.js`
+  - Not installed + no CDN → empty string (correct)
+
+### ReactCompat Wired to Build Pipeline
+- `ReactCompat` class was defined but never imported during build.
+- `_inject_react_integration()` function added to `compiler.py`, called in both `render_html()` branches (layout + default).
+- Also injected in `framework.py` App Router modular pipeline after `compose_nested_layouts()`.
+- Detects React via import statements in .tw source and .twm modules, plus `render interactive` mode.
+
+### LOAD_RE Regex Fix
+- `on:load` was matched as `load` directive by `LOAD_RE` regex.
+- Fixed with negative lookbehind `(?<![\w:])`.
+
+### Counter Template Fix
+- Bare strings `"+"`/`"-"` in counter/page.tw replaced with `text "+"`/`text "-"`.
+
+### Duplicate Deploy Metadata
+- `generate_deploy_metadata()` was called twice — in `cli.py:607` and `framework.py:3209`.
+- Removed from `cli.py`, kept in `framework.py` (inside build pipeline).
+
+### Client Bundler Fixes
+- Transitive deps: bundled in memory but never written to disk or import map. Fixed — now iterates `_cache` to find and write transitive deps.
+- esbuild fallback: warning added when esbuild unavailable: "esbuild is not installed — using fallback IIFE bundler."
+- Script tag ordering: `render_chunk_script_tags()` now uses `_topological_sort()` (Kahn's algorithm) instead of `sorted()`.
+
+### Module Boundaries Fix
+- `fetch()` removed from `CLIENT_API_PATTERNS` (Node.js 18+ has fetch natively).
+- Added `innerHTML`, `onclick`, `onload`, `document.write` patterns to `BROWSER_ONLY_PATTERNS`.
+- `classify_module_source()` accepts `file_path` param — `.twm` files always classified as SERVER.
+
+## Test Suite
+
+- Total tests: 619 (all passing)
+- `tests/test_v081_features.py` — 69 tests for v0.8.1 features
+- `tests/test_client_bundler.py` — 45 tests for client bundler
+- `tests/test_esbuild_integration.py` — 15 tests for esbuild integration
+- `tests/test_bugfixes.py` — 16 tests for bug fixes
+- Remaining: 474 existing tests from v0.8.0 and earlier
+
+## Build Output Structure
+
+```
+dist/
+  index.html              # Home page
+  about/index.html        # /about (pretty_urls)
+  contact/index.html      # /contact
+  counter/index.html      # /counter
+  react/index.html        # /react (with React bootstrap injected)
+  sitemap.xml              # Correct URLs (no double-nesting)
+  rss.xml                  # Correct URLs
+  robots.txt               # Allow: / + Sitemap
+  tw.deploy.json           # Deployment metadata
+  _tw/
+    api-manifest.json      # API route manifest
+  js/
+    react-bundle.js        # Bundled React (when use_cdn=false)
+    chunks/                 # Code-split chunks
+```

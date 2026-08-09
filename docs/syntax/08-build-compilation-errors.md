@@ -10,7 +10,7 @@ TW Framework uses a diagnostic system with error codes, messages, suggestions, a
 
 ```
 [ERROR] TW1000: Unexpected token '}' at line 5, col 12
-    File: [home]/pages/index.tw
+    File: [home]/index.tw
     Suggestion: Check for matching braces.
 
     4 |     body {
@@ -361,7 +361,7 @@ tw build
 
 **Error:**
 ```
-[ERROR] TW4000: Build failed for [home]/pages/index.tw
+[ERROR] TW4000: Build failed for [home]/index.tw
     Phase: Code Generation
     Cause: TW3101: Failed to generate HTML
 ```
@@ -435,7 +435,7 @@ body {
 ### tw check
 
 ```bash
-tw check [home]/pages/index.tw
+tw check [home]/index.tw
 tw check --verbose
 tw check --fix
 ```

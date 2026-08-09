@@ -3,7 +3,7 @@
 ## tw check
 
 ```bash
-tw check [home]/pages/index.tw
+tw check [home]/index.tw
 ```
 
 Prints diagnostics: errors, warnings, suggestions.
@@ -11,7 +11,7 @@ Prints diagnostics: errors, warnings, suggestions.
 ## tw tokens
 
 ```bash
-tw tokens [home]/pages/index.tw
+tw tokens [home]/index.tw
 ```
 
 Shows all lexer tokens with line/col.
@@ -19,7 +19,7 @@ Shows all lexer tokens with line/col.
 ## tw ast
 
 ```bash
-tw ast [home]/pages/index.tw
+tw ast [home]/index.tw
 ```
 
 Shows the AST as JSON.
@@ -27,7 +27,7 @@ Shows the AST as JSON.
 ## tw ir
 
 ```bash
-tw ir [home]/pages/index.tw
+tw ir [home]/index.tw
 ```
 
 Shows the IR (Intermediate Representation).
@@ -60,7 +60,7 @@ Generates a build report with sizes, timing, and cache stats.
 
 ### Page renders blank
 
-1. Check `tw check [home]/pages/index.tw`
+1. Check `tw check [home]/index.tw`
 2. Check `page { render static }` is set
 3. Check `body {}` block exists
 4. Check layout exists if `layout "main"` is set

@@ -33,7 +33,7 @@ my-blog/
 ## Blog Homepage
 
 ```tw
-// [home]/pages/blog/index.tw
+// [home]/blog/index.tw
 page {
     title "Blog - My Site"
     layout "main"
@@ -66,7 +66,7 @@ body {
 ## Blog Post Page
 
 ```tw
-// [home]/pages/blog/[slug].tw
+// [home]/blog/[slug].tw
 page {
     title "{post.title}"
     layout "main"
@@ -193,7 +193,7 @@ export function POST(request) {
 
 ## RSS Feed
 
-Create `[home]/pages/rss.tw` with `render server`:
+Create `[home]/rss.tw` with `render server`:
 
 ```tw
 page {

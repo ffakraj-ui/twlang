@@ -61,7 +61,7 @@ Same as `compile_text_pipeline` but reads from a file.
 ```python
 from tw_framework.compiler import compile_file_pipeline
 
-result = compile_file_pipeline("[home]/pages/index.tw")
+result = compile_file_pipeline("[home]/index.tw")
 ```
 
 ### `tw_framework.lexer`
@@ -195,7 +195,7 @@ Reads a file with UTF-8 encoding, normalizing line endings.
 ```python
 from tw_framework.compiler import read_text_file
 
-content = read_text_file("[home]/pages/index.tw")
+content = read_text_file("[home]/index.tw")
 ```
 
 ### `load_config()`

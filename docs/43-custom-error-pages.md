@@ -2,7 +2,7 @@
 
 ## 404 Page
 
-Create `[home]/pages/404.tw`:
+Create `[home]/404.tw`:
 
 ```tw
 page {
@@ -22,7 +22,7 @@ body {
 
 ## 500 Page
 
-Create `[home]/pages/500.tw`:
+Create `[home]/500.tw`:
 
 ```tw
 page {
@@ -44,10 +44,10 @@ body {
 
 | File | Status Code |
 |---|---|
-| `[home]/pages/404.tw` | 404 Not Found |
-| `[home]/pages/500.tw` | 500 Server Error |
-| `[home]/pages/403.tw` | 403 Forbidden |
-| `[home]/pages/503.tw` | 503 Service Unavailable |
+| `[home]/404.tw` | 404 Not Found |
+| `[home]/500.tw` | 500 Server Error |
+| `[home]/403.tw` | 403 Forbidden |
+| `[home]/503.tw` | 503 Service Unavailable |
 
 ## Dev Mode Error Display
 

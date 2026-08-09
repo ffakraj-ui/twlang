@@ -11,7 +11,7 @@ cd my-blog
 
 ## Step 1: Blog Post Data
 
-Create `[home]/pages/blog/[slug].json`:
+Create `[home]/blog/[slug].json`:
 
 ```json
 [
@@ -38,7 +38,7 @@ Create `[home]/pages/blog/[slug].json`:
 
 ## Step 2: Blog Post Page
 
-Create `[home]/pages/blog/[slug].tw`:
+Create `[home]/blog/[slug].tw`:
 
 ```tw
 page {
@@ -87,7 +87,7 @@ body {
 
 ## Step 3: Blog Index Page
 
-Create `[home]/pages/blog.tw`:
+Create `[home]/blog.tw`:
 
 ```tw
 page {
@@ -249,7 +249,7 @@ Create `[home]/api/rss.twm`:
 
 ```twm
 function get(request):
-    posts = load_json("[home]/pages/blog/[slug].json")
+    posts = load_json("[home]/blog/[slug].json")
 
     items = []
     for post in posts:

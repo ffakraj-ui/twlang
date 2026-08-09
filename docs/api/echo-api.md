@@ -54,7 +54,7 @@ fn post(request) {
 Run:
 
 ```bash
-python3 -m pip install -e . --break-system-packages
+python3 -m pip install tw-framework --break-system-packages
 tw serve --host 0.0.0.0 --port 8787
 ```
 

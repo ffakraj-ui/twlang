@@ -331,7 +331,7 @@ qualify for Zero-JS.
 The App Router is fully backward compatible with the legacy structure:
 
 - If `[home]/page.tw` or `[home]/layout.tw` exists → App Router mode
-- If `[home]/pages/` or `[home]/layouts/` exists → Legacy mode
+- If `[home]/` or `[home]/layouts/` exists → Legacy mode
 - The framework auto-detects which system to use
 
 You can migrate gradually — start by adding a `layout.tw` to your existing

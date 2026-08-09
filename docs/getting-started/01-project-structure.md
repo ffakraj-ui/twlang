@@ -26,7 +26,7 @@ my-site/
 |---|---|
 | `[home]` with literal brackets | TW looks for exactly `[home]` as source root |
 | `tw.config` at root | Project metadata and config |
-| `[home]/pages/index.tw` | Root page that renders at `/` |
+| `[home]/index.tw` | Root page that renders at `/` |
 | `.tw/` in `.gitignore` | Cache directory, should not be committed |
 
 ## Common Mistakes

@@ -4,7 +4,7 @@ Is project me sample APIs ko clean karke ek hi convention par shift kiya gaya ha
 
 ## Run kaise karein
 
-1. `python3 -m pip install -e . --break-system-packages`
+1. `python3 -m pip install tw-framework --break-system-packages`
 2. `tw serve --host 0.0.0.0 --port 8787`
 3. Base URL use karo: `http://localhost:8787`
 

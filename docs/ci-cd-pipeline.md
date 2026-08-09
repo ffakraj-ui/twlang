@@ -174,7 +174,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .
+          pip install tw-framework
           pip install pytest
 
       - name: Run tests

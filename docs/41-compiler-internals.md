@@ -68,19 +68,19 @@ Converts IR to final output:
 ## Token Inspection
 
 ```bash
-tw tokens [home]/pages/index.tw
+tw tokens [home]/index.tw
 ```
 
 ## AST Inspection
 
 ```bash
-tw ast [home]/pages/index.tw
+tw ast [home]/index.tw
 ```
 
 ## IR Inspection
 
 ```bash
-tw ir [home]/pages/index.tw
+tw ir [home]/index.tw
 ```
 
 ## Semantic Analysis
@@ -88,5 +88,5 @@ tw ir [home]/pages/index.tw
 Checks for undefined variables, type mismatches, missing components/layouts, invalid attribute values.
 
 ```bash
-tw check [home]/pages/index.tw --include-ast --include-ir
+tw check [home]/index.tw --include-ast --include-ir
 ```

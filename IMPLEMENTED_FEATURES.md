@@ -29,7 +29,7 @@ Implemented in this pass:
   - Nested layout composition (root → innermost)
   - Special files: `loading.tw`, `not-found.tw`, `error.tw`, `route.tw`
   - Auto-detection: App Router mode vs Legacy mode
-  - Fully backward compatible with `[home]/pages/` + `[home]/layouts/`
+  - Fully backward compatible with `[home]/` + `[home]/layouts/`
 
 - Theme (Dark/Light/System)
   - `theme: system|dark|light` in `tw.config`

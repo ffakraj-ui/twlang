@@ -8,7 +8,7 @@ templates. They support nesting, route groups, dynamic routes, and a `children`
 slot for page content injection.
 
 **This is a major release but is fully backward compatible.** Existing projects
-using `[home]/pages/` + `[home]/layouts/` will continue to work unchanged.
+using `[home]/` + `[home]/layouts/` will continue to work unchanged.
 
 ---
 
@@ -176,14 +176,14 @@ Dynamic params are accessible in the page context during data loading.
 
 ### Step 1: Check if you need to migrate
 
-If your project uses `[home]/pages/` and `[home]/layouts/`, it will continue
+If your project uses `[home]/` and `[home]/layouts/`, it will continue
 to work as-is. You only need to migrate if you want the new features.
 
 ### Step 2: Create the App Router structure
 
 1. Create `[home]/layout.tw` (root layout)
 2. Create `[home]/page.tw` (home page)
-3. Move pages from `[home]/pages/` to nested directories
+3. Move pages from `[home]/` to nested directories
 4. Convert layouts from HTML templates to TW components
 
 ### Step 3: Convert layout files
@@ -220,13 +220,13 @@ In all layout files, replace `{slot}` with the `children` keyword.
 
 ### Step 5: Delete old structure
 
-Once migrated, remove `[home]/pages/` and `[home]/layouts/` directories.
+Once migrated, remove `[home]/` and `[home]/layouts/` directories.
 
 ---
 
 ## Backward Compatibility
 
-- Legacy `[home]/pages/` + `[home]/layouts/` projects work unchanged
+- Legacy `[home]/` + `[home]/layouts/` projects work unchanged
 - Old `{slot}`, `{title}`, `{head}`, `{styles}`, `{scripts}` placeholders still work
 - The framework auto-detects which system to use via `has_app_router_structure()`
 - No configuration changes needed

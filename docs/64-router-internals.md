@@ -2,7 +2,7 @@
 
 ## Route Discovery
 
-TW discovers routes by scanning `[home]/pages/`:
+TW discovers routes by scanning `[home]/`:
 1. Walk all .tw files in pages/
 2. Convert file paths to URL routes
 3. Detect dynamic segments ([slug])
@@ -38,7 +38,7 @@ Generated at build time as `dist/_tw/route-manifest.json`:
 2. Nested static - /blog/post matches blog/post.tw
 3. Dynamic segment - /blog/hello matches blog/[slug].tw
 4. API routes - /api/* matches .twm files
-5. 404 page - [home]/pages/404.tw
+5. 404 page - [home]/404.tw
 
 ## Route Collisions
 
@@ -46,8 +46,8 @@ If two pages produce the same route:
 
 ```
 Warning: Route collision: /blog detected from:
-  - [home]/pages/blog/index.tw
-  - [home]/pages/blog.tw
+  - [home]/blog/index.tw
+  - [home]/blog.tw
 ```
 
 Fix by removing one file.

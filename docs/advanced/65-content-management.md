@@ -49,7 +49,7 @@ export async function GET(request) {
 For simple sites, keep content directly in .tw files:
 
 ```tw
-// [home]/pages/about.tw
+// [home]/about.tw
 page { title "About Us", render static }
 
 body {

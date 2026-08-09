@@ -5,7 +5,7 @@
 When you run `tw build`, TW Framework:
 
 1. Reads `tw.config`
-2. Discovers all pages in `[home]/pages/`
+2. Discovers all pages in `[home]/`
 3. Tokenizes each `.tw` file (lexer)
 4. Parses tokens into AST (parser)
 5. Resolves layouts and components

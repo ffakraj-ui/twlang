@@ -109,9 +109,9 @@ BODY {
 
 ## Dynamic routes
 
-A page file named with square brackets, e.g. `[home]/pages/blog/[slug].tw`, matches `/blog/<anything>`. It needs a sibling JSON file listing every value to pre-render — same name, with `.tw` replaced by `.json`:
+A page file named with square brackets, e.g. `[home]/blog/[slug].tw`, matches `/blog/<anything>`. It needs a sibling JSON file listing every value to pre-render — same name, with `.tw` replaced by `.json`:
 
-`[home]/pages/blog/[slug].json`:
+`[home]/blog/[slug].json`:
 ```json
 [
   { "slug": "hello-world" },

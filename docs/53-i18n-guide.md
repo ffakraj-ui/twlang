@@ -42,7 +42,7 @@ div {
 Use route structure for language:
 
 ```
-[home]/pages/
+[home]/
 ├── en/
 │   ├── index.tw
 │   └── about.tw

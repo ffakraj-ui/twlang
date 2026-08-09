@@ -72,7 +72,7 @@
 ```bash
 git clone https://github.com/ffakraj-ui/twlang.git
 cd twlang
-pip install -e .
+pip install tw-framework
 tw create test-site
 cd test-site
 tw dev

@@ -63,7 +63,7 @@ export default function Home() {
 
 **TW:**
 ```tw
-// [home]/pages/index.tw
+// [home]/index.tw
 page { title "Home", render static }
 
 body {

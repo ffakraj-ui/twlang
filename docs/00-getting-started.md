@@ -20,7 +20,7 @@ Open `http://127.0.0.1:3000` — live-reloading dev server.
 
 ## Your First Page
 
-`[home]/pages/index.tw`:
+`[home]/index.tw`:
 
 ```tw
 page {

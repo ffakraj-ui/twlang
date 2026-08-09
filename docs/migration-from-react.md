@@ -14,7 +14,7 @@ Moving from React to TW Framework? This guide maps React concepts to TW equivale
 | `getStaticProps` | `render static` + JSON data |
 | `getServerSideProps` | `render server` + `.twm` |
 | `pages/_app.js` | `layouts/main.tw` |
-| `pages/index.js` | `[home]/pages/index.tw` |
+| `pages/index.js` | `[home]/index.tw` |
 | `public/` folder | `[home]/assets/` |
 
 ## Component Conversion
@@ -130,7 +130,7 @@ pages/
 ### TW File-Based Routing
 
 ```
-[home]/pages/
+[home]/
   index.tw
   about.tw
   blog/
@@ -150,7 +150,7 @@ export async function getStaticProps({ params }) {
 ### TW Dynamic Routes
 
 ```tw
-// [home]/pages/blog/[slug].tw
+// [home]/blog/[slug].tw
 page {
     title "{post.title}"
     layout "main"
@@ -166,7 +166,7 @@ body {
 }
 ```
 
-With `[home]/pages/blog/[slug].json`:
+With `[home]/blog/[slug].json`:
 
 ```json
 [
