@@ -3594,6 +3594,37 @@ def _is_new_tss_declaration(item) -> bool:
     return False
 
 
+def _split_tss_line(line) -> Any:
+    """Split a TSS line on semicolons, respecting parentheses and quotes."""
+    parts = []
+    start = 0
+    depth = 0
+    in_quote = False
+    quote_char = ""
+    for i, ch in enumerate(line):
+        if in_quote:
+            if ch == quote_char:
+                in_quote = False
+            continue
+        if ch in ('"', "'"):
+            in_quote = True
+            quote_char = ch
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == ";" and depth == 0:
+            part = line[start:i].strip()
+            if part:
+                parts.append(part)
+            start = i + 1
+    tail = line[start:].strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
 def _split_tss_body_items(body) -> Any:
     items = []
     start = 0
@@ -3604,13 +3635,18 @@ def _split_tss_body_items(body) -> Any:
         elif ch == "}":
             depth -= 1
         elif ch == "\n" and depth == 0:
-            item = body[start:i].strip()
-            if item:
-                items.append(item)
+            line = body[start:i].strip()
+            if line:
+                # Split on semicolons at depth 0 to handle multiple declarations per line
+                for part in _split_tss_line(line):
+                    if part.strip():
+                        items.append(part.strip())
             start = i + 1
     tail = body[start:].strip()
     if tail:
-        items.append(tail)
+        for part in _split_tss_line(tail):
+            if part.strip():
+                items.append(part.strip())
     # Merge multi-line values: if an item doesn't end with ; or } and the
     # next item doesn't look like a new declaration, merge them into one.
     merged = []

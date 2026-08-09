@@ -3,6 +3,22 @@
 All notable changes to TW Framework are documented here.
 
 
+## [0.6.4] — 2026-08-09
+
+### Fixed
+- **TSS multi-declaration parsing**: Fixed `_split_tss_body_items` to properly split
+  multiple CSS declarations on the same line separated by semicolons (e.g.
+  `margin 0; padding 0; box-sizing border-box`). Previously only the first
+  declaration was parsed and the rest were silently dropped or merged incorrectly.
+- Added `_split_tss_line` helper that respects parentheses and quotes when splitting.
+
+### Changed
+- Layout files (`[home]/layouts/*.tw`) must be HTML templates with `{slot}`, `{head}`,
+  `{title}`, `{styles}`, `{scripts}` placeholders — NOT `.tw` page files with
+  `page {}` / `head {}` / `body {}` blocks. The compiler reads layouts as raw
+  text and performs string replacement, so a `.tw`-formatted layout would leak
+  raw source code into the output HTML.
+
 ## v0.6.3 (Literal Braces Fix)
 
 ### Fixed

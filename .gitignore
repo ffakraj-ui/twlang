@@ -6,4 +6,3 @@ __pycache__/
 .aider*
 *.tw.json
 .git-credentials-local
-build/
