@@ -3,6 +3,62 @@
 All notable changes to TW Framework are documented here.
 
 
+## [0.7.0] — 2026-08-09
+
+### 🚀 Major: App Router System
+
+TW Framework now supports Next.js-style App Router architecture — layouts are
+**TW components**, not raw HTML templates. Layouts nest automatically based on
+directory structure.
+
+### Added
+- **App Router module** (`tw_framework/app_router.py`) — route discovery, layout
+  resolution, URL matching, and output path generation for the new file-system
+  based router.
+- **`children` keyword** — use `children` inside `body { }` or any element block
+  to mark where page content gets injected in a layout. Replaces the old
+  `{slot}` HTML-template placeholder.
+- **Nested layouts** — `compose_nested_layouts()` walks the layout chain
+  (root → innermost) and composes them around the page body. Each layout can
+  have its own `head { }`, `load` directives, and stylesheets.
+- **Route groups** `(folder)` — parentheses-wrapped folders are excluded from
+  the URL but participate in layout nesting. E.g. `(main)/layout.tw` wraps all
+  pages inside `(main)/` without affecting URLs.
+- **Dynamic routes** `[slug]` — folder names in square brackets become dynamic
+  URL segments. E.g. `blog/[slug]/page.tw` → `/blog/:slug`.
+- **Catch-all routes** `[...slug]` — catch-all dynamic segments.
+- **`layout.tw` as TW component** — `load_layout_ast()` parses layout files
+  using the same `build_tw_ast` pipeline as pages. Layouts can import
+  components, stylesheets, and use TW syntax normally.
+- **`loading.tw` / `not-found.tw` / `error.tw`** — route-level special files
+  discovered by the App Router (output-ready, full runtime integration pending).
+- **40 new tests** in `tests/test_app_router.py` covering segment classification,
+  URL building, layout discovery, route matching, children parsing, and nested
+  layout composition.
+
+### Changed
+- `discover_pages()` now detects App Router structure first
+  (`has_app_router_structure()`). If `[home]/page.tw` or `[home]/layout.tw`
+  exists, it uses `app_router.discover_routes()` instead of the legacy
+  `[home]/pages/` walk. Falls back to legacy mode automatically.
+- `build_one_page()` now checks `page_info["app_router"]` flag and routes to
+  `compose_nested_layouts()` for layout composition instead of the old
+  `render_html()` → `apply_layout_template()` string-replace pipeline.
+- `parse_child_statement()` and `parse_element_block()` now recognize the
+  `children` keyword and create a special `ElementNode(tag="children")` marker.
+- `render_elements_html()` renders `children` nodes as `{children}` text markers
+  which are later replaced by the actual page content during layout composition.
+
+### Backward Compatible
+- Legacy `[home]/pages/` + `[home]/layouts/` projects continue to work unchanged.
+  The App Router is only activated when the new structure is detected.
+- Old `{slot}`, `{title}`, `{head}`, `{styles}`, `{scripts}` HTML-template
+  layouts still function for legacy projects.
+
+### Migration
+See `MIGRATION_V0.7.0.md` for a step-by-step guide to migrate from the legacy
+pages/layouts structure to the new App Router structure.
+
 ## [0.6.4] — 2026-08-09
 
 ### Fixed

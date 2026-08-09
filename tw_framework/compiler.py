@@ -2564,6 +2564,248 @@ def get_layout_meta(name: str):
         return dict(_LAYOUT_META_CACHE.get(name, {}) or {})
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# App Router — Layout as Component System (v0.7.0)
+# ═══════════════════════════════════════════════════════════════════════════
+# layout.tw files are parsed as TW components (not raw HTML templates).
+# They support {children} slot where page content gets injected.
+# Nested layouts compose: root → (main) → blog → page.
+
+_LAYOUT_AST_CACHE = {}
+_LAYOUT_AST_CACHE_LOCK = threading.RLock()
+
+
+def load_layout_ast(file_path: str) -> Any:
+    """
+    Parse a layout.tw file as a TW component (PageNode).
+
+    Unlike load_layout() which returns raw HTML string, this returns a
+    PageNode with parsed body elements, head, loaded_sheets, etc.
+
+    The layout body may contain a special `children` element or
+    `{children}` text marker which gets replaced with page content.
+    """
+    with _LAYOUT_AST_CACHE_LOCK:
+        if file_path in _LAYOUT_AST_CACHE:
+            return _LAYOUT_AST_CACHE[file_path]
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Layout file not found: {file_path}")
+
+    raw = read_text_file(file_path)
+    tokens = tokenize_tw(raw)
+    page = build_tw_ast(tokens, os.path.dirname(file_path), file_path, raw)
+    page._tw_source_path = file_path
+
+    # Resolve any `load` directives in the layout (stylesheets, components)
+    raw_dir = os.path.dirname(file_path)
+    # load directives are already handled by build_tw_ast via parse_load
+
+    with _LAYOUT_AST_CACHE_LOCK:
+        _LAYOUT_AST_CACHE[file_path] = page
+    return page
+
+
+def render_layout_body(layout_page: Any, children_html: str, context: dict) -> tuple:
+    """
+    Render a layout's body, replacing {children} with page content.
+
+    Returns (rendered_html, needs_router_runtime, head_scripts).
+    """
+    body_nodes = layout_page.body
+
+    # Split body at {children} marker
+    # Look for a text node or element with "children" tag
+    before_children = []
+    after_children = []
+    found_children = False
+
+    for node in body_nodes:
+        if not found_children:
+            # Check for {children} in text nodes
+            if hasattr(node, "tag") and node.tag == "text":
+                text = getattr(node, "text", "")
+                if "{children}" in str(text):
+                    # Split text at {children}
+                    parts = str(text).split("{children}", 1)
+                    if parts[0].strip():
+                        before_children.append(
+                            type(node)(parts[0]) if hasattr(type(node), "__call__") else node
+                        )
+                    if len(parts) > 1 and parts[1].strip():
+                        after_children.append(
+                            type(node)(parts[1]) if hasattr(type(node), "__call__") else node
+                        )
+                    found_children = True
+                    continue
+                before_children.append(node)
+            elif hasattr(node, "tag") and node.tag == "children":
+                # Explicit <children> element
+                found_children = True
+                continue
+            else:
+                before_children.append(node)
+        else:
+            after_children.append(node)
+
+    # If no {children} found, just append children at the end
+    if not found_children:
+        before_children = body_nodes
+        after_children = []
+
+    # Render before-children nodes
+    before_html, needs_router_before, head_before = render_elements_html(
+        before_children, context
+    )
+
+    # Render after-children nodes
+    after_html, needs_router_after, head_after = render_elements_html(
+        after_children, context
+    )
+
+    needs_router = needs_router_before or needs_router_after
+    head_scripts = head_before + head_after
+
+    rendered = before_html + after_html
+    # Replace {children} markers (rendered by render_elements_html for nested children nodes)
+    # with the actual page content
+    if "{children}" in rendered:
+        rendered = rendered.replace("{children}", children_html)
+    else:
+        # No {children} marker found — append children at the end
+        rendered = before_html + "\n" + children_html + "\n" + after_html
+    return rendered, needs_router, head_scripts
+
+
+def compose_nested_layouts(
+    layout_files: list,
+    page_body_html: str,
+    page_title: str,
+    page_head_extras: str,
+    page_style_blocks: str,
+    page_runtime_scripts: str,
+    context: dict,
+    page: Any = None,
+    zero_js: bool = False,
+) -> str:
+    """
+    Compose nested layouts around page body.
+
+    layout_files: list of layout.tw file paths (root → innermost)
+    page_body_html: rendered page body HTML
+    page_title: page title
+    page_head_extras: head extras from page
+    page_style_blocks: style blocks from page
+    page_runtime_scripts: runtime scripts from page
+
+    Returns the final HTML document.
+    """
+    if not layout_files:
+        # No layouts — use default document
+        return build_default_document(
+            page_title,
+            page_head_extras,
+            page_style_blocks,
+            page_body_html,
+            page_runtime_scripts,
+            page=page,
+            context=context,
+            zero_js=zero_js,
+        )
+
+    # Start with page body as the innermost content
+    children_html = page_body_html
+    all_head_extras = page_head_extras
+    all_style_blocks = page_style_blocks
+    all_runtime_scripts = page_runtime_scripts
+    accumulated_head_scripts = []
+    needs_router = False
+
+    # Compose layouts from innermost to outermost
+    for layout_file in reversed(layout_files):
+        try:
+            layout_page = load_layout_ast(layout_file)
+        except Exception as e:
+            logger.exception("Failed to load layout: %s", layout_file)
+            continue
+
+        # Merge layout's loaded sheets into style blocks
+        if layout_page.loaded_sheets:
+            layout_css = "\n\n".join(
+                render_css(sheet, context) for sheet in layout_page.loaded_sheets
+            )
+            all_style_blocks = f"  <style>\n{layout_css}\n  </style>\n" + all_style_blocks
+
+        # Merge layout's head
+        layout_head_extras = render_head_extras(layout_page.head, context)
+        all_head_extras = layout_head_extras + all_head_extras
+
+        # Render layout body with {children} replaced
+        rendered_body, layout_needs_router, layout_head = render_layout_body(
+            layout_page, children_html, context
+        )
+
+        if layout_needs_router:
+            needs_router = True
+        accumulated_head_scripts = layout_head + accumulated_head_scripts
+
+        children_html = rendered_body
+
+    # The outermost layout provides the document structure
+    outermost_layout = load_layout_ast(layout_files[0])
+
+    # Build the final document
+    meta_html, data_script, build_comments = _build_tw_signature(page, context, zero_js=zero_js)
+    enhanced_head = (meta_html + data_script + "".join(accumulated_head_scripts) + all_head_extras).rstrip()
+
+    # Check if outermost layout has page block with title
+    layout_title = outermost_layout.title or page_title
+
+    # Build final HTML document
+    style_block = all_style_blocks.rstrip()
+    scripts = all_runtime_scripts or ""
+
+    if needs_router and not zero_js:
+        scripts = scripts + f'\n<script src="{get_router_runtime_url()}"></script>'
+
+    final_html = f"""{build_comments}<!DOCTYPE html>
+<html lang="en">
+<head>
+{enhanced_head}
+  <title>{html_escape(layout_title)}</title>
+{style_block}
+</head>
+<body>
+{children_html}
+{scripts}
+</body>
+</html>"""
+
+    # Apply reactivity if needed
+    if page and not zero_js:
+        raw_source = ""
+        try:
+            if getattr(page, "_tw_source_path", ""):
+                raw_source = read_text_file(page._tw_source_path)
+        except (OSError, UnicodeDecodeError):
+            raw_source = ""
+
+        from .reactivity import has_reactivity, parse_state_block
+        reactive_enabled = bool(raw_source and has_reactivity(raw_source))
+        page_state = getattr(page, "state_vars", {}) or {}
+        if reactive_enabled:
+            page_state.update(parse_state_block(raw_source))
+
+        if page_state or reactive_enabled:
+            final_html = _inject_reactivity_runtime(final_html, raw_source, page_state)
+
+        on_load = getattr(page, "on_load_inits", []) or []
+        if on_load:
+            final_html = _inject_on_load_inits(final_html, on_load)
+
+    return final_html
+
+
 def load_external_stylesheet(rel_path, base_dir) -> Any:
     full_path = resolve_source_path(rel_path, base_dir)
     if not os.path.exists(full_path):
@@ -3022,6 +3264,22 @@ def parse_child_statement(tokens, i, file_path, source) -> Any:
         return parse_for(tokens, i, file_path, source)
     if token.type == "WORD" and token.value == "each":
         return parse_each(tokens, i, file_path, source)
+    if token.type == "WORD" and token.value == "children":
+        # App Router: children marker inside body or element block
+        node = ElementNode("children", token=token, file_path=file_path)
+        i += 1
+        # Skip optional braces
+        if peek(tokens, i) and peek(tokens, i).type == "BRACE" and peek(tokens, i).value == "{":
+            i += 1
+            depth = 1
+            while i < len(tokens) and depth > 0:
+                t = peek(tokens, i)
+                if t.type == "BRACE" and t.value == "{":
+                    depth += 1
+                elif t.type == "BRACE" and t.value == "}":
+                    depth -= 1
+                i += 1
+        return node, i
     if token.type == "WORD" and SCRIPT_PLACEHOLDER_RE.match(token.value):
         return parse_script_placeholder(tokens, i, file_path=file_path)
     if token.type == "WORD" and TAG_NAME_RE.match(token.value):
@@ -3081,7 +3339,7 @@ def parse_element_block(tokens, i, node, file_path, source) -> Any:
             i = _handle_comma_after_value(tokens, i, node)
             continue
 
-        if token.type == "WORD" and token.value in {"let", "if", "for", "each", "import"}:
+        if token.type == "WORD" and token.value in {"let", "if", "for", "each", "import", "children"}:
             child, i = parse_child_statement(tokens, i, file_path, source)
             if child:
                 node.children.append(child)
@@ -3164,7 +3422,7 @@ def parse_component_block(tokens, i, node, file_path, source) -> Any:
                 i += 1
             continue
 
-        if token.type == "WORD" and token.value in {"let", "if", "for", "each", "import"}:
+        if token.type == "WORD" and token.value in {"let", "if", "for", "each", "import", "children"}:
             child, i = parse_child_statement(tokens, i, file_path, source)
             if child:
                 node.children.append(child)
@@ -3183,7 +3441,7 @@ def parse_component_block(tokens, i, node, file_path, source) -> Any:
                 if child:
                     node.children.append(child)
                 continue
-            if token.value in {"let", "if", "for", "each", "import"} or SCRIPT_PLACEHOLDER_RE.match(token.value):
+            if token.value in {"let", "if", "for", "each", "import", "children"} or SCRIPT_PLACEHOLDER_RE.match(token.value):
                 child, i = parse_child_statement(tokens, i, file_path, source)
                 if child:
                     node.children.append(child)
@@ -3490,6 +3748,25 @@ def build_tw_ast(tokens, base_dir, file_path, source) -> Any:
                 raise CompilerError("Expected `{` after `BODY`", token=peek(tokens, i - 1))
             i += 1
             page.body, i = build_elements(tokens, i, file_path, source, require_closing_brace=True, start_token=token)
+            continue
+
+        # App Router: `children` keyword — marks where page content goes in layouts
+        if token.type == "WORD" and token.value == "children":
+            i += 1
+            # children can be standalone (no braces) or have optional braces
+            if peek(tokens, i) and peek(tokens, i).type == "BRACE" and peek(tokens, i).value == "{":
+                i += 1
+                # Skip until closing brace
+                depth = 1
+                while i < len(tokens) and depth > 0:
+                    if peek(tokens, i).type == "BRACE" and peek(tokens, i).value == "{":
+                        depth += 1
+                    elif peek(tokens, i).type == "BRACE" and peek(tokens, i).value == "}":
+                        depth -= 1
+                    i += 1
+            # Create a special marker element
+            node = ElementNode("children", token=token, file_path=file_path)
+            page.body.append(node)
             continue
 
         if token.type == "WORD" and token.value == "import":
@@ -4305,6 +4582,11 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
                 head_scripts.append(tag)
             continue
 
+        if isinstance(node, ElementNode) and node.tag == "children":
+            # App Router: render {children} marker for layout composition
+            out.append(pad + "{children}")
+            continue
+
         if isinstance(node, ElementNode):
             maybe_optimize_image(node)
             attr_str = render_attrs(node.attrs, current_context)
@@ -4857,6 +5139,58 @@ def load_config() -> Any:
 
 def discover_pages() -> Any:
     pages = []
+
+    # ── App Router mode (v0.7.0) ──────────────────────────────────────
+    # If [home]/page.tw or [home]/layout.tw exists, use App Router discovery
+    from .app_router import has_app_router_structure, discover_routes as _discover_app_routes
+    if has_app_router_structure(HOME_DIR):
+        app_routes = _discover_app_routes(HOME_DIR)
+        for route in app_routes:
+            if route.is_api:
+                continue  # API routes handled separately
+            # Build rel_dir and name from segments
+            rel_parts = []
+            for seg in route.segments:
+                if seg.type == "route_group":
+                    rel_parts.append(f"({seg.param_name})")
+                elif seg.type == "dynamic":
+                    rel_parts.append(f"[{seg.param_name}]")
+                elif seg.type == "catch_all":
+                    rel_parts.append(f"[...{seg.param_name}]")
+                else:
+                    rel_parts.append(seg.raw)
+            rel_dir = "/".join(rel_parts) if rel_parts else ""
+            rel_dir = normalize_route_directory(rel_dir)
+
+            # Check if it's a dynamic route
+            has_dynamic = any(seg.type in ("dynamic", "catch_all") for seg in route.segments)
+            if has_dynamic:
+                # Find the dynamic segment name
+                dyn_seg = next(s for s in route.segments if s.type in ("dynamic", "catch_all"))
+                pages.append({
+                    "type": "dynamic",
+                    "path": route.file_path,
+                    "rel_dir": rel_dir,
+                    "name": dyn_seg.param_name,
+                    "param": dyn_seg.param_name,
+                    "layout_files": route.layout_files,
+                    "app_router": True,
+                    "url_path": route.url_path,
+                })
+            else:
+                name = "index" if route.url_path == "/" else route.url_path.strip("/").replace("/", "_")
+                pages.append({
+                    "type": "static",
+                    "path": route.file_path,
+                    "rel_dir": rel_dir,
+                    "name": name,
+                    "layout_files": route.layout_files,
+                    "app_router": True,
+                    "url_path": route.url_path,
+                })
+        return pages
+
+    # ── Legacy mode (v0.6.x and earlier) ─────────────────────────────
     if os.path.exists(INDEX_FILE):
         pages.append({"type": "static", "path": INDEX_FILE, "rel_dir": "", "name": "index"})
     if os.path.exists(PAGES_DIR):
@@ -4966,6 +5300,118 @@ def build_one_page(page_info, css_url) -> Any:
     tw_path = page_info["path"]
     page_ast = load_page_ast_from_file(tw_path)
 
+    # ── App Router mode: use compose_nested_layouts ───────────────────
+    if page_info.get("app_router") and page_info.get("layout_files"):
+        if page_info["type"] == "static":
+            route_path = page_info.get("url_path", route_path_from_page_info(page_info))
+            context = build_page_context(page_info, page_ast, tw_path, route_path=route_path)
+            body_html, needs_router, head_scripts = render_elements_html(page_ast.body, context)
+            title = interpolate(page_ast.title, context) if page_ast.title else ""
+            head_extras = "".join(head_scripts) + build_theme_inline_script(context) + render_head_extras(page_ast.head, context)
+
+            style_lines = []
+            if page_ast.loaded_sheets:
+                combined = "\n\n".join(render_css(sheet, context) for sheet in page_ast.loaded_sheets)
+                style_lines.append(f"  <style>\n{combined}\n  </style>")
+            style_blocks = ("\n".join(style_lines) + "\n") if style_lines else ""
+
+            raw_source = ""
+            try:
+                raw_source = read_text_file(page_ast._tw_source_path) if page_ast._tw_source_path else ""
+            except (OSError, UnicodeDecodeError):
+                raw_source = ""
+
+            from .reactivity import has_reactivity
+            reactive_enabled = bool(raw_source and has_reactivity(raw_source))
+            zero_js = is_zero_js_page(
+                page_ast, body_html=body_html,
+                needs_router_runtime=needs_router,
+                raw_source=raw_source, reactive_enabled=reactive_enabled,
+            )
+
+            html = compose_nested_layouts(
+                layout_files=page_info["layout_files"],
+                page_body_html=body_html,
+                page_title=title,
+                page_head_extras=head_extras,
+                page_style_blocks=style_blocks,
+                page_runtime_scripts="",
+                context=context,
+                page=page_ast,
+                zero_js=zero_js,
+            )
+            if MINIFY_OUTPUT:
+                html = minify_html_content(html)
+
+            # Output path based on URL path
+            from .app_router import route_to_output_path
+            out_rel = route_to_output_path(page_info.get("url_path", "/"))
+            out_path = os.path.join(BUILD_DIR, out_rel)
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(html)
+            return [out_path]
+
+        # Dynamic App Router page
+        built_paths = []
+        items = load_dynamic_items(tw_path)
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            segments = resolve_dynamic_segments(page_info, item)
+            route_path = route_path_from_page_info(page_info, item=item)
+            context = build_page_context(page_info, page_ast, tw_path, item=item, route_path=route_path)
+            page_copy = copy.deepcopy(page_ast)
+
+            body_html, needs_router, head_scripts = render_elements_html(page_copy.body, context)
+            title = interpolate(page_copy.title, context) if page_copy.title else ""
+            head_extras = "".join(head_scripts) + build_theme_inline_script(context) + render_head_extras(page_copy.head, context)
+
+            style_lines = []
+            if page_copy.loaded_sheets:
+                combined = "\n\n".join(render_css(sheet, context) for sheet in page_copy.loaded_sheets)
+                style_lines.append(f"  <style>\n{combined}\n  </style>")
+            style_blocks = ("\n".join(style_lines) + "\n") if style_lines else ""
+
+            raw_source = ""
+            try:
+                raw_source = read_text_file(page_copy._tw_source_path) if page_copy._tw_source_path else ""
+            except (OSError, UnicodeDecodeError):
+                raw_source = ""
+
+            from .reactivity import has_reactivity
+            reactive_enabled = bool(raw_source and has_reactivity(raw_source))
+            zero_js = is_zero_js_page(
+                page_copy, body_html=body_html,
+                needs_router_runtime=needs_router,
+                raw_source=raw_source, reactive_enabled=reactive_enabled,
+            )
+
+            html = compose_nested_layouts(
+                layout_files=page_info["layout_files"],
+                page_body_html=body_html,
+                page_title=title,
+                page_head_extras=head_extras,
+                page_style_blocks=style_blocks,
+                page_runtime_scripts="",
+                context=context,
+                page=page_copy,
+                zero_js=zero_js,
+            )
+            if MINIFY_OUTPUT:
+                html = minify_html_content(html)
+
+            out_parts = [BUILD_DIR]
+            out_parts.extend(segments)
+            out_dir = os.path.join(*out_parts)
+            os.makedirs(out_dir, exist_ok=True)
+            out_path = os.path.join(out_dir, "index.html")
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(html)
+            built_paths.append(out_path)
+        return built_paths
+
+    # ── Legacy mode ───────────────────────────────────────────────────
     if page_info["type"] == "static":
         config = load_config()
         pretty_urls = to_bool(config.get("pretty_urls", config.get("prettyUrls", False)))

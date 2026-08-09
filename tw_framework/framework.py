@@ -250,13 +250,58 @@ def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
     pretty_urls = compiler.to_bool(config.get("pretty_urls", config.get("prettyUrls", False)))
 
     def render_and_write(route_path: str, render_context: Dict, out_path: str) -> Any:
-        artifacts = compiler.compile_file_pipeline(
-            tw_path,
-            context=render_context,
-            css_href=css_url,
-            route_path=route_path,
-        )
-        html_text = artifacts.html or ""
+        # ── App Router mode: use compose_nested_layouts ───────────────
+        if page_info.get("app_router") and page_info.get("layout_files"):
+            page_ast = compiler.load_page_ast_from_file(tw_path)
+            body_html, needs_router, head_scripts = compiler.render_elements_html(
+                page_ast.body, render_context
+            )
+            title = compiler.interpolate(page_ast.title, render_context) if page_ast.title else ""
+            head_extras = "".join(head_scripts) + compiler.build_theme_inline_script(render_context) + compiler.render_head_extras(page_ast.head, render_context)
+
+            style_lines = []
+            if page_ast.loaded_sheets:
+                combined = "\n\n".join(compiler.render_css(sheet, render_context) for sheet in page_ast.loaded_sheets)
+                style_lines.append(f"  <style>\n{combined}\n  </style>")
+            style_blocks = ("\n".join(style_lines) + "\n") if style_lines else ""
+
+            # Zero-JS detection
+            raw_source = ""
+            try:
+                raw_source = compiler.read_text_file(page_ast._tw_source_path) if page_ast._tw_source_path else ""
+            except (OSError, UnicodeDecodeError):
+                raw_source = ""
+
+            from .reactivity import has_reactivity
+            reactive_enabled = bool(raw_source and has_reactivity(raw_source))
+            zero_js = compiler.is_zero_js_page(
+                page_ast,
+                body_html=body_html,
+                needs_router_runtime=needs_router,
+                raw_source=raw_source,
+                reactive_enabled=reactive_enabled,
+            )
+
+            html_text = compiler.compose_nested_layouts(
+                layout_files=page_info["layout_files"],
+                page_body_html=body_html,
+                page_title=title,
+                page_head_extras=head_extras,
+                page_style_blocks=style_blocks,
+                page_runtime_scripts="",
+                context=render_context,
+                page=page_ast,
+                zero_js=zero_js,
+            )
+        else:
+            # ── Legacy mode: standard compile_file_pipeline ────────────
+            artifacts = compiler.compile_file_pipeline(
+                tw_path,
+                context=render_context,
+                css_href=css_url,
+                route_path=route_path,
+            )
+            html_text = artifacts.html or ""
         if compiler.MINIFY_OUTPUT:
             html_text = compiler.minify_html_content(html_text)
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
