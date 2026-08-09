@@ -740,6 +740,8 @@ class PageNode:
         self.responsive = False
         # Client-side reactive state variables (state { ... } block)
         self.state_vars = {}
+        # generateStaticParams: path to JSON file for dynamic route pre-rendering
+        self.generate_static_params = None
         # Source file path for reactivity detection
         self._tw_source_path = ""
 
@@ -3618,11 +3620,14 @@ def parse_page_block(tokens, i, page) -> Any:
         if key == "rewrite":
             page.rewrite_to = str(value)
             continue
+        if key == "generateStaticParams":
+            page.generate_static_params = str(value)
+            continue
 
         raise CompilerError(
             f"Unknown key inside `page`: `{key}`",
             token=token,
-            suggestion="Use `title`, `layout`, `render`, `revalidate`, `cache_by`, `cache_size`, `redirect`, or `rewrite`.",
+            suggestion="Use `title`, `layout`, `render`, `revalidate`, `cache_by`, `cache_size`, `redirect`, `rewrite`, or `generateStaticParams`.",
         )
     raise CompilerError(
         "Missing closing `}` for `page` block",
@@ -4231,11 +4236,64 @@ def render_head_extras(head, context) -> Any:
 
 
 def get_router_runtime_url() -> Any:
-    runtime_js = """window.__twRouterGoto = window.__twRouterGoto || function(event, path) {
-  if (event && typeof event.preventDefault === 'function') event.preventDefault();
-  window.location.href = path;
-  return false;
-};"""
+    runtime_js = """/* TW Client-Side Router (v0.7.1) */
+(function(){
+  var pageCache = {};
+  function swapBody(newHtml) {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(newHtml, 'text/html');
+    var newBody = doc.querySelector('body');
+    if (newBody) {
+      document.body.innerHTML = newBody.innerHTML;
+      var scripts = document.body.querySelectorAll('script');
+      scripts.forEach(function(oldScript) {
+        var newScript = document.createElement('script');
+        if (oldScript.src) { newScript.src = oldScript.src; }
+        else { newScript.textContent = oldScript.textContent; }
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+      });
+    }
+    var newTitle = doc.querySelector('title');
+    if (newTitle) document.title = newTitle.textContent;
+  }
+  function navigate(path, pushState) {
+    if (path === window.location.pathname) return;
+    if (pageCache[path]) {
+      if (pushState) window.history.pushState({tw: path}, '', path);
+      swapBody(pageCache[path]);
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (typeof window.__twOnLoading === 'function') window.__twOnLoading();
+    fetch(path, {headers: {'X-TW-Client-Nav': '1'}})
+      .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.text(); })
+      .then(function(html) {
+        pageCache[path] = html;
+        if (pushState) window.history.pushState({tw: path}, '', path);
+        swapBody(html);
+        window.scrollTo(0, 0);
+        if (typeof window.__twOnLoaded === 'function') window.__twOnLoaded();
+      })
+      .catch(function(err) { window.location.href = path; });
+  }
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('[data-tw-link]');
+    if (!link) return;
+    var href = link.getAttribute('href');
+    if (!href || href.startsWith('http') || href.startsWith('#') || link.target === '_blank') return;
+    e.preventDefault();
+    navigate(href, true);
+  });
+  window.addEventListener('popstate', function(e) {
+    navigate(window.location.pathname, false);
+  });
+  window.__twNavigate = function(path) { navigate(path, true); };
+  window.__twRouterGoto = function(event, path) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    navigate(path, true);
+    return false;
+  };
+})();"""
     return write_chunk(runtime_js, "js")
 
 
@@ -5068,6 +5126,49 @@ def load_dynamic_items(tw_path) -> Any:
         file_path=json_path,
         suggestion="Expected either a JSON list (e.g. `[{\"id\":\"a\"}]`) or an object with `{\"items\": [...]}`.",
         code="TW3101",
+    )
+
+
+def load_generate_static_params(page_ast, tw_path):
+    """
+    Load dynamic route params from generateStaticParams directive.
+
+    The page directive `generateStaticParams` specifies a path to a JSON file
+    (relative to the page's directory) that provides the params for
+    pre-rendering a dynamic route at build time.
+
+    Returns a list of item dicts (same shape as load_dynamic_items).
+    Returns None if generateStaticParams is not set.
+    """
+    if not page_ast or not getattr(page_ast, "generate_static_params", None):
+        return None
+
+    params_path = page_ast.generate_static_params
+    page_dir = os.path.dirname(tw_path)
+    if not os.path.isabs(params_path):
+        params_path = os.path.join(page_dir, params_path)
+
+    if not os.path.exists(params_path):
+        log(f"⚠️ generateStaticParams file not found: {params_path}", level="warning")
+        return []
+
+    try:
+        with open(params_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as err:
+        log(f"⚠️ Failed to parse generateStaticParams JSON: {params_path} ({err})", level="warning")
+        return []
+
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict) and isinstance(data.get("items"), list):
+        return data["items"]
+
+    raise CompilerError(
+        f"generateStaticParams JSON has unsupported shape: {params_path}",
+        file_path=params_path,
+        suggestion="Expected either a JSON list (e.g. `[{\"slug\":\"a\"}]`) or an object with `{\"items\": [...]}`.",
+        code="TW3102",
     )
 
 

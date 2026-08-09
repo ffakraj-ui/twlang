@@ -322,7 +322,13 @@ def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
         return [render_and_write(route_path, base_context, out_path)]
 
     built_paths: List[str] = []
-    items = compiler.load_dynamic_items(tw_path)
+    # Check for generateStaticParams directive first
+    _page_ast = compiler.load_page_ast_from_file(tw_path)
+    gsp_items = compiler.load_generate_static_params(_page_ast, tw_path)
+    if gsp_items is not None:
+        items = gsp_items
+    else:
+        items = compiler.load_dynamic_items(tw_path)
     for item in items:
         if not isinstance(item, dict):
             continue
@@ -1217,7 +1223,40 @@ def _build_middleware_response(
 
 
 def discover_api_routes() -> List[dict]:
-    return discover_twm_api_handlers()
+    routes = discover_twm_api_handlers()
+    routes.extend(discover_app_router_api_routes())
+    return routes
+
+
+def discover_app_router_api_routes() -> List[dict]:
+    """
+    Discover route.tw files in App Router mode.
+
+    In App Router mode, route.tw files inside [home]/ (or its subdirectories)
+    are treated as API endpoints. They use the same .twm syntax as legacy
+    route.twm files, but are discovered via the App Router directory structure.
+
+    A route.tw in [home]/api/apps/route.tw -> /api/apps
+    """
+    routes = []
+    try:
+        from .app_router import has_app_router_structure, discover_routes as _discover_app_routes
+    except ImportError:
+        return routes
+
+    if not has_app_router_structure(compiler.HOME_DIR):
+        return routes
+
+    app_routes = _discover_app_routes(compiler.HOME_DIR)
+    for route in app_routes:
+        if not route.is_api:
+            continue
+        routes.append({
+            "path": route.api_file,
+            "route": route.url_path,
+            "lang": "twm",
+        })
+    return routes
 
 
 def discover_twm_api_handlers() -> List[dict]:
@@ -2980,7 +3019,12 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
                     page_ast = compiler.load_page_ast_from_file(page_info["path"])
                     analysis_context = compiler.build_page_context(page_info, page_ast, page_info["path"], route_path=compiler.route_path_from_page_info(page_info))
                     if page_info["type"] == "dynamic":
-                        items = compiler.load_dynamic_items(page_info["path"])
+                        _ast = compiler.load_page_ast_from_file(page_info["path"])
+                        _gsp = compiler.load_generate_static_params(_ast, page_info["path"])
+                        if _gsp is not None:
+                            items = _gsp
+                        else:
+                            items = compiler.load_dynamic_items(page_info["path"])
                         sample_item = next((item for item in items if isinstance(item, dict)), None)
                         if sample_item:
                             analysis_context = compiler.build_page_context(

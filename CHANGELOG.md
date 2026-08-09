@@ -3,6 +3,35 @@
 All notable changes to TW Framework are documented here.
 
 
+## [0.7.1] — 2026-08-09
+
+### Added
+- **Client-side navigation (SPA router)** — the `link` router key now ships a
+  lightweight client-side router (~2KB) that intercepts link clicks, fetches
+  the next page via `fetch()`, and swaps the `<body>` content without a full
+  page reload. Features: page cache, `popstate` handling (back/forward),
+  `__twNavigate()` for programmatic navigation, `__twOnLoading`/`__twOnLoaded`
+  callbacks, and automatic fallback to full navigation on error.
+- **`generateStaticParams`** — new `page { }` block directive for pre-rendering
+  dynamic routes at build time from a JSON data file. Resolves paths relative to
+  the page's directory. Falls back to legacy `load_dynamic_items` when not set.
+- **`route.tw` API routes** — App Router mode now discovers `route.tw` files as
+  API endpoints using the same `.twm` module syntax as legacy `route.twm`.
+  Works with dynamic route directories (`[id]/route.tw`). Legacy `route.twm`
+  files continue to work unchanged.
+
+### Changed
+- Router runtime JS upgraded from simple `window.location.href` redirect to
+  full SPA-style navigation with `DOMParser`, `fetch()`, and `history.pushState`.
+- `discover_api_routes()` now returns both legacy and App Router API routes.
+- `parse_page_block` accepts `generateStaticParams` as a valid page directive.
+- `PageNode` has new `generate_static_params` field (default: `None`).
+
+### Tests
+- 26 new tests in `tests/test_v071_features.py` covering all three features.
+- All 377 tests pass (351 existing + 26 new), 0 failures.
+
+
 ## [0.7.0] — 2026-08-09
 
 ### 🚀 Major: App Router System
