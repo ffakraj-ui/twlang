@@ -293,6 +293,10 @@ def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
                 page=page_ast,
                 zero_js=zero_js,
             )
+            # Inject React bootstrap + loader if page uses React
+            html_text = compiler._inject_react_integration(
+                html_text, page_ast, raw_source, render_context
+            )
         else:
             # ── Legacy mode: standard compile_file_pipeline ────────────
             artifacts = compiler.compile_file_pipeline(
@@ -314,9 +318,17 @@ def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
         route_path = compiler.route_path_from_page_info(page_info)
         base_context = compiler.build_page_context(page_info, page_ast, tw_path, route_path=route_path)
         out_dir = os.path.join(compiler.BUILD_DIR, page_info["rel_dir"]) if page_info["rel_dir"] else compiler.BUILD_DIR
+        is_app_router = page_info.get("app_router", False)
         if pretty_urls and page_info["name"] != "index":
-            out_dir = os.path.join(out_dir, page_info["name"])
-            out_path = os.path.join(out_dir, "index.html")
+            if is_app_router:
+                # App Router: rel_dir already contains the route name (e.g. "about"),
+                # so we must NOT append page_info["name"] again — that causes
+                # double-nesting: dist/about/about/index.html (bug fixed v0.8.1).
+                out_path = os.path.join(out_dir, "index.html")
+            else:
+                # Legacy mode: /about -> dist/about/index.html (clean URLs)
+                out_dir = os.path.join(out_dir, page_info["name"])
+                out_path = os.path.join(out_dir, "index.html")
         else:
             out_path = os.path.join(out_dir, f"{page_info['name']}.html")
         return [render_and_write(route_path, base_context, out_path)]
@@ -2756,7 +2768,8 @@ def write_route_artifacts(output_dir: str) -> Any:
     for api in discover_api_routes():
         if api.get("lang") == "twm":
             with open(api["path"], "r", encoding="utf-8") as handle:
-                funcs = parse_twm_functions(handle.read())
+                _result = parse_twm_functions(handle.read())
+                funcs = _result["functions"] if isinstance(_result, dict) else _result
             method_names = {"get", "post", "put", "patch", "delete", "options"}
             methods = sorted({fn["name"].upper() for fn in funcs if fn["name"].lower() in method_names})
             if not methods and any(fn["name"].lower() == "handler" for fn in funcs):

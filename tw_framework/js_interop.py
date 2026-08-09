@@ -179,41 +179,19 @@ class JSInterop:
         """
         Bundle client-side npm imports into per-package chunks.
         Returns {package_name: chunk_url}.
+
+        v0.8.1: Uses the real ClientBundler for CJS→ESM conversion
+        and transitive dependency resolution.
         """
-        chunk_map = {}
-        chunk_dir = os.path.join(output_dir, "_tw", "chunks", "npm")
-        os.makedirs(chunk_dir, exist_ok=True)
+        # Use the real client-side bundler (v0.8.1)
+        from .client_bundler import ClientBundler
 
-        for imp in imports:
-            if imp.boundary != CLIENT:
-                continue
-
-            pkg = self.resolve_npm_package(imp.path)
-            if not pkg:
-                continue
-
-            if pkg.name in chunk_map:
-                continue
-
-            # Try to read the actual package file
-            js_content = self._read_package_entry(pkg)
-            if not js_content:
-                # Generate a stub that loads from CDN or node_modules
-                js_content = self._generate_npm_loader(pkg)
-
-            digest = hashlib.sha256(
-                js_content.encode("utf-8")
-            ).hexdigest()[:12]
-            filename = f"{pkg.name.replace('/', '_').replace('@', '')}.{digest}.js"
-            chunk_path = os.path.join(chunk_dir, filename)
-
-            if not os.path.exists(chunk_path):
-                with open(chunk_path, "w", encoding="utf-8") as f:
-                    f.write(js_content)
-
-            chunk_map[pkg.name] = f"/_tw/chunks/npm/{filename}"
-
-        return chunk_map
+        bundler = ClientBundler(
+            project_root=self.project_root,
+            output_dir=output_dir,
+        )
+        result = bundler.bundle_imports(imports, output_dir=output_dir)
+        return result.chunks
 
     def _read_package_entry(self, pkg: NPMPackage) -> Optional[str]:
         """Read the actual JS file from node_modules."""
@@ -232,21 +210,49 @@ class JSInterop:
         return None
 
     def _generate_npm_loader(self, pkg: NPMPackage) -> str:
-        """Generate a loader stub for an npm package."""
-        return f"""// TW npm loader: {pkg.name}
-// This is a generated loader. For production, install the package:
-//   npm install {pkg.name}
+        """Generate a loader stub for an npm package (v0.8.1)."""
+        # Generate ESM-compatible import map entry instead of a stub
+        return f"""// TW npm loader: {pkg.name} (v0.8.1)
+// Package not found in node_modules. Install it:
+//   tw install {pkg.name}
+//   or: npm install {pkg.name}
 (function() {{
   'use strict';
-  var _module = {{exports: {{}}}};
-  // Placeholder — replace with actual package code
   if (typeof window !== 'undefined') {{
     window.__tw = window.__tw || {{}};
     window.__tw.npm = window.__tw.npm || {{}};
-    window.__tw.npm['{pkg.name}'] = _module.exports;
+    console.warn('[TW] Package "{pkg.name}" is not installed. Run: tw install {pkg.name}');
   }}
 }})();
 """
+
+    def generate_import_map(self, imports: List[ImportInfo], output_dir: str) -> Dict[str, str]:
+        """
+        Generate an ES Module import map for client-side package resolution.
+        This allows browser-native ESM imports like:
+          import React from "react";
+        to resolve to the correct chunk URL.
+
+        Returns {package_name: chunk_url} mapping.
+        """
+        import_map = {}
+        chunk_map = self.bundle_client_imports(imports, output_dir)
+
+        for pkg_name, chunk_url in chunk_map.items():
+            import_map[pkg_name] = chunk_url
+            # Add bare specifier for subpath imports
+            if not pkg_name.startswith("@"):
+                import_map[f"{pkg_name}/"] = f"{chunk_url}/"
+
+        return import_map
+
+    def render_import_map_script(self, import_map):
+        """Render an import map as a <script> tag for HTML injection."""
+        if not import_map:
+            return ""
+        import json
+        map_json = json.dumps({"imports": import_map}, indent=2)
+        return '<script type="importmap">\n' + map_json + '\n</script>'
 
     def detect_dynamic_imports(self, source: str) -> List[Dict[str, Any]]:
         """Find import() calls for lazy loading."""

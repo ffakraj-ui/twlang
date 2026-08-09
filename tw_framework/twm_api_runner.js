@@ -1,10 +1,16 @@
 /* eslint-disable no-console */
-// TWLang server-side `.twm` API runner.
+// TWLang server-side `.twm` API runner. — v0.8.1
 //
 // Usage:
 //   node twm_api_runner.js /abs/path/to/compiled_module.cjs
 //
 // Reads request JSON from stdin and prints ONE JSON response to stdout.
+//
+// v0.8.1 enhancements:
+//   - Auto-detects missing npm packages and suggests `tw install`
+//   - Better module resolution from project root node_modules
+//   - ESM import support for .mjs files
+//   - Improved error messages with install hints
 
 "use strict";
 
@@ -205,20 +211,52 @@ function createPackageHelper(projectRoot) {
       };
       return Object.prototype.hasOwnProperty.call(deps, name);
     },
+    isInstalled(name) {
+      const nmPath = path.join(projectRoot, "node_modules", name, "package.json");
+      return fs.existsSync(nmPath);
+    },
     require(name) {
       try {
         return projectRequire(name);
       } catch (error) {
         if (error && (error.code === "MODULE_NOT_FOUND" || String(error.message || "").includes("Cannot find module"))) {
-          throw new Error(
-            `Package \`${name}\` nahi mila. Isko project ke package.json me add karke \`npm install ${name}\` chalao.`
-          );
+          const isInstalled = fs.existsSync(path.join(projectRoot, "node_modules", name, "package.json"));
+          const isInPkgJson = this.has(name);
+          let hint;
+          if (!isInPkgJson) {
+            hint = `Package \`${name}\` nahi mila. Isko project ke package.json me add karke install karo:\n  tw install ${name}\n  ya: npm install ${name}`;
+          } else if (!isInstalled) {
+            hint = `Package \`${name}\` package.json me hai par install nahi hai. Run karo:\n  tw install\n  ya: npm install`;
+          } else {
+            hint = `Package \`${name}\` installed hai par load nahi ho paya. Check karo ki Node.js version compatible hai.`;
+          }
+          throw new Error(hint);
         }
         throw error;
       }
     },
     resolve(name) {
-      return projectRequire.resolve(name);
+      try {
+        return projectRequire.resolve(name);
+      } catch (error) {
+        if (error && (error.code === "MODULE_NOT_FOUND" || String(error.message || "").includes("Cannot find module"))) {
+          throw new Error(
+            `Package \`${name}\` not installed. Install with:\n  tw install ${name}\n  or: npm install ${name}`
+          );
+        }
+        throw error;
+      }
+    },
+    install(name, dev) {
+      // Hint: actual install should be done via `tw install` CLI
+      const depType = dev ? "devDependencies" : "dependencies";
+      if (!packageJson[depType]) packageJson[depType] = {};
+      packageJson[depType][name] = "latest";
+      fs.writeFileSync(
+        path.join(projectRoot, "package.json"),
+        JSON.stringify(packageJson, null, 2) + "\n"
+      );
+      return { ok: true, message: `Added ${name} to ${depType}. Run: tw install` };
     },
   };
 }

@@ -15,9 +15,15 @@ _IDENT_RE = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 #   async fn name(...) { ... }
 #   export fn name(...) { ... }
 #   fn name(...) { ... }
+#   export client function name(...) { ... }      (v0.8.1)
+#   export client async function name(...) { ... } (v0.8.1)
+#   export client fn name(...) { ... }             (v0.8.1)
 _FUNC_HEADER_RE = re.compile(
     r"""
-    (?P<prefix>\bexport\b\s+)?(?P<async>\basync\b\s+)?(?P<kw>\bfunction\b|\bfn\b)\s+
+    (?P<prefix>\bexport\b\s+)?
+    (?P<client>\bclient\b\s+)?
+    (?P<async>\basync\b\s+)?
+    (?P<kw>\bfunction\b|\bfn\b)\s+
     (?P<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*
     (?P<params>\([^)]*\))?\s*
     \{
@@ -116,16 +122,33 @@ def _scan_matching_brace(source: str, open_brace_index: int) -> Any:
     raise TWMParseError("Unterminated `{ ... }` block in `.twm` source")
 
 
-def parse_twm_functions(source: str) -> List[Dict[str, str]]:
+_IMPORT_RE = re.compile(
+    r'^\s*import\s+(?:.+?\s+from\s+)?["\']([^"\']+)["\']\s*;?\s*$',
+    re.MULTILINE,
+)
+
+
+def parse_twm_functions(source: str) -> List[Dict[str, Any]]:
     """
-    Minimal `.twm` surface:
-    - `.twm` files are declarative: top-level code is NOT allowed.
-    - Only function declarations are supported in the MVP.
+    Parse a `.twm` module into function declarations + top-level imports.
+
+    v0.8.1: Top-level ``import`` statements are now allowed so that npm
+    packages (e.g. ``import dayjs from "dayjs"``) can be used inside
+    server-side .twm modules.  Imports are returned alongside functions
+    so the CJS compiler can hoist them to the top of the module.
     """
     src = str(source or "")
-    functions: List[Dict[str, str]] = []
+    functions: List[Dict[str, Any]] = []
+    imports: List[str] = []
 
     consumed_spans: List[Tuple[int, int]] = []
+
+    # ── Extract top-level import statements (v0.8.1) ────────────────────
+    for m in _IMPORT_RE.finditer(src):
+        imports.append(src[m.start():m.end()].strip())
+        consumed_spans.append((m.start(), m.end()))
+
+    # ── Extract function declarations ───────────────────────────────────
     for match in _FUNC_HEADER_RE.finditer(src):
         name = match.group("name")
         params = match.group("params") or "()"
@@ -167,11 +190,12 @@ def parse_twm_functions(source: str) -> List[Dict[str, str]]:
             "Only `function`/`fn` declarations are supported so modules never auto-execute."
         )
 
-    return functions
+    return {"functions": functions, "imports": imports}
 
 
 def compile_twm_module_to_js(source: str, *, module_id: str) -> Any:
-    funcs = parse_twm_functions(source)
+    result = parse_twm_functions(source)
+    funcs = result["functions"] if isinstance(result, dict) else result
     lines: List[str] = []
     lines.append(f"// TW module: {module_id}")
     for fn in funcs:
@@ -185,20 +209,86 @@ def compile_twm_module_to_js(source: str, *, module_id: str) -> Any:
     return "\n".join(lines)
 
 
+def _convert_es_import_to_cjs(import_stmt: str) -> str:
+    """
+    Convert an ES import statement to CJS require.
+
+    Examples:
+      import dayjs from "dayjs"
+        → const dayjs = require("dayjs");
+      import { foo, bar } from "utils"
+        → const { foo, bar } = require("utils");
+      import * as ns from "pkg"
+        → const ns = require("pkg");
+      import "pkg"  (side-effect only)
+        → require("pkg");
+    """
+    import_stmt = import_stmt.strip().rstrip(";")
+    
+    # import "pkg" (side-effect only)
+    m = re.match(r'^import\s+["\']([^"\']+)["\']$', import_stmt)
+    if m:
+        return f'require("{m.group(1)}");'
+    
+    # import * as ns from "pkg"
+    m = re.match(r'^import\s+\*\s+as\s+(\w+)\s+from\s+["\']([^"\']+)["\']$', import_stmt)
+    if m:
+        return f'const {m.group(1)} = require("{m.group(2)}");'
+    
+    # import defaultExport from "pkg"
+    m = re.match(r'^import\s+(\w+)\s+from\s+["\']([^"\']+)["\']$', import_stmt)
+    if m:
+        return f'const {m.group(1)} = require("{m.group(2)}");'
+    
+    # import { a, b as c } from "pkg"
+    m = re.match(r'^import\s+\{([^}]+)\}\s+from\s+["\']([^"\']+)["\']$', import_stmt)
+    if m:
+        named = m.group(1).strip()
+        return f'const {{ {named} }} = require("{m.group(2)}");'
+    
+    # import defaultExport, { named } from "pkg"
+    m = re.match(r'^import\s+(\w+)\s*,\s*\{([^}]+)\}\s+from\s+["\']([^"\']+)["\']$', import_stmt)
+    if m:
+        default_name = m.group(1)
+        named = m.group(2).strip()
+        pkg = m.group(3)
+        return f'const {default_name} = require("{pkg}");\nconst {{ {named} }} = require("{pkg}");'
+    
+    # Fallback: try to extract module path and require it
+    m = re.search(r'["\']([^"\']+)["\']', import_stmt)
+    if m:
+        return f'require("{m.group(1)}");'
+    
+    return f'// Could not convert: {import_stmt}'
+
+
 def compile_twm_module_to_cjs(source: str, *, module_id: str) -> Any:
     """
     Compile `.twm` into a CommonJS module for server-side execution (Node.js).
 
+    v0.8.1: Top-level import statements are converted to CJS require()
+    and hoisted to the top of the module, so npm packages work.
+
     Important:
-    - `.twm` already forbids top-level statements, so generating a Node module
-      is safe from accidental auto-execution.
+    - `.twm` already forbids top-level statements (except imports), so
+      generating a Node module is safe from accidental auto-execution.
     - This output does NOT use `window` / browser globals.
     """
-    funcs = parse_twm_functions(source)
+    result = parse_twm_functions(source)
+    funcs = result["functions"]
+    imports = result.get("imports", [])
+    
     lines: List[str] = []
-    lines.append(f"// TW server module: {module_id}")
+    lines.append(f"// TW server module: {module_id} (v0.8.1)")
     lines.append("'use strict';")
     lines.append("")
+    
+    # Hoist imports as CJS require() statements (v0.8.1)
+    for imp in imports:
+        lines.append(_convert_es_import_to_cjs(imp))
+    if imports:
+        lines.append("")
+    
     for fn in funcs:
         name = fn["name"]
         params = fn["params"]

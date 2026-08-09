@@ -1,6 +1,90 @@
 # Changelog
 
+## v0.8.1 (2026-08-10)
+
+### Major Features
+
+#### NPM Package Manager
+- `tw install <package>` — Install npm packages like Next.js (alias: `tw add`)
+- `tw install` (no args) — Install all dependencies from package.json
+- `tw remove <package>` — Remove npm packages (alias: `tw rm`)
+- `tw list` — List installed packages (alias: `tw ls`)
+- `tw list --detailed` — Show installed versions from node_modules
+- `--dev` flag for devDependencies, `--exact` for exact versions
+- Auto-detects package manager (npm, pnpm, yarn, bun) from lockfiles
+- Auto-updates `tw.config` `server.external_packages` on install/remove
+- Version specifiers supported: `tw install react@18.2.0`
+- Multiple packages: `tw install react react-dom axios`
+- React detection hint when react/react-dom is installed
+
+#### React Compatibility Layer
+- `tw_framework/react_compat.py` — Full React integration module
+- React can be used alongside TW's native VDOM for interactive islands
+- `ReactCompat` class: detect React usage, get version, generate bootstrap JS
+- React bootstrap JS with mount/unmount/register API
+- CDN fallback loader for dev mode
+- Setup hints and documentation for React + TW integration
+- Does NOT replace TW VDOM — coexists as progressive enhancement
+
+#### Security Module (`tw_framework/security.py`)
+- CSP (Content Security Policy) nonce generation
+- `build_csp_header()` — Build CSP headers with nonce support
+- `get_secure_headers()` — 9 secure HTTP headers (HSTS, X-Frame-Options, etc.)
+- `render_secure_headers_html()` — Render secure headers as meta tags
+- `sanitize_html()` — Escape HTML special characters (XSS prevention)
+- `sanitize_attribute()` — Sanitize HTML attribute values
+- `sanitize_js_string()` — Sanitize strings for JavaScript context
+- `sanitize_url()` — Block javascript:, data:, vbscript: URLs
+- `generate_csrf_token()` / `validate_csrf_token()` — CSRF protection
+- `safe_join_path()` — Path traversal prevention
+- `strip_dangerous_html()` — Remove dangerous tags and event handlers
+
+#### Enhanced Lib System
+- `_is_npm_package()` and `_resolve_npm_package()` in lib_executor.py
+- npm packages from node_modules are now properly resolved in .twm files
+- Node.js bridge script enhanced (v0.8.1):
+  - Uses `createRequire` for proper module resolution from project root
+  - Auto-detects missing npm packages and suggests `tw install`
+  - Injects `http`, `env`, `pkg` runtime helpers (matching twm_api_runner.js)
+  - `pkg.require()`, `pkg.has()`, `pkg.resolve()`, `pkg.json()` API
+- `resolve_module_path()` now handles npm packages (react, chart.js, etc.)
+- Better error messages with install hints for missing packages
+
+#### Enhanced JS Interop
+- `generate_import_map()` — Generate ES Module import maps for client-side resolution
+- `render_import_map_script()` — Render import map as `<script type="importmap">` tag
+- Better npm loader stubs with install hints
+- `_generate_npm_loader()` now warns about uninstalled packages
+
+#### Enhanced twm_api_runner.js (v0.8.1)
+- `isInstalled()` method on package helper
+- `install()` method to add packages to package.json
+- Better error messages with `tw install` hints
+- Improved `resolve()` with helpful error messages
+
+### Other Changes
+- 69 new tests (543 total, all passing)
+- `npm_manager.py` — New module for NPM package management
+- `react_compat.py` — New module for React compatibility
+- `security.py` — New module for security utilities
+- CLI now has `install`, `add`, `remove`/`rm`, `list`/`ls` subcommands
+- Zero-JS preservation verified for static pages
+- All existing v0.8.0 features remain fully backward compatible
+
+### Breaking Changes
+- `tw.config` `server.external_packages` is automatically updated when using `tw install` (non-breaking — just adds packages)
+- Lib executor Node.js bridge now uses `createRequire` from project root instead of module directory (improves npm package resolution, backward compatible)
+- `resolve_module_path()` now checks node_modules for npm packages before trying project root (backward compatible — only affects npm-style package names)
+
+### Migration
+- See [MIGRATION_V0.8.1.md](MIGRATION_V0.8.1.md) for step-by-step migration guide
+- No code changes required for existing projects — all changes are additive
+- Run `tw install` to verify all dependencies are properly installed
+
+---
+
 ## v0.8.0 (2026-08-09)
+
 
 ### Major Features
 

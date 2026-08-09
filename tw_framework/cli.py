@@ -13,6 +13,13 @@ from .common import log
 from .lexer import tokenize_file
 from .lowering import lower_program
 from .parser import parse_file
+from .npm_manager import (
+    install_packages as npm_install_packages,
+    remove_packages as npm_remove_packages,
+    list_packages as npm_list_packages,
+    verify_node_modules as npm_verify_node_modules,
+    ensure_dependencies as npm_ensure_dependencies,
+)
 from .semantic import analyze_program
 
 
@@ -113,12 +120,12 @@ body {
         button {
             on:click "__tw.set('count', __tw.get('count') + 1)"
             class "button"
-            "+"
+            text "+"
         }
         button {
             on:click "__tw.set('count', __tw.get('count') - 1)"
             class "button"
-            "-"
+            text "-"
         }
     }
 }
@@ -595,14 +602,10 @@ def command_build(args) -> Any:
 
     _, code = run_once()
     if code or not args.watch:
-        # Generate deployment metadata even on failure (for debugging)
-        try:
-            framework.generate_deploy_metadata(
-                output_dir=args.out_dir or resolve_output_dir(project_root),
-                config=compiler.load_config(),
-            )
-        except Exception:
-            pass
+        # generate_deploy_metadata() is already called inside
+        # framework.build_hidden_site() (framework.py ~line 3209),
+        # so we don't need to call it again here — that was a
+        # duplicate call causing wasted file I/O (fixed v0.8.1).
         return code
 
     watcher_project = framework.TWProject(project_root)
@@ -985,6 +988,68 @@ def command_serve(args) -> int:
     return 0
 
 
+def command_install(args) -> int:
+    """Install npm packages — like `npm install` in Next.js."""
+    project_root = find_project_root(args.project_root) if args.project_root else os.getcwd()
+    # If no project root found and no packages, try current dir
+    try:
+        project_root = find_project_root(args.project_root)
+    except Exception:
+        if args.packages:
+            # Create a minimal project in current dir
+            project_root = os.getcwd()
+            if not os.path.exists(os.path.join(project_root, "package.json")):
+                write_text(
+                    os.path.join(project_root, "package.json"),
+                    build_package_json(os.path.basename(project_root)),
+                )
+        else:
+            log("✖ Not in a TW project. Run `tw create <name>` first or specify --project-root.", level="error")
+            return 1
+
+    packages = args.packages or []
+    success = npm_install_packages(
+        project_root=project_root,
+        packages=packages,
+        dev=args.dev,
+        exact=args.exact,
+    )
+    return 0 if success else 1
+
+
+def command_add(args) -> int:
+    """Alias for `tw install`."""
+    return command_install(args)
+
+
+def command_remove(args) -> int:
+    """Remove npm packages."""
+    try:
+        project_root = find_project_root(args.project_root)
+    except Exception:
+        log("✖ Not in a TW project.", level="error")
+        return 1
+
+    if not args.packages:
+        log("✖ Specify packages to remove: tw remove <package> [package2 ...]", level="error")
+        return 1
+
+    success = npm_remove_packages(project_root, args.packages)
+    return 0 if success else 1
+
+
+def command_list(args) -> int:
+    """List installed npm packages."""
+    try:
+        project_root = find_project_root(args.project_root)
+    except Exception:
+        log("✖ Not in a TW project.", level="error")
+        return 1
+
+    npm_list_packages(project_root, detailed=args.detailed)
+    return 0
+
+
 def build_parser() -> Any:
     parser = argparse.ArgumentParser(description="TW framework CLI")
     parser.add_argument("--project-root", help="Manual project root override")
@@ -1118,6 +1183,27 @@ def build_parser() -> Any:
     deploy_parser.add_argument("--prod", action="store_true", help="Production deploy flag")
     deploy_parser.add_argument("--dry-run", action="store_true", help="Validate config + build, but do not deploy")
     deploy_parser.set_defaults(func=command_deploy)
+
+    # ── NPM Package Management (v0.8.1) ──────────────────────────────────────
+    install_parser = subparsers.add_parser("install", help="Install npm packages (like Next.js)")
+    install_parser.add_argument("packages", nargs="*", help="Package names (e.g. react react-dom@18.2.0)")
+    install_parser.add_argument("--dev", action="store_true", help="Save as devDependency")
+    install_parser.add_argument("--exact", action="store_true", help="Save exact version (no ^)")
+    install_parser.set_defaults(func=command_install)
+
+    add_parser_cmd = subparsers.add_parser("add", help="Add npm packages (alias for install)")
+    add_parser_cmd.add_argument("packages", nargs="*", help="Package names")
+    add_parser_cmd.add_argument("--dev", action="store_true", help="Save as devDependency")
+    add_parser_cmd.add_argument("--exact", action="store_true", help="Save exact version")
+    add_parser_cmd.set_defaults(func=command_add)
+
+    remove_parser = subparsers.add_parser("remove", aliases=["rm"], help="Remove npm packages")
+    remove_parser.add_argument("packages", nargs="+", help="Package names to remove")
+    remove_parser.set_defaults(func=command_remove)
+
+    list_parser = subparsers.add_parser("list", aliases=["ls"], help="List installed npm packages")
+    list_parser.add_argument("--detailed", action="store_true", help="Show installed versions")
+    list_parser.set_defaults(func=command_list)
 
     serve_parser = subparsers.add_parser("serve", help="Run the production server (SSR + API routes)")
     serve_parser.add_argument("--host", default=None, help="Bind host (default: 0.0.0.0)")

@@ -62,6 +62,9 @@ SERVER_API_PATTERNS = [
 ]
 
 # Indicators that a module uses client-only APIs
+# NOTE: fetch() is intentionally NOT here — it runs on both Node.js (server)
+# and browser (client).  Putting it in CLIENT_API_PATTERNS caused server-only
+# .twm API routes that use fetch() to be misclassified as "shared".
 CLIENT_API_PATTERNS = [
     re.compile(r'\bdocument\b'),
     re.compile(r'\bwindow\b'),
@@ -70,12 +73,19 @@ CLIENT_API_PATTERNS = [
     re.compile(r'\bsessionStorage\b'),
     re.compile(r'\bnavigator\b'),
     re.compile(r'\bWebSocket\b'),
-    re.compile(r'\bfetch\s*\('),
     re.compile(r'\baddEventListener\b'),
     re.compile(r'\bquerySelector\b'),
     re.compile(r'\bgetElementById\b'),
     re.compile(r'\bcreateElement\b'),
+    re.compile(r'\binnerHTML\b'),
+    re.compile(r'\bonclick\b'),
+    re.compile(r'\bonload\b'),
+    re.compile(r'\bdocument\.write\b'),
 ]
+
+# Patterns that are *unambiguously* browser-only (DOM APIs).
+# fetch() is NOT here because Node.js 18+ has it natively.
+BROWSER_ONLY_PATTERNS = CLIENT_API_PATTERNS
 
 
 @dataclass
@@ -140,8 +150,24 @@ class ImportClassifier:
         # Bare names (TW components) are shared by default
         return SHARED
 
-    def classify_module_source(self, source: str) -> str:
-        """Classify a module by analyzing its source code."""
+    def classify_module_source(self, source: str, file_path: str = "") -> str:
+        """
+        Classify a module by analyzing its source code.
+
+        v0.8.1 fix: fetch() is no longer treated as client-only because
+        Node.js 18+ has it natively.  Only genuine DOM APIs (document,
+        window, localStorage, etc.) mark a module as CLIENT.
+
+        If file_path is provided and ends with .twm, the module is
+        server-side by definition — .twm files run in Node.js at build
+        time and should never be classified as CLIENT even if they
+        contain patterns that *look* browser-ish (e.g. a string that
+        mentions 'window' in a comment).
+        """
+        # .twm files are always server-side
+        if file_path and file_path.endswith(".twm"):
+            return SERVER
+
         has_server = any(p.search(source) for p in SERVER_API_PATTERNS)
         has_client = any(p.search(source) for p in CLIENT_API_PATTERNS)
 

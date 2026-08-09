@@ -2,7 +2,7 @@
 
 A high-performance, HTML-first web framework with Virtual DOM, App Router, and Zero-JS static sites.
 
-**v0.8.0** — Virtual DOM, Lib system overhaul, Server Actions, ISR, Metadata API
+**v0.8.1** — NPM Package Manager, React Compatibility, Security Module, Enhanced Lib System
 
 ## Quick Start
 
@@ -13,7 +13,55 @@ cd my-site
 tw build
 ```
 
-## What's New in v0.8.0
+## What's New in v0.8.1
+
+### NPM Package Manager (like Next.js)
+Install, remove, and list npm packages directly from the TW CLI:
+```bash
+tw install react react-dom        # Install packages
+tw install chart.js@4.0.0         # Install specific version
+tw install --save-dev jest         # Save as devDependency
+tw install --exact axios@1.6.0    # Save exact version (no ^)
+tw add lodash                      # Alias for install
+tw remove react                    # Remove a package
+tw list                            # List installed packages
+tw list --detailed                 # Show installed versions
+```
+
+### React Compatibility
+Use React alongside TW's native VDOM for islands of interactivity:
+```bash
+tw install react react-dom
+```
+
+```tw
+import { Counter } from "@/lib/react-component"
+
+page {
+    title "React Demo"
+    render interactive
+}
+
+body {
+    div { id "react-root" }
+    script { on:load "__tw.react.mount('Counter', 'react-root')" }
+}
+```
+
+### Security Module
+Built-in CSP nonce generation, secure HTTP headers, input sanitization, and CSRF protection.
+
+### Enhanced Lib System
+- NPM packages from node_modules are now properly resolved in .twm files
+- Better error messages with install hints for missing packages
+- Import maps generation for client-side ESM resolution
+
+### Breaking Changes
+- `tw.config` `server.external_packages` is automatically updated when using `tw install`
+- Lib executor now resolves npm packages from project root node_modules
+- See [MIGRATION_V0.8.1.md](MIGRATION_V0.8.1.md) for full migration guide
+
+## What's New in v0.8.0 (Previous Release)
 
 - **Virtual DOM** — TW-native VDOM with diff-and-patch algorithm (~3KB, no React dependency)
 - **Lib System Overhaul** — `import { getData } from "@/lib/data"` syntax, async/await, type annotations, client-side functions

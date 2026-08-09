@@ -234,7 +234,7 @@ LAYOUT_RESPONSIVE_RE = re.compile(
 
 IMPORT_RE = re.compile(r'\bimport\s+"([^"]+)"')
 LAYOUT_RE = re.compile(r'\blayout\s+(?:"([^"]+)"|([^\s{}]+))')
-LOAD_RE = re.compile(r'\bload\s+(?:"([^"]+)"|(@[^\s{}"\']+))')
+LOAD_RE = re.compile(r'(?<![\w:])\bload\s+(?:"([^"]+)"|(@[^\s{}"\']+))')
 COMPONENT_LOAD_RE = re.compile(r'(?m)^[ \t]*load\s+(?:"([^"]+)"|(@[^\s{}"\']+))[ \t]*$')
 LAYOUT_LOAD_RE = re.compile(r'(?m)^[ \t]*load\s+(?:"([^"]+)"|(@[^\s{}"\']+))[ \t]*$')
 
@@ -2890,7 +2890,8 @@ _LIB_MODULES = {}
 def register_lib_module(source, module_id=""):
     try:
         from .twm_parser import parse_twm_functions
-        funcs = parse_twm_functions(source)
+        _result = parse_twm_functions(source)
+        funcs = _result["functions"] if isinstance(_result, dict) else _result
         with _LIB_LOCK:
             for fn in funcs:
                 _LIB_MODULES[fn["name"]] = {
@@ -4911,6 +4912,80 @@ def _inject_on_load_inits(html_text: str, handlers: Any) -> Any:
     return html_text + script
 
 
+def _inject_react_integration(html_doc: str, page, raw_source: str, context: dict) -> str:
+    """
+    Inject React bootstrap + loader scripts into the HTML if the page uses React.
+
+    This connects ReactCompat to the actual build pipeline.
+    (fixed v0.8.1 — previously ReactCompat was defined but never called during build.)
+
+    Detection:
+      - React import statements in page source or loaded .twm modules
+      - render_mode == "interactive"
+    """
+    try:
+        from .react_compat import ReactCompat
+
+        react = ReactCompat(
+            project_root=os.path.dirname(getattr(page, "_tw_source_path", "") or "")
+        )
+        uses_react = False
+
+        if raw_source and react.detect_react_usage(raw_source):
+            uses_react = True
+
+        # Also check loaded .twm modules for React imports
+        if not uses_react:
+            for mod_path in getattr(page, "loaded_modules", []) or []:
+                try:
+                    mod_src = read_text_file(mod_path) if mod_path and os.path.exists(mod_path) else ""
+                    if mod_src and react.detect_react_usage(mod_src):
+                        uses_react = True
+                        break
+                except (OSError, UnicodeDecodeError):
+                    continue
+
+        # render interactive mode implies React usage
+        if not uses_react and getattr(page, "render_mode", "") == "interactive":
+            uses_react = True
+
+        if not uses_react:
+            return html_doc
+
+        # Determine CDN vs bundle based on config
+        config_react_cdn = True
+        if isinstance(context, dict):
+            cfg = context.get("config", {})
+            if isinstance(cfg, dict):
+                config_react_cdn = to_bool(
+                    cfg.get("react_cdn", cfg.get("reactCdn", True))
+                )
+
+        # Inject bootstrap JS first (defines __tw.react)
+        bootstrap = react.get_bootstrap_js()
+        if "</body>" in html_doc:
+            html_doc = html_doc.replace(
+                "</body>", f'<script>\n{bootstrap}\n</script>\n</body>', 1
+            )
+
+        # Inject loader script (CDN or node_modules bundle)
+        loader = react.get_react_loader_script(use_cdn=config_react_cdn)
+        if loader and "</body>" in html_doc:
+            html_doc = html_doc.replace("</body>", f'{loader}\n</body>', 1)
+
+        if not config_react_cdn and not react.is_react_installed():
+            logger.warning(
+                "Page uses React but react is not installed in node_modules "
+                "and react_cdn is disabled. Run: tw install react react-dom"
+            )
+    except Exception:
+        if os.environ.get("TW_STRICT_EVAL", "").strip().lower() in {"1", "true", "yes", "on"}:
+            raise
+        logger.debug("React integration skipped", exc_info=True)
+
+    return html_doc
+
+
 def render_html(page, context, css_href) -> Any:
     if page.redirect_to:
         target = interpolate(page.redirect_to, context)
@@ -5041,6 +5116,7 @@ def render_html(page, context, css_href) -> Any:
             layout_html = _inject_reactivity_runtime(layout_html, raw_source, page_state)
         if not zero_js:
             layout_html = _inject_on_load_inits(layout_html, getattr(page, "on_load_inits", []) or [])
+        layout_html = _inject_react_integration(layout_html, page, raw_source, context)
         return layout_html
 
     final_doc = build_default_document(
@@ -5059,6 +5135,8 @@ def render_html(page, context, css_href) -> Any:
 
     if not zero_js:
         final_doc = _inject_on_load_inits(final_doc, getattr(page, "on_load_inits", []) or [])
+
+    final_doc = _inject_react_integration(final_doc, page, raw_source, context)
     return final_doc
 
 
@@ -5552,10 +5630,17 @@ def build_one_page(page_info, css_url) -> Any:
         if MINIFY_OUTPUT:
             html = minify_html_content(html)
         out_dir = os.path.join(BUILD_DIR, page_info["rel_dir"]) if page_info["rel_dir"] else BUILD_DIR
+        is_app_router = page_info.get("app_router", False)
         if pretty_urls and page_info["name"] != "index":
-            # /about -> dist/about/index.html (clean URLs on static hosts)
-            out_dir = os.path.join(out_dir, page_info["name"])
-            out_path = os.path.join(out_dir, "index.html")
+            if is_app_router:
+                # App Router: rel_dir already contains the route name (e.g. "about"),
+                # so we must NOT append page_info["name"] again — that causes
+                # double-nesting: dist/about/about/index.html (bug fixed v0.8.1).
+                out_path = os.path.join(out_dir, "index.html")
+            else:
+                # Legacy mode: /about -> dist/about/index.html (clean URLs)
+                out_dir = os.path.join(out_dir, page_info["name"])
+                out_path = os.path.join(out_dir, "index.html")
         else:
             # legacy: /about -> dist/about.html
             out_path = os.path.join(out_dir, f"{page_info['name']}.html")

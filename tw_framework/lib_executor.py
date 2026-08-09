@@ -143,29 +143,80 @@ def parse_imports(source: str) -> List[Dict[str, Any]]:
 def resolve_module_path(module_spec: str, source_file: str, project_root: str) -> Optional[str]:
     """
     Resolve a module specifier to a file path.
-    
+
     Supports:
       "@/lib/data" → <project_root>/lib/data.twm
       "./utils"    → <source_dir>/utils.twm
       "../shared"  → <source_dir>/../shared.twm
       "lib/data"   → <project_root>/lib/data.twm (no @ prefix)
+      "react"      → <project_root>/node_modules/react (npm package, v0.8.1)
+      "chart.js"   → <project_root>/node_modules/chart.js (npm package)
     """
+    # @/ prefix → project root
     if module_spec.startswith('@/'):
         rel = module_spec[2:]
         base = os.path.join(project_root, rel)
+    # Relative paths
     elif module_spec.startswith('./') or module_spec.startswith('../'):
         source_dir = os.path.dirname(source_file)
         base = os.path.normpath(os.path.join(source_dir, module_spec))
+    # Check if it's an npm package in node_modules (v0.8.1)
+    elif _is_npm_package(module_spec, project_root):
+        return _resolve_npm_package(module_spec, project_root)
     else:
         base = os.path.join(project_root, module_spec)
-    
-    # Try extensions
+
+    # Try extensions for TW/JS modules
     for ext in ('.twm', '.js', '.mjs', '.cjs', '/index.twm', '/index.js'):
         candidate = base + ext if not ext.startswith('/') else base + ext
         if os.path.exists(candidate):
             return os.path.abspath(candidate)
-    
+
+    # Last resort: check node_modules
+    if _is_npm_package(module_spec, project_root):
+        return _resolve_npm_package(module_spec, project_root)
+
     return None
+
+
+def _is_npm_package(name: str, project_root: str) -> bool:
+    """Check if a module spec looks like an npm package and is installed."""
+    if name.startswith('@/') or name.startswith('./') or name.startswith('../'):
+        return False
+    # Node built-in modules
+    if name in ('fs', 'path', 'os', 'http', 'https', 'crypto', 'url', 'util',
+                'stream', 'events', 'buffer', 'child_process', 'net', 'tls',
+                'zlib', 'querystring', 'assert', 'dns', 'cluster', 'worker_threads'):
+        return True
+    # Check node_modules
+    nm_path = os.path.join(project_root, 'node_modules', name, 'package.json')
+    return os.path.exists(nm_path)
+
+
+def _resolve_npm_package(name: str, project_root: str) -> Optional[str]:
+    """Resolve an npm package to its entry point."""
+    pkg_json_path = os.path.join(project_root, 'node_modules', name, 'package.json')
+    if not os.path.exists(pkg_json_path):
+        return None
+    try:
+        with open(pkg_json_path, 'r', encoding='utf-8') as f:
+            pkg_data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+    # Entry point priority: browser > module > main > index.js
+    entry = (
+        pkg_data.get('browser')
+        or pkg_data.get('module')
+        or pkg_data.get('main')
+        or 'index.js'
+    )
+    if isinstance(entry, dict):
+        entry = entry.get('.', pkg_data.get('main', 'index.js'))
+    entry_path = os.path.join(project_root, 'node_modules', name, entry)
+    if os.path.exists(entry_path):
+        return os.path.abspath(entry_path)
+    return None
+
 
 
 def resolve_imports(imports: List[Dict], source_file: str, project_root: str) -> List[Dict]:
@@ -306,8 +357,9 @@ def compile_twm_with_imports(
     """
     from .twm_parser import parse_twm_functions, compile_twm_module_to_cjs
     
-    # Parse functions from the source
-    funcs = parse_twm_functions(twm_source)
+    # Parse functions from the source (v0.8.1: returns dict with functions + imports)
+    _result = parse_twm_functions(twm_source)
+    funcs = _result["functions"] if isinstance(_result, dict) else _result
     
     # Extract client functions
     client_fns = extract_client_functions(twm_source)
@@ -337,10 +389,27 @@ def compile_twm_with_imports(
 
 # ─── Execute Server Function via Node.js ──────────────────────────────────────
 
-_NODE_BRIDGE_SCRIPT = r"""// TW lib function executor (build-time) — v0.8.0
+_NODE_BRIDGE_SCRIPT = r"""// TW lib function executor (build-time) — v0.8.1
 "use strict";
 const path = require("path");
 const fs = require("fs");
+const { createRequire } = require("module");
+
+function findProjectRoot(startPath) {
+  let current = path.resolve(startPath || process.cwd());
+  while (true) {
+    if (
+      fs.existsSync(path.join(current, "package.json")) ||
+      fs.existsSync(path.join(current, "tw.config")) ||
+      fs.existsSync(path.join(current, "[home]"))
+    ) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return process.cwd();
+    current = parent;
+  }
+}
 
 function main() {
   const compiledPath = process.argv[2];
@@ -348,27 +417,75 @@ function main() {
   const argsJson = process.argv[4] || "[]";
   let args;
   try { args = JSON.parse(argsJson); } catch (e) { args = []; }
-  
-  // Support import-based module loading
-  const moduleDir = process.argv[5] || "";
-  if (moduleDir) {
-    // Create a require that resolves from the module's directory
-    const Module = require('module');
-    const origResolve = Module._resolveFilename;
-    Module._resolveFilename = function(request, parent) {
-      // Resolve @/ prefix
-      if (request.startsWith('@/')) {
-        const rel = request.slice(2);
-        for (const ext of ['.twm', '.js', '.mjs', '.cjs', '/index.twm', '/index.js']) {
-          const candidate = path.join(moduleDir, rel + ext);
-          if (fs.existsSync(candidate)) return candidate;
+
+  const projectRoot = process.argv[5] || findProjectRoot(compiledPath);
+
+  // Create a project-rooted require for npm package resolution.
+  // This is the key: using createRequire from project root's package.json
+  // means require("dayjs") inside the compiled module resolves correctly
+  // to node_modules/dayjs — WITHOUT needing Module._resolveFilename override
+  // (which caused OOM with dayjs's complex regex).
+  const projectRequire = createRequire(path.join(projectRoot, "package.json"));
+
+  // Override global require for the compiled module's scope.
+  // We do this by monkey-patching Module.prototype.require temporarily.
+  const Module = require("module");
+  const origRequire = Module.prototype.require;
+  Module.prototype.require = function(request) {
+    // Resolve @/ prefix → project root
+    if (typeof request === "string" && request.startsWith("@/")) {
+      const rel = request.slice(2);
+      for (const ext of [".twm", ".js", ".mjs", ".cjs", "/index.twm", "/index.js"]) {
+        const candidate = path.join(projectRoot, rel + ext);
+        if (fs.existsSync(candidate)) return origRequire.call(this, candidate);
+      }
+    }
+    // For npm packages, use project-rooted require
+    if (typeof request === "string" && !request.startsWith(".") && !request.startsWith("/")) {
+      try {
+        return projectRequire(request);
+      } catch (e) {
+        // Check if it's a Node built-in
+        try { return origRequire.call(this, request); } catch (e2) {
+          process.stderr.write(
+            "Package '" + request + "' is not installed.\n" +
+            "  Install it with: tw install " + request + "\n" +
+            "  Or: npm install " + request + "\n"
+          );
+          throw e2;
         }
       }
-      return origResolve.apply(this, arguments);
+    }
+    return origRequire.call(this, request);
+  };
+
+  // Inject runtime helpers
+  try {
+    globalThis.http = {
+      get(url, opts) { return fetch(url, {...(opts||{}), method: "GET"}).then(r => r.json()); },
+      post(url, body, opts) {
+        return fetch(url, {...(opts||{}), method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body)}).then(r => r.json());
+      },
     };
-  }
-  
+    globalThis.env = new Proxy({}, {
+      get(_, prop) { return process.env[prop]; },
+      has(_, prop) { return prop in process.env; }
+    });
+    globalThis.pkg = {
+      require(name) { return projectRequire(name); },
+      has(name) { try { projectRequire.resolve(name); return true; } catch(e) { return false; } },
+      resolve(name) { return projectRequire.resolve(name); },
+      json() {
+        try { return JSON.parse(fs.readFileSync(path.join(projectRoot, "package.json"), "utf8")); }
+        catch(e) { return {}; }
+      }
+    };
+  } catch (e) {}
+
+  // Restore original require after module load
   const mod = require(path.resolve(compiledPath));
+  Module.prototype.require = origRequire;
+
   const fn = mod[fnName];
   if (typeof fn !== "function") {
     process.stderr.write("Function '" + fnName + "' not found. Available: " + Object.keys(mod).join(", ") + "\n");
