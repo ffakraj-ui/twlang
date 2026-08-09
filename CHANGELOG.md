@@ -3,7 +3,17 @@
 All notable changes to TW Framework are documented here.
 
 
-## v0.5.1
+## v0.5.2 (Parallel Compilation Update)
+
+- **Improved: Parallel page compilation** — bounded worker pool with `--workers N` option, automatic CPU-aware default, small-project sequential fallback (≤3 pages), thread-safe shared state (`_LIB_MODULES` lock added), extended build statistics (`workers`, `pages_scheduled`, `parallel_tasks`, `max_concurrent_workers`, `build_mode`), deterministic output verified (workers=1 vs workers=4 produce identical output), better error handling with worker failure cleanup. Existing `--workers`, `--force`, `--clean` all work correctly with parallel compilation. Cache hits skip compilation workers entirely.
+
+## v0.5.2 (Original)
+
+- **Added: TW Image system** — first-party image optimization component inspired by Next.js next/image but implemented as an original TW-native architecture. Usage: `import "tw/image"` then `Image { src "/hero.jpg" width 1200 height 800 alt "Hero" }`. Features: automatic WebP/AVIF optimization (when Pillow available), responsive srcset generation, lazy loading by default, priority loading for hero images, quality control (`quality 80`), explicit `unoptimized` escape hatch, `original_format` option, width/height for CLS prevention, image caching with incremental build integration, and full Zero-JS compatibility (static Image adds 0 KB framework JS). Normal `img { src "..." }` tags remain completely unchanged. Package at `tw_framework/tw_image/` with extensible `tw/<module>` namespace architecture for future modules (tw/font, tw/script, tw/link, etc.).
+
+## v0.6.0
+
+- **Added: Zero-JS output for static pages** — TW's biggest differentiator. When a page has no `state`, no events, no router keys, no client components, no TWM modules, no on-load inits, and no reactivity, the compiler automatically skips ALL framework JavaScript — `__TW_DATA__` JSON blob, `__TW__` hidden div, router/search/reactivity runtimes, and code-splitting chunks. The output is pure HTML + CSS with 0 KB of framework JS. User-written `script { ... }` blocks are NOT framework JS and are still included. This is fully automatic — no config needed. Pages with `let`, `each`, `if`, and data interpolation still qualify for Zero-JS because those are resolved at build time.
 
 - **Added: Comma-separated syntax in element and component blocks** — you can now write `span { class "badge", "text" }` or `a { class "btn", href "/search", "Search Now" }` instead of putting each attribute and text on separate lines. The comma acts as a separator between attributes and the text content. This is fully backward-compatible — the old multi-line syntax still works.
 - **Fixed: Raw `script { ... }` blocks now allowed by default** — previously raw inline script blocks were disabled by default, causing TW1000 errors on pages with client-side JavaScript. The `allow_raw_script` config option now defaults to `True`. Users who want to disable raw scripts can set `allow_raw_script: false` in `tw.config`.

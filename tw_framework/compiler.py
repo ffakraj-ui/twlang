@@ -14,6 +14,9 @@ import contextlib
 import tempfile
 import threading
 
+# TW Image system (first-party tw/ components)
+from .tw_image.component import BUILTIN_IMAGE_COMPONENTS as _BUILTIN_TW_COMPONENTS, render_image_component as _render_tw_image
+
 # Tailwind CSS utility class support for .tss files
 try:
     from .tailwind_map import expand_tailwind_line, expand_tailwind_class
@@ -211,6 +214,7 @@ _CHUNK_LOCK = threading.Lock()
 _SCRIPT_LOCK = threading.Lock()
 # Single coarse lock for shared compiler caches used by ThreadPoolExecutor workers.
 _CACHE_LOCK = threading.RLock()
+_LIB_LOCK = threading.Lock()  # Protects _LIB_MODULES
 
 # Layout-level directives (layouts are treated as raw HTML templates, so we scan & strip these lines)
 LAYOUT_RESPONSIVE_RE = re.compile(
@@ -785,6 +789,81 @@ class LetNode:
         self.type_annotation = type_annotation  # e.g. "number", "string", "boolean", "array", "object", "null", "any"
 
 
+def _node_has_client_js(node) -> bool:
+    """Recursively check if a node tree needs client-side framework JS.
+
+    Returns True if the node (or any descendant) has:
+    - Events (on:click, etc.) → needs event runtime
+    - Router keys (link, redirect) → needs router runtime
+    - Client components (lazy components)
+    - State vars → needs reactivity runtime
+    - TWM modules → needs module bundle
+    """
+    if isinstance(node, ElementNode):
+        if node.events or node.router:
+            return True
+        for child in node.children:
+            if _node_has_client_js(child):
+                return True
+    elif isinstance(node, ComponentNode):
+        # Components may have lazy prop
+        for attr_name, _ in getattr(node, "props", []):
+            if attr_name == "lazy":
+                return True
+        for child in getattr(node, "children", []):
+            if _node_has_client_js(child):
+                return True
+    elif isinstance(node, (ForNode, IfNode)):
+        for child in getattr(node, "children", []):
+            if _node_has_client_js(child):
+                return True
+    # ScriptNode and ScriptTagNode are user-written JS — they are NOT
+    # framework JS, so they don't count against Zero-JS. The page still
+    # gets 0 KB of *framework* runtime JS.
+    return False
+
+
+def is_zero_js_page(page, body_html: str = "", needs_router_runtime: bool = False,
+                    raw_source: str = "", reactive_enabled: bool = False) -> bool:
+    """Detect if a page qualifies for Zero-JS output.
+
+    A page is Zero-JS when it has:
+    - No state vars
+    - No events on any element
+    - No router keys
+    - No client/lazy components
+    - No TWM modules
+    - No on-load inits
+    - No reactivity
+    - No router runtime needed
+
+    When True, ALL framework runtime JS is skipped — zero KB of framework JS.
+    User-written ``script { ... }`` blocks are NOT framework JS and are still
+    included in the output.
+    """
+    # State / reactivity
+    if getattr(page, "state_vars", None):
+        return False
+    if reactive_enabled:
+        return False
+    # On-load inits
+    if getattr(page, "on_load_inits", None):
+        return False
+    # TWM modules
+    if getattr(page, "loaded_modules", None):
+        return False
+    if getattr(page, "local_modules", None):
+        return False
+    # Router runtime
+    if needs_router_runtime:
+        return False
+    # Recursively check body nodes for events, router, lazy components
+    for node in getattr(page, "body", []) or []:
+        if _node_has_client_js(node):
+            return False
+    return True
+
+
 class ScriptNode:
     def __init__(self, raw_js, token=None, file_path=None) -> None:
         self.tag = "__script__"
@@ -1240,6 +1319,9 @@ def normalize_attr_name(name) -> Any:
 
 
 def component_exists(name) -> Any:
+    # Built-in tw/ components (tw/image, etc.) — always exist
+    if name in _BUILTIN_TW_COMPONENTS or name.lower() in _BUILTIN_TW_COMPONENTS:
+        return True
     with _CACHE_LOCK:
         if name in _COMPONENT_EXISTS_CACHE:
             return _COMPONENT_EXISTS_CACHE[name]
@@ -1453,6 +1535,10 @@ def collect_component_dependencies(name, stack=None, seen=None) -> Any:
             file_path=resolve_component_path(name),
             suggestion="Keep the import graph acyclic, or move shared code into a separate component.",
         )
+
+    # Built-in tw/ components — no filesystem deps
+    if name in _BUILTIN_TW_COMPONENTS or name.lower() in _BUILTIN_TW_COMPONENTS:
+        return set()
 
     path = resolve_component_path(name)
     if not os.path.exists(path):
@@ -2313,6 +2399,9 @@ def extract_component_load_directive(raw, base_dir) -> Any:
 
 
 def load_component_ast(name) -> Any:
+    # Built-in tw/ components — no AST file, handled at render time
+    if name in _BUILTIN_TW_COMPONENTS or name.lower() in _BUILTIN_TW_COMPONENTS:
+        return []
     with _CACHE_LOCK:
         if name in _COMPONENT_AST_CACHE:
             return copy.deepcopy(_COMPONENT_AST_CACHE[name])
@@ -2450,6 +2539,9 @@ def parse_import(tokens, i) -> Any:
     if not token or token.type != "STRING":
         raise CompilerError("Expected component name after `import`", token=peek(tokens, i - 1))
     name = token.value
+    # Built-in tw/ components (tw/image, etc.) — skip file resolution
+    if name in _BUILTIN_TW_COMPONENTS or name.lower() in _BUILTIN_TW_COMPONENTS:
+        return None, i + 1
     if not component_exists(name):
         raise CompilerError(
             f"Imported component not found: `{name}`",
@@ -2479,10 +2571,11 @@ def register_lib_module(source, module_id=""):
     try:
         from .twm_parser import parse_twm_functions
         funcs = parse_twm_functions(source)
-        for fn in funcs:
-            _LIB_MODULES[fn["name"]] = {
-                "source": source,
-                "module_id": module_id or fn["name"],
+        with _LIB_LOCK:
+            for fn in funcs:
+                _LIB_MODULES[fn["name"]] = {
+                    "source": source,
+                    "module_id": module_id or fn["name"],
             }
     except Exception:
         pass
@@ -4003,6 +4096,16 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
             out.append(f'{pad}<script src="{src}"></script>\n')
             continue
 
+        # TW Image component — render to optimized <img>
+        if isinstance(node, ComponentNode) and (node.name in _BUILTIN_TW_COMPONENTS or node.name.lower() in _BUILTIN_TW_COMPONENTS):
+            img_html = _render_tw_image(
+                node.props, context,
+                project_root=getattr(node, "_tw_project_root", ""),
+                output_dir=getattr(node, "_tw_output_dir", ""),
+            )
+            out.append(f"{pad}{img_html}\n")
+            continue
+
         if isinstance(node, ComponentNode):
             # Guard against recursive component rendering:
             # This can happen even without `import` cycles (eg a component's template
@@ -4129,10 +4232,14 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
     return "".join(out), needs_router_runtime, head_scripts
 
 
-def _build_tw_signature(page=None, context=None) -> Any:
+def _build_tw_signature(page=None, context=None, zero_js: bool = False) -> Any:
     """
     Returns (meta_tags_html, tw_data_script_html, build_comments_html)
     These injected parts form TW Framework's signature in the HTML output.
+
+    When *zero_js* is True, the ``__TW_DATA__`` script tag and the
+    ``__TW__`` hidden div are omitted — the page ships with zero framework
+    JavaScript.  Only the essential ``<meta>`` tags and HTML comments remain.
     """
     import datetime
 
@@ -4176,35 +4283,41 @@ def _build_tw_signature(page=None, context=None) -> Any:
             logger.exception("Failed to collect components used for build signature")
             components_used = []
 
-    # meta + hidden markers
-    meta_html = (
-        '  <!-- ⚡ Built with TW Framework -->\n'
-        '  <meta charset="UTF-8">\n'
-        '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-        '  <meta name="generator" content="TW Framework">\n'
-        '  <div id="__TW__" style="display:none"></div>\n'
-    )
-
-    # __TW_DATA__ JSON blob
-    tw_data = {
-        "page": page_name,
-        "route": route,
-        "render": render_mode,
-        "build": build_time,
-    }
-    if components_used:
-        tw_data["components"] = components_used
-
-    data_script = (
-        f'  <script id="__TW_DATA__" type="application/json">'
-        f'{json.dumps(tw_data, separators=(",", ":"))}'
-        f'</script>\n'
-    )
+    # meta + hidden markers — omit __TW__ div and __TW_DATA__ script for Zero-JS
+    if zero_js:
+        meta_html = (
+            '  <meta charset="UTF-8">\n'
+            '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+            '  <meta name="generator" content="TW Framework">\n'
+        )
+        data_script = ""
+    else:
+        meta_html = (
+            '  <!-- ⚡ Built with TW Framework -->\n'
+            '  <meta charset="UTF-8">\n'
+            '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+            '  <meta name="generator" content="TW Framework">\n'
+            '  <div id="__TW__" style="display:none"></div>\n'
+        )
+        tw_data = {
+            "page": page_name,
+            "route": route,
+            "render": render_mode,
+            "build": build_time,
+        }
+        if components_used:
+            tw_data["components"] = components_used
+        data_script = (
+            f'  <script id="__TW_DATA__" type="application/json">'
+            f'{json.dumps(tw_data, separators=(",", ":"))}'
+            f'</script>\n'
+        )
 
     # Structured HTML comments at top
     comp_str = ", ".join(components_used) if components_used else "—"
+    zero_marker = " | Zero-JS" if zero_js else ""
     build_comments = (
-        f'<!-- [TW] Page: {page_name} | Render: {render_mode} | Route: {route} -->\n'
+        f'<!-- [TW] Page: {page_name} | Render: {render_mode} | Route: {route}{zero_marker} -->\n'
         f'<!-- [TW] Components: {comp_str} -->\n'
         f'<!-- [TW] Build: {build_time} -->\n'
     )
@@ -4212,9 +4325,9 @@ def _build_tw_signature(page=None, context=None) -> Any:
     return meta_html, data_script, build_comments
 
 
-def build_default_document(title, head_extras, style_blocks, body_html, runtime_scripts_html, page=None, context=None) -> Any:
+def build_default_document(title, head_extras, style_blocks, body_html, runtime_scripts_html, page=None, context=None, zero_js: bool = False) -> Any:
     runtime_scripts = (runtime_scripts_html + "\n") if runtime_scripts_html else ""
-    meta_html, data_script, build_comments = _build_tw_signature(page, context)
+    meta_html, data_script, build_comments = _build_tw_signature(page, context, zero_js=zero_js)
     return f"""{build_comments}<!DOCTYPE html>
 <html>
 <head>
@@ -4253,9 +4366,9 @@ def interpolate_layout_template(text, context) -> Any:
     return _LAYOUT_VAR_RE.sub(repl, str(text))
 
 
-def apply_layout_template(layout_template, title, head_extras, style_blocks, body_html, runtime_scripts_html, context, page=None) -> Any:
+def apply_layout_template(layout_template, title, head_extras, style_blocks, body_html, runtime_scripts_html, context, page=None, zero_js: bool = False) -> Any:
     runtime_scripts = runtime_scripts_html or ""
-    meta_html, data_script, build_comments = _build_tw_signature(page, context)
+    meta_html, data_script, build_comments = _build_tw_signature(page, context, zero_js=zero_js)
     # Inject signature into {head} placeholder
     enhanced_head = (meta_html + data_script + (head_extras or "")).rstrip()
     rendered = layout_template
@@ -4408,6 +4521,24 @@ def render_html(page, context, css_href) -> Any:
     if reactive_enabled:
         page_state.update(parse_state_block(raw_source))
 
+    # ── Zero-JS detection ──────────────────────────────────────────────
+    # If a page has no state, no events, no router, no client components,
+    # no TWM modules, no on-load inits, and no reactivity, then it needs
+    # zero framework JavaScript.  We skip __TW_DATA__, __TW__ div,
+    # router/search/reactivity runtimes, and code-splitting chunks.
+    # User-written `script { ... }` blocks are NOT framework JS and
+    # are still rendered normally inside the body.
+    zero_js = is_zero_js_page(
+        page,
+        body_html=body_html,
+        needs_router_runtime=needs_router_runtime,
+        raw_source=raw_source,
+        reactive_enabled=reactive_enabled,
+    )
+    if zero_js:
+        runtime_scripts_html = ""
+    # ────────────────────────────────────────────────────────────────────
+
     if page.layouts:
         wrapped_body = body_html
         for inner_name in reversed(page.layouts[1:]):
@@ -4423,11 +4554,13 @@ def render_html(page, context, css_href) -> Any:
             runtime_scripts_html,
             context,
             page=page,
+            zero_js=zero_js,
         )
 
         if page_state or reactive_enabled:
             layout_html = _inject_reactivity_runtime(layout_html, raw_source, page_state)
-        layout_html = _inject_on_load_inits(layout_html, getattr(page, "on_load_inits", []) or [])
+        if not zero_js:
+            layout_html = _inject_on_load_inits(layout_html, getattr(page, "on_load_inits", []) or [])
         return layout_html
 
     final_doc = build_default_document(
@@ -4438,12 +4571,14 @@ def render_html(page, context, css_href) -> Any:
         runtime_scripts_html,
         page=page,
         context=context,
+        zero_js=zero_js,
     )
 
     if page_state or reactive_enabled:
         final_doc = _inject_reactivity_runtime(final_doc, raw_source, page_state)
 
-    final_doc = _inject_on_load_inits(final_doc, getattr(page, "on_load_inits", []) or [])
+    if not zero_js:
+        final_doc = _inject_on_load_inits(final_doc, getattr(page, "on_load_inits", []) or [])
     return final_doc
 
 
