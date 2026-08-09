@@ -6,6 +6,7 @@ All notable changes to TW Framework are documented here.
 ## v0.5.1
 
 - **Added: Comma-separated syntax in element and component blocks** — you can now write `span { class "badge", "text" }` or `a { class "btn", href "/search", "Search Now" }` instead of putting each attribute and text on separate lines. The comma acts as a separator between attributes and the text content. This is fully backward-compatible — the old multi-line syntax still works.
+- **Fixed: Raw `script { ... }` blocks now allowed by default** — previously raw inline script blocks were disabled by default, causing TW1000 errors on pages with client-side JavaScript. The `allow_raw_script` config option now defaults to `True`. Users who want to disable raw scripts can set `allow_raw_script: false` in `tw.config`.
 
 
 ## v0.5.0

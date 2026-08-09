@@ -3984,19 +3984,19 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
                     "allow_raw_script",
                     config.get(
                         "allowRawScript",
-                        config.get("allow_inline_js", config.get("allowInlineJs", False)),
+                        config.get("allow_inline_js", config.get("allowInlineJs", True)),
                     ),
                 )
             )
             if not allow_raw:
                 raise CompilerError(
-                    "Raw `script { ... }` blocks are disabled by default (safety).",
+                    "Raw `script { ... }` blocks are disabled by config (allow_raw_script: false).",
                     token=getattr(node, "token", None),
                     file_path=getattr(node, "file_path", None),
                     suggestion=(
                         "Use `.twm` + `load @...` + events, or use declarative "
                         "`script { src \"...\" strategy afterInteractive }`. "
-                        "If you must allow raw scripts, set `allow_raw_script: true` in `tw.config`."
+                        "To disable raw scripts, set `allow_raw_script: false` in `tw.config`."
                     ),
                 )
             src = write_chunk(node.raw_js, "js")
