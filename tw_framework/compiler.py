@@ -15,7 +15,16 @@ import tempfile
 import threading
 
 # TW Image system (first-party tw/ components)
+from .tw_image.component import BUILTIN_IMAGE_COMPONENTS
+
+# Full-stack architecture imports (v0.6.0)
+from .module_boundaries import (
+    ALL_TW_PACKAGES, TW_PACKAGE_BOUNDARIES, TW_PACKAGE_ALIASES,
+    ImportClassifier, ImportInfo, is_tw_package, get_package_boundary,
+)
+from .component_classifier import ComponentClassifier
 from .tw_image.component import BUILTIN_IMAGE_COMPONENTS as _BUILTIN_TW_COMPONENTS, render_image_component as _render_tw_image
+from .runtime_loader import PageCapability, RuntimeLoader
 
 # Tailwind CSS utility class support for .tss files
 try:
@@ -861,6 +870,20 @@ def is_zero_js_page(page, body_html: str = "", needs_router_runtime: bool = Fals
     for node in getattr(page, "body", []) or []:
         if _node_has_client_js(node):
             return False
+
+    # Check for tw/* package imports that require client JS (v0.6.0)
+    try:
+        _classifier = ImportClassifier()
+        source = raw_source or ""
+        if source:
+            page_imports = _classifier.scan_source_imports(source)
+            for imp in page_imports:
+                boundary = _classifier.classify_import(imp.path)
+                if boundary == "client":
+                    return False
+    except Exception:
+        pass
+
     return True
 
 

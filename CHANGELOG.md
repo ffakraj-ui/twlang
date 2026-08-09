@@ -51,6 +51,99 @@ All notable changes to TW Framework are documented here.
 - **Fixed: Multi-line CSS values in `.tss`** — TSS parser was splitting on every newline, breaking multi-line values like `background-image: linear-gradient(...), linear-gradient(...);` into `true`.
 - **Security: `os.environ` no longer leaked to page render context** — only env vars explicitly allow-listed in `tw.config` via `env: public: "VAR_NAME"` reach generated HTML.
 - 
+## [0.6.1] — 2026-08-09
+
+### 🚀 Full-Stack Architecture — Major Upgrade
+
+TW Framework now scales from simple static pages to complex production web
+applications while preserving its HTML-first, Zero-JS philosophy. Every new
+capability is **opt-in through dependency analysis** — static pages remain
+static.
+
+#### Phase 1: Foundations
+- **Module Boundary System** (`module_boundaries.py`) — SERVER/CLIENT/SHARED
+  classification for all imports with TW2000-series error codes for invalid
+  cross-boundary imports
+- **JS/NPM Ecosystem Interop** (`js_interop.py`) — npm package resolution,
+  client-side bundling, server-only package isolation, dynamic import detection
+- **Client Component Model** (`component_classifier.py`) — auto-classification
+  of components as STATIC/SERVER/CLIENT/SHARED based on content analysis
+- **Enhanced Dependency Graph** — build-time analysis of what each page needs
+- **Modular Runtime Loader** (`runtime_loader.py`) — per-page JS chunk
+  generation, loads only needed capabilities (~1KB base + per-feature chunks)
+
+#### Phase 2: State & Routing
+- **Global State Management** (`tw/state`) — reactive stores with subscriptions,
+  derived state, cleanup, server/client separation, optional persistence
+- **Client-Side Router** (`tw/router`) — SPA navigation, dynamic routes,
+  prefetching, lazy loading, loading/error states, browser history
+- **Enhanced Code Splitting** — per-route chunks, per-component chunks,
+  per-npm-package chunks, content-hashed filenames
+
+#### Phase 3: Forms, Fetch, Server Actions
+- **Advanced Form System** (`tw/form`) — form state, field state, validation
+  (required/email/min/max/pattern), async validation, multi-step forms,
+  progressive enhancement, Zod integration via JS interop
+- **Data Fetching** (`tw/fetch`) — server-side fetch with caching,
+  deduplication, revalidation; client-side fetch with loading/error states
+- **Server Actions** (`server_actions.py`) — secure invocation boundary with
+  CSRF protection, authentication, argument validation, rate limiting
+
+#### Phase 4: Realtime & Auth
+- **Realtime Architecture** (`tw/realtime`) — WebSocket connections with
+  auto-reconnect, event handlers, channel broadcasting, SSE fallback,
+  state integration
+- **Authentication/Authorization** (`tw/auth`) — session management with
+  secure HTTP-only cookies, CSRF tokens, route protection, role-based
+  access control, permission checks, OAuth/OIDC architecture
+
+#### Phase 5: Error Boundaries & DX
+- **Error Boundaries** (`error_boundaries.py`) — 404/500 error pages,
+  development error details with stack traces, production-safe messages,
+  client-side error boundary runtime, loading state UI
+- **Ecosystem Packages**: `tw/font` (font optimization), `tw/metadata`
+  (SEO, Open Graph, Twitter Cards, JSON-LD, sitemaps)
+
+#### Progressive Enhancement Matrix
+| Page Type | HTML | CSS | JS |
+|-----------|------|-----|----|
+| Static | ✅ | ✅ | ❌ |
+| Interactive | ✅ | ✅ | state only |
+| Dashboard | ✅ | ✅ | state+router+auth |
+| Full-stack | ✅ | ✅ | all needed runtimes |
+
+#### New Packages (all under `tw_framework/`)
+- `module_boundaries.py` — import classification & enforcement
+- `js_interop.py` — npm package resolution & bundling
+- `component_classifier.py` — component auto-classification
+- `runtime_loader.py` — per-page runtime chunk generation
+- `server_actions.py` — secure server action invocation
+- `error_boundaries.py` — error pages & boundaries
+- `tw_state/` — reactive stores (store.py, runtime.py)
+- `tw_router/` — client routing (router.py, runtime.py)
+- `tw_form/` — form system (form.py, validation.py, runtime.py)
+- `tw_fetch/` — data fetching (fetch.py, runtime.py)
+- `tw_realtime/` — realtime (client.py, server.py, runtime.py)
+- `tw_auth/` — auth (session.py, middleware.py, client.py, runtime.py)
+- `tw_font/` — fonts (loader.py)
+- `tw_metadata/` — metadata (meta.py)
+
+#### Tests
+- `test_module_boundaries.py` — boundary classification & validation
+- `test_js_interop.py` — npm package resolution & server isolation
+- `test_component_classifier.py` — auto-classification
+- `test_runtime_loader.py` — capability analysis & chunk generation
+- `test_tw_state.py` — stores, subscriptions, derived state, cleanup
+- `test_tw_router.py` — route resolution, dynamic params, link rendering
+- `test_tw_form.py` — validation, form state, submission
+- `test_tw_fetch.py` — caching, deduplication
+- `test_tw_realtime.py` — connection management, broadcasting
+- `test_tw_auth.py` — sessions, CSRF, route protection, roles
+- `test_server_actions.py` — action registration, validation, execution
+- `test_error_boundaries.py` — error page rendering, dev/prod modes
+
+---
+
 ## [0.4.1]
 
 ### Security

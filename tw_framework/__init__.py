@@ -1,6 +1,6 @@
 """TW Framework package."""
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 
 from .server import run_production_server, SSRCache  # noqa: F401
 from .reactivity import (  # noqa: F401
