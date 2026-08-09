@@ -2862,6 +2862,33 @@ def parse_child_statement(tokens, i, file_path, source) -> Any:
     raise CompilerError(f"Unexpected token: `{token.value}`", token=token)
 
 
+def _is_comma(tok) -> bool:
+    """Return True if *tok* is a comma separator (``WORD`` with value ``,``)."""
+    return bool(tok) and tok.type == "WORD" and tok.value == ","
+
+
+def _handle_comma_after_value(tokens, i, node) -> int:
+    """After a property value, if the next token is a comma, skip it and
+    optionally consume a following STRING as ``node.text``.
+
+    This enables the ergonomic comma-separated syntax::
+
+        span { class "badge", "Premium" }
+        a { class "btn", href "/search", "Search Now" }
+
+    Returns the updated index.
+    """
+    tok = peek(tokens, i)
+    if not _is_comma(tok):
+        return i
+    i += 1  # skip comma
+    nxt = peek(tokens, i)
+    if nxt and nxt.type == "STRING":
+        node.text = nxt.value
+        i += 1
+    return i
+
+
 def parse_element_block(tokens, i, node, file_path, source) -> Any:
     while i < len(tokens):
         token = peek(tokens, i)
@@ -2871,10 +2898,20 @@ def parse_element_block(tokens, i, node, file_path, source) -> Any:
         if token.type == "BRACE" and token.value == "}":
             return i + 1
 
+        # Comma separator (e.g. trailing comma or between attribute + text)
+        if _is_comma(token):
+            i += 1
+            nxt = peek(tokens, i)
+            if nxt and nxt.type == "STRING":
+                node.text = nxt.value
+                i += 1
+            continue
+
         if token.type == "WORD" and token.value == "text":
             i += 1
             raw_value, i = parse_property_value(tokens, i)
             node.text = raw_value if raw_value is not True else ""
+            i = _handle_comma_after_value(tokens, i, node)
             continue
 
         if token.type == "WORD" and token.value in {"let", "if", "for", "each", "import"}:
@@ -2921,6 +2958,7 @@ def parse_element_block(tokens, i, node, file_path, source) -> Any:
                     node.router[prop_name.lower()] = raw_value
                 else:
                     node.attrs.append((normalize_attr_name(prop_name), raw_value))
+                i = _handle_comma_after_value(tokens, i, node)
                 continue
 
             if looks_like_child_start(tokens, i):
@@ -2949,6 +2987,15 @@ def parse_component_block(tokens, i, node, file_path, source) -> Any:
             continue
         if token.type == "BRACE" and token.value == "}":
             return i + 1
+
+        # Comma separator (e.g. trailing comma or between prop + text)
+        if _is_comma(token):
+            i += 1
+            nxt = peek(tokens, i)
+            if nxt and nxt.type == "STRING":
+                node.props.append(("text", nxt.value))
+                i += 1
+            continue
 
         if token.type == "WORD" and token.value in {"let", "if", "for", "each", "import"}:
             child, i = parse_child_statement(tokens, i, file_path, source)
@@ -2984,6 +3031,14 @@ def parse_component_block(tokens, i, node, file_path, source) -> Any:
             i += 1
             value, i = parse_property_value(tokens, i)
             node.props.append((key, value))
+            # Handle comma after prop value — next string becomes "text" prop
+            tok = peek(tokens, i)
+            if _is_comma(tok):
+                i += 1
+                nxt = peek(tokens, i)
+                if nxt and nxt.type == "STRING":
+                    node.props.append(("text", nxt.value))
+                    i += 1
             continue
 
         raise CompilerError(f"Unexpected token inside component `{node.name}`: `{token.value}`", token=token)

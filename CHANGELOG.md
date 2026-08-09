@@ -3,6 +3,11 @@
 All notable changes to TW Framework are documented here.
 
 
+## v0.5.1
+
+- **Added: Comma-separated syntax in element and component blocks** — you can now write `span { class "badge", "text" }` or `a { class "btn", href "/search", "Search Now" }` instead of putting each attribute and text on separate lines. The comma acts as a separator between attributes and the text content. This is fully backward-compatible — the old multi-line syntax still works.
+
+
 ## v0.5.0
 
 - **Fixed: `tw build --clean` now properly invalidates the incremental cache** — previously `--clean` removed the `dist/` output directory but did not clear `.tw/cache/`, so the subsequent build would still find old cache entries and report `(cache hit)` instead of recompiling from scratch. `clean_project_outputs()` now calls `IncrementalCache.clear()` to wipe all cached page signatures before the build starts.
