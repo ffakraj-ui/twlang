@@ -26,8 +26,8 @@ dev = [
 [project.scripts]
 tw = "tw_framework.cli:main"
 
-[tool.setuptools]
-packages = ["tw_framework", "tw_framework.adapters"]
+[tool.setuptools.packages.find]
+include = ["tw_framework*"]
 
 [tool.setuptools.package-data]
 tw_framework = ["*.js"]
