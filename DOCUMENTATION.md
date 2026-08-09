@@ -53,6 +53,10 @@ TW Framework is a static‑site generator and server‑side rendering framework.
 
 ### 2.3 How Routing Works
 
+TW Framework supports two routing systems:
+
+#### Legacy Routing (v0.5.x and earlier)
+
 - Routes are derived from the file system under `pages/`.
 - `pages/index.tw` → `/`
 - `pages/about.tw` → `/about`
@@ -61,6 +65,23 @@ TW Framework is a static‑site generator and server‑side rendering framework.
 - `pages/work.tw` → `/work`
 - Dynamic routes are supported via `[param]` in filenames (e.g., `pages/blog/[slug].tw`).
 - The routing is handled by `compiler.discover_pages()` and `TWProject.resolve_route()`.
+- Layouts are raw HTML templates in `layouts/` with `{slot}`, `{title}`, `{head}` placeholders.
+
+#### App Router (v0.7.0+)
+
+- Routes are derived from `page.tw` files in nested directories.
+- `[home]/page.tw` → `/`
+- `[home]/about/page.tw` → `/about`
+- `[home]/blog/page.tw` → `/blog`
+- `[home]/blog/[slug]/page.tw` → `/blog/:slug`
+- Route groups `(folder)` are excluded from the URL: `(main)/about/page.tw` → `/about`
+- Catch-all routes: `[...path]/page.tw` → `/*path`
+- Layouts are TW components (`layout.tw` files) using the `children` keyword.
+- Layouts nest automatically by directory structure.
+- API routes use `route.tw` instead of `page.tw`.
+- The routing is handled by `app_router.discover_routes()` and `app_router.match_route()`.
+- Auto-detection: if `[home]/page.tw` or `[home]/layout.tw` exists → App Router mode; if `[home]/pages/` exists → Legacy mode.
+- See `docs/app-router.md` for the full guide.
 
 ### 2.4 How Components Work
 

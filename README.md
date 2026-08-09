@@ -179,8 +179,9 @@ Astro is close to TW's philosophy (zero JS by default), but it still lives in th
 
 ### Framework
 
-- **File-based routing** — pages and dynamic routes (`[slug].tw`) from your folder structure
-- **Layouts** — reusable layout chains: `layout "base > docs"`
+- **App Router (v0.7.0)** — Next.js-style file-system routing with nested layouts as TW components. `page.tw`, `layout.tw`, route groups `(folder)`, dynamic routes `[slug]`, and the `children` keyword for content injection. Fully backward compatible with legacy routing. See [App Router docs](docs/app-router.md)
+- **File-based routing** — pages and dynamic routes (`[slug].tw`) from your folder structure (legacy mode, still supported)
+- **Layouts** — reusable layout chains: `layout "base > docs"` (legacy) or auto-nesting `layout.tw` files (App Router)
 - **Components** — colocated in `[home]/components/`, imported with `import "Hero"`
 - **Reactive bindings** — `on:click`, `bind:value`, `bind:checked` for interactivity without writing raw JS
 - **API routes** — `.twm` server functions for GET/POST/etc., colocated with your pages

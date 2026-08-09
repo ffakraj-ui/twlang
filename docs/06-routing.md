@@ -59,6 +59,54 @@ export function GET(request) {
 }
 ```
 
+---
+
+## App Router (v0.7.0+)
+
+TW Framework v0.7.0 introduces the **App Router** — a file-system based routing
+system where layouts are TW components (not HTML templates) and routes are
+defined by `page.tw` files in nested directories.
+
+### Structure
+
+```
+[home]/
+├── page.tw                ← URL: /
+├── about/
+│   └── page.tw            ← URL: /about
+├── blog/
+│   ├── page.tw            ← URL: /blog
+│   └── [slug]/
+│       └── page.tw        ← URL: /blog/:slug
+└── api/
+    └── apps/
+        └── route.tw       ← API: /api/apps
+```
+
+### Route Groups `(folder)`
+
+Folders in parentheses are excluded from the URL:
+
+```
+[home]/(main)/about/page.tw  →  URL: /about (not /main/about)
+```
+
+### Dynamic Routes `[slug]`
+
+```
+[home]/blog/[slug]/page.tw  →  URL: /blog/:slug
+[home]/[...path]/page.tw    →  URL: /*path (catch-all)
+```
+
+### Auto-Detection
+
+The framework auto-detects which routing system to use:
+
+- If `[home]/page.tw` or `[home]/layout.tw` exists → **App Router mode**
+- If `[home]/pages/` exists → **Legacy mode**
+
+Both modes are fully supported. See `docs/app-router.md` for the full guide.
+
 ## Redirects and Rewrites
 
 Configure in `tw.config`:

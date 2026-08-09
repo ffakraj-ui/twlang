@@ -18,6 +18,18 @@ Implemented in this pass:
 - Nested layouts (multi-layer)
   - `layout "base > docs"` or repeated `layout` directives
   - first layout = outer document, remaining layouts = inner wrappers (fragments around `{slot}`)
+  - **App Router (v0.7.0+)**: layouts are TW components (`layout.tw` files), nest automatically by directory structure, use `children` keyword instead of `{slot}`. See `docs/app-router.md`
+
+- App Router (v0.7.0+)
+  - File-system based routing with `page.tw` files
+  - Route groups `(folder)` excluded from URL
+  - Dynamic routes `[slug]` as folder names
+  - Catch-all routes `[...slug]`
+  - Layouts as TW components with `children` keyword
+  - Nested layout composition (root → innermost)
+  - Special files: `loading.tw`, `not-found.tw`, `error.tw`, `route.tw`
+  - Auto-detection: App Router mode vs Legacy mode
+  - Fully backward compatible with `[home]/pages/` + `[home]/layouts/`
 
 - Theme (Dark/Light/System)
   - `theme: system|dark|light` in `tw.config`

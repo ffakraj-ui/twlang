@@ -22,6 +22,7 @@
 
 ## Framework
 - [05 - CLI Reference](./05-cli-reference.md)
+- [App Router (v0.7.0)](./app-router.md)
 - [06 - Routing](./06-routing.md)
 - [66 - Advanced Routing](./66-advanced-routing.md)
 - [07 - Components](./07-components.md)
