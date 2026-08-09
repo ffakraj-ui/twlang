@@ -3,6 +3,37 @@
 All notable changes to TW Framework are documented here.
 
 
+## v0.6.3 (Literal Braces Fix)
+
+### Fixed
+- **Fixed**: TW2001 "Undefined symbol" warnings are no longer generated for
+  element TEXT content.  Documentation pages that show code examples containing
+  braces like ``{ to, subject, message }`` or ``{variable}`` no longer break
+  ``--prod`` builds.
+- **Root cause**: The semantic analyzer was treating ``{...}`` inside element
+  text (``p "..."``) as TW variable interpolation, producing TW2001 warnings for
+  undefined symbols.  In ``--prod`` mode these warnings are treated as errors,
+  causing the build to fail.
+- **Fix**: Two-part solution:
+  1. Added `_is_likely_literal_text()` heuristic — suppresses TW2001 for
+     expressions containing commas (JS destructuring), JS keywords, or more
+     than 2 space-separated tokens.
+  2. Removed `analyze_interpolated_text()` call for `ElementNode.text` —
+     element text is user-facing content, not code.  `{var}` in text is either
+     real interpolation (var is defined → works) or literal text (var is not
+     defined → shows literal ``{var}``).  Neither case should produce a warning.
+- **Attributes, styles, events, and conditions are still analyzed** — those are
+  code contexts where undefined variables are real bugs.
+- **311 tests passing, 0 failures**
+
+
+## v0.6.2 (PyPI Packaging)
+
+- Updated `pyproject.toml` for PyPI publishing
+- Version bump for package distribution
+
+
+
 ## v0.5.2 (Parallel Compilation Update)
 
 - **Improved: Parallel page compilation** — bounded worker pool with `--workers N` option, automatic CPU-aware default, small-project sequential fallback (≤3 pages), thread-safe shared state (`_LIB_MODULES` lock added), extended build statistics (`workers`, `pages_scheduled`, `parallel_tasks`, `max_concurrent_workers`, `build_mode`), deterministic output verified (workers=1 vs workers=4 produce identical output), better error handling with worker failure cleanup. Existing `--workers`, `--force`, `--clean` all work correctly with parallel compilation. Cache hits skip compilation workers entirely.

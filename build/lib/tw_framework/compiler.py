@@ -1995,52 +1995,7 @@ def collect_known_scope_names(context) -> Any:
     return names
 
 
-def _is_likely_literal_text(expr: str) -> bool:
-    """Heuristic: detect expressions that are likely literal documentation text,
-    not real TW interpolation.
-
-    Returns True when the expression inside ``{...}`` looks like:
-    - JS destructuring: ``{ to, subject, message }`` (commas)
-    - JS/TS code: contains ``=``, ``;``, ``function``, ``const``, ``let``
-    - Template strings with spaces and words that aren't valid expressions
-
-    These patterns are common in documentation pages that show code examples
-    inside ``p "..."`` text.  Suppressing TW2001 for them prevents false
-    positives that break ``--prod`` builds.
-    """
-    expr = str(expr or "").strip()
-    if not expr:
-        return True
-
-    # Multiple comma-separated identifiers → JS destructuring or list
-    # e.g. "to, subject, message"
-    if "," in expr:
-        return True
-
-    # Contains assignment, semicolons, or JS keywords → code snippet
-    code_indicators = ("=", ";", "function", "const ", "let ", "var ",
-                       "=>", "return ", "await ", "async ", "import ",
-                       "export ", "require(", "new ", "class ")
-    if any(ind in expr for ind in code_indicators):
-        return True
-
-    # Contains more than 2 space-separated tokens → likely prose, not an expression
-    # But allow "count + 1" (2 words with operator) and "item.title" (1 word)
-    words = expr.split()
-    if len(words) > 2:
-        return True
-
-    return False
-
-
 def analyze_expression_symbols(expr, scope_names, diagnostics, token=None, file_path=None, label="expression") -> None:
-    # Suppress TW2001 warnings for expressions that are likely literal
-    # documentation text rather than real TW interpolation.  This prevents
-    # false positives when documentation pages show code examples containing
-    # braces like ``{ to, subject, message }`` or ``{variable}``.
-    if _is_likely_literal_text(expr):
-        return
-
     for name in collect_expression_names(expr):
         if name.startswith("_tw_") or name in scope_names:
             continue
@@ -2132,13 +2087,7 @@ def analyze_nodes_semantics(nodes, scope_names, diagnostics, file_path, componen
             continue
 
         if isinstance(node, ElementNode):
-            # Element TEXT content is user-facing text, not code.
-            # {var} in text is either real interpolation (var is defined → works)
-            # or literal documentation text (var not defined → shows literal {var}).
-            # Neither case should produce TW2001 warnings that break --prod builds.
-            # So we skip analyze_interpolated_text for node.text.
-            # We still analyze attributes, styles, events, and router — those are
-            # code contexts where undefined variables are real bugs.
+            analyze_interpolated_text(node.text, current_scope, diagnostics, token=token, file_path=node_file_path, label=f"`{node.tag}` text")
             seen_attrs = set()
             for attr_name, raw_value in node.attrs:
                 if attr_name in seen_attrs:
