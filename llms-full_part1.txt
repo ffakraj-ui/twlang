@@ -3,7 +3,7 @@ TW Framework — Complete Reference for AI Coding Assistants (llms-full_part1.tx
 ================================================================================
 
 Source of truth: github.com/ffakraj-ui/twlang (default branch: main)
-Version: v0.8.35 (2026-08-10)
+Version: v0.8.36 (2026-08-10)
 Generated from: README.md, CHANGELOG.md, MIGRATION_V0.8.1.md, DOCUMENTATION.md,
 IMPLEMENTED_FEATURES.md, CONTRIBUTING.md, API_TESTING_GUIDE.md, docs/**, tests/**,
 and the actual tw_framework/ source (compiler.py, framework.py, cli.py,
@@ -36,7 +36,7 @@ its own VDOM via the React compatibility layer (v0.8.1+).
 1. VERSION HISTORY (recent)
 ================================================================================
 
-v0.8.35 (2026-08-10):
+v0.8.36 (2026-08-10):
   - Route path double-nesting fix (sitemap.xml, __TW_DATA__, HTML metadata)
   - README Quick Start fix (pip install tw-framework instead of pip install -e .)
   - All v0.8.1/v0.8.2 fixes carried forward
@@ -253,7 +253,7 @@ esbuild bundling:
   - CLI syntax: --flag=value (not --flag value)
 
 ================================================================================
-8. ROUTE PATH GENERATION (v0.8.35 FIX)
+8. ROUTE PATH GENERATION (v0.8.36 FIX)
 ================================================================================
 
 Three functions generate route paths — all now consistent:

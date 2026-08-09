@@ -65,6 +65,225 @@ def find_npm() -> Optional[str]:
     return shutil.which("npm")
 
 
+def _get_node_install_help() -> str:
+    """
+    Return OS-specific Node.js installation instructions with exact commands.
+    Detects the operating system and suggests the most appropriate install method.
+    """
+    import platform
+
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+
+    # Check for Termux (Android)
+    is_termux = "com.termux" in os.environ.get("PREFIX", "") or \
+                os.path.exists("/data/data/com.termux/files/usr")
+
+    if is_termux:
+        return (
+            "\n"
+            "╔══════════════════════════════════════════════════════════════╗\n"
+            "║  ❌ Node.js not found on your system                        ║\n"
+            "║  TW Framework needs Node.js for `tw install` and API routes  ║\n"
+            "╠══════════════════════════════════════════════════════════════╣\n"
+            "║  📱 Termux (Android) — install with:                         ║\n"
+            "║                                                              ║\n"
+            "║     pkg install nodejs                                       ║\n"
+            "║                                                              ║\n"
+            "║  After installing, verify:                                   ║\n"
+            "║     node --version                                           ║\n"
+            "║     npm --version                                            ║\n"
+            "║                                                              ║\n"
+            "║  Then run `tw install` again.                                ║\n"
+            "╚══════════════════════════════════════════════════════════════╝"
+        )
+
+    if system == "linux":
+        # Check for specific distros
+        if shutil.which("apt"):
+            return (
+                "\n"
+                "╔══════════════════════════════════════════════════════════════╗\n"
+                "║  ❌ Node.js not found on your system                        ║\n"
+                "║  TW Framework needs Node.js for `tw install` and API routes  ║\n"
+                "╠══════════════════════════════════════════════════════════════╣\n"
+                "║  🐧 Debian/Ubuntu — install with:                             ║\n"
+                "║                                                              ║\n"
+                "║     sudo apt update && sudo apt install nodejs npm            ║\n"
+                "║                                                              ║\n"
+                "║  Or use nvm (recommended for version control):               ║\n"
+                "║     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash ║\n"
+                "║     source ~/.bashrc                                          ║\n"
+                "║     nvm install --lts                                         ║\n"
+                "║                                                              ║\n"
+                "║  After installing, verify:                                   ║\n"
+                "║     node --version                                           ║\n"
+                "║     npm --version                                            ║\n"
+                "║                                                              ║\n"
+                "║  Then run `tw install` again.                                ║\n"
+                "╚══════════════════════════════════════════════════════════════╝"
+            )
+        elif shutil.which("dnf") or shutil.which("yum"):
+            return (
+                "\n"
+                "╔══════════════════════════════════════════════════════════════╗\n"
+                "║  ❌ Node.js not found on your system                        ║\n"
+                "║  TW Framework needs Node.js for `tw install` and API routes  ║\n"
+                "╠══════════════════════════════════════════════════════════════╣\n"
+                "║  🐧 Fedora/RHEL/CentOS — install with:                        ║\n"
+                "║                                                              ║\n"
+                "║     sudo dnf install nodejs npm                              ║\n"
+                "║                                                              ║\n"
+                "║  Or use nvm (recommended):                                   ║\n"
+                "║     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash ║\n"
+                "║     source ~/.bashrc                                          ║\n"
+                "║     nvm install --lts                                         ║\n"
+                "║                                                              ║\n"
+                "║  After installing, verify:                                   ║\n"
+                "║     node --version                                           ║\n"
+                "║     npm --version                                            ║\n"
+                "║                                                              ║\n"
+                "║  Then run `tw install` again.                                ║\n"
+                "╚══════════════════════════════════════════════════════════════╝"
+            )
+        elif shutil.which("pacman"):
+            return (
+                "\n"
+                "╔══════════════════════════════════════════════════════════════╗\n"
+                "║  ❌ Node.js not found on your system                        ║\n"
+                "║  TW Framework needs Node.js for `tw install` and API routes  ║\n"
+                "╠══════════════════════════════════════════════════════════════╣\n"
+                "║  🐧 Arch Linux — install with:                                ║\n"
+                "║                                                              ║\n"
+                "║     sudo pacman -S nodejs npm                                ║\n"
+                "║                                                              ║\n"
+                "║  After installing, verify:                                   ║\n"
+                "║     node --version                                           ║\n"
+                "║     npm --version                                            ║\n"
+                "║                                                              ║\n"
+                "║  Then run `tw install` again.                                ║\n"
+                "╚══════════════════════════════════════════════════════════════╝"
+            )
+        elif shutil.which("apk"):
+            return (
+                "\n"
+                "╔══════════════════════════════════════════════════════════════╗\n"
+                "║  ❌ Node.js not found on your system                        ║\n"
+                "║  TW Framework needs Node.js for `tw install` and API routes  ║\n"
+                "╠══════════════════════════════════════════════════════════════╣\n"
+                "║  🐧 Alpine Linux — install with:                              ║\n"
+                "║                                                              ║\n"
+                "║     apk add nodejs npm                                       ║\n"
+                "║                                                              ║\n"
+                "║  After installing, verify:                                   ║\n"
+                "║     node --version                                           ║\n"
+                "║     npm --version                                            ║\n"
+                "║                                                              ║\n"
+                "║  Then run `tw install` again.                                ║\n"
+                "╚══════════════════════════════════════════════════════════════╝"
+            )
+        else:
+            return (
+                "\n"
+                "╔══════════════════════════════════════════════════════════════╗\n"
+                "║  ❌ Node.js not found on your system                        ║\n"
+                "║  TW Framework needs Node.js for `tw install` and API routes  ║\n"
+                "╠══════════════════════════════════════════════════════════════╣\n"
+                "║  🐧 Linux — install via nvm (recommended):                    ║\n"
+                "║                                                              ║\n"
+                "║     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash ║\n"
+                "║     source ~/.bashrc                                          ║\n"
+                "║     nvm install --lts                                         ║\n"
+                "║                                                              ║\n"
+                "║  Or download from:                                           ║\n"
+                "║     https://nodejs.org/en/download/                         ║\n"
+                "║                                                              ║\n"
+                "║  After installing, verify:                                   ║\n"
+                "║     node --version                                           ║\n"
+                "║     npm --version                                            ║\n"
+                "║                                                              ║\n"
+                "║  Then run `tw install` again.                                ║\n"
+                "╚══════════════════════════════════════════════════════════════╝"
+            )
+
+    elif system == "darwin":
+        return (
+            "\n"
+            "╔══════════════════════════════════════════════════════════════╗\n"
+            "║  ❌ Node.js not found on your system                        ║\n"
+            "║  TW Framework needs Node.js for `tw install` and API routes  ║\n"
+            "╠══════════════════════════════════════════════════════════════╣\n"
+            "║  🍎 macOS — install with one of:                              ║\n"
+            "║                                                              ║\n"
+            "║  Option A: Homebrew (recommended)                            ║\n"
+            "║     brew install node                                        ║\n"
+            "║                                                              ║\n"
+            "║  Option B: nvm (Node Version Manager)                        ║\n"
+            "║     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash ║\n"
+            "║     source ~/.zshrc                                           ║\n"
+            "║     nvm install --lts                                         ║\n"
+            "║                                                              ║\n"
+            "║  Option C: Download from                                     ║\n"
+            "║     https://nodejs.org/en/download/                         ║\n"
+            "║                                                              ║\n"
+            "║  After installing, verify:                                   ║\n"
+            "║     node --version                                           ║\n"
+            "║     npm --version                                            ║\n"
+            "║                                                              ║\n"
+            "║  Then run `tw install` again.                                ║\n"
+            "╚══════════════════════════════════════════════════════════════╝"
+        )
+
+    elif system == "windows":
+        return (
+            "\n"
+            "╔══════════════════════════════════════════════════════════════╗\n"
+            "║  ❌ Node.js not found on your system                        ║\n"
+            "║  TW Framework needs Node.js for `tw install` and API routes  ║\n"
+            "╠══════════════════════════════════════════════════════════════╣\n"
+            "║  🪟 Windows — install with one of:                            ║\n"
+            "║                                                              ║\n"
+            "║  Option A: winget (Windows 10/11)                            ║\n"
+            "║     winget install OpenJS.NodeJS                             ║\n"
+            "║                                                              ║\n"
+            "║  Option B: Chocolatey                                        ║\n"
+            "║     choco install nodejs                                     ║\n"
+            "║                                                              ║\n"
+            "║  Option C: Download from                                     ║\n"
+            "║     https://nodejs.org/en/download/                         ║\n"
+            "║                                                              ║\n"
+            "║  After installing, restart your terminal and verify:         ║\n"
+            "║     node --version                                           ║\n"
+            "║     npm --version                                            ║\n"
+            "║                                                              ║\n"
+            "║  Then run `tw install` again.                                ║\n"
+            "╚══════════════════════════════════════════════════════════════╝"
+        )
+
+    else:
+        return (
+            "\n"
+            "╔══════════════════════════════════════════════════════════════╗\n"
+            "║  ❌ Node.js not found on your system                        ║\n"
+            "║  TW Framework needs Node.js for `tw install` and API routes  ║\n"
+            "╠══════════════════════════════════════════════════════════════╣\n"
+            "║  Download and install Node.js from:                          ║\n"
+            "║     https://nodejs.org/en/download/                         ║\n"
+            "║                                                              ║\n"
+            "║  Or use nvm (Node Version Manager):                          ║\n"
+            "║     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash ║\n"
+            "║     source ~/.bashrc                                          ║\n"
+            "║     nvm install --lts                                         ║\n"
+            "║                                                              ║\n"
+            "║  After installing, verify:                                   ║\n"
+            "║     node --version                                           ║\n"
+            "║     npm --version                                            ║\n"
+            "║                                                              ║\n"
+            "║  Then run `tw install` again.                                ║\n"
+            "╚══════════════════════════════════════════════════════════════╝"
+        )
+
+
 def find_package_manager(project_root: str = ".") -> Tuple[str, Optional[str]]:
     """
     Detect the project's package manager and return (pm_name, pm_binary).
@@ -303,7 +522,7 @@ def install_packages(
     pm_name, pm_bin = find_package_manager(project_root)
 
     if not node_bin or not pm_bin:
-        log("✖ Node.js / package manager not found. Install Node.js first: https://nodejs.org/", level="error")
+        log(_get_node_install_help(), level="error")
         return False
 
     # If no packages specified, install from package.json
@@ -396,7 +615,7 @@ def remove_packages(project_root: str, packages: List[str]) -> bool:
     """Remove packages via the detected package manager and update package.json + tw.config."""
     pm_name, pm_bin = find_package_manager(project_root)
     if not pm_bin:
-        log("✖ Package manager not found. Install Node.js first.", level="error")
+        log(_get_node_install_help(), level="error")
         return False
 
     pkg = read_package_json(project_root)
@@ -498,7 +717,7 @@ def _run_pm_install(project_root: str, pm_name: str = None) -> bool:
     else:
         pm_bin = shutil.which(pm_name)
     if not pm_bin:
-        log(f"✖ {pm_name} not found. Install Node.js first.", level="error")
+        log(_get_node_install_help(), level="error")
         return False
 
     cmd = _pm_install_all_command(pm_name)

@@ -1,6 +1,20 @@
 # Changelog
 
-## v0.8.35 (2026-08-10)
+## v0.8.36 (2026-08-10)
+
+### Improved Error Messages
+- `tw install` / `tw remove` — When Node.js is not found, now shows OS-specific install instructions with exact commands:
+  - **Termux/Android**: `pkg install nodejs`
+  - **Debian/Ubuntu**: `sudo apt install nodejs npm` (plus nvm instructions)
+  - **Fedora/RHEL**: `sudo dnf install nodejs npm`
+  - **Arch Linux**: `sudo pacman -S nodejs npm`
+  - **Alpine Linux**: `apk add nodejs npm`
+  - **macOS**: `brew install node` (plus nvm and download links)
+  - **Windows**: `winget install OpenJS.NodeJS` (plus Chocolatey and download links)
+  - **Other Linux**: nvm install instructions with download link
+- All three error paths now use `_get_node_install_help()` instead of a one-line generic message
+
+## v0.8.36 (2026-08-10)
 
 ### Documentation Overhaul
 - All 200+ markdown files updated with correct `pip install tw-framework` (was `pip install -e .`)
@@ -10,10 +24,10 @@
 - All "NOT a JavaScript/Node framework" notes updated to reflect npm package support
 - Old version references (0.1.0, 0.3.4) updated to 0.8.355
 - npm role updated: "only for .twm" → "used for client-side packages via tw install AND .twm"
-- LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.35
+- LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.36
 - GitHub URL: `https://github.com/ffakraj-ui/twlang` (consistent across all files)
 
-### Bug Fixes (carried forward from v0.8.1–v0.8.355)
+### Bug Fixes (carried forward from v0.8.1–v0.8.365)
 - Route path double-nesting fix (sitemap.xml, __TW_DATA__, HTML metadata)
 - NPM package manager detection (was dead code, now live)
 - React loader script (both branches were identical, now version-aware)
@@ -24,7 +38,7 @@
 - Client bundler: transitive deps, esbuild fallback warning, topological sort
 - Module boundaries: fetch() is client-safe, .twm always SERVER
 
-## v0.8.355 (2026-08-10)
+## v0.8.365 (2026-08-10)
 
 ### Bug Fixes
 
@@ -51,7 +65,7 @@
 ## v0.8.2 (2026-08-10)
 
 ### Bug Fixes
-- Route path double-nesting fix (same as v0.8.355, initial attempt)
+- Route path double-nesting fix (same as v0.8.365, initial attempt)
 
 ## v0.8.1 (2026-08-10)
 
