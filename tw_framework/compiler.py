@@ -3599,7 +3599,7 @@ def parse_page_block(tokens, i, page) -> Any:
             continue
         if key == "render":
             render_mode = str(value).lower()
-            if render_mode not in {"static", "server", "edge"}:
+            if render_mode not in {"static", "server", "edge", "interactive", "dynamic"}:
                 raise CompilerError(
                     f"Unsupported render mode: `{render_mode}`",
                     token=token,
@@ -4855,21 +4855,31 @@ def apply_layout_template(layout_template, title, head_extras, style_blocks, bod
 
 
 def _inject_reactivity_runtime(html_text: str, page_source: str, state: dict) -> Any:
-    """Inject TW reactivity runtime + state init into HTML before </body>."""
+    """Inject TW VDOM runtime + state init + client lib functions into HTML before </body>."""
     try:
-        from .reactivity import get_reactivity_runtime_js, build_state_init_script
-        runtime_js = get_reactivity_runtime_js()
+        from .reactivity import get_vdom_runtime_js, build_state_init_script
+        runtime_js = get_vdom_runtime_js()
         state_init = build_state_init_script(state)
-        script = f"<script>\n{runtime_js}\n{state_init}\n</script>"
+        
+        # Extract client-side lib functions from imports
+        client_lib_js = ""
+        action_js = ""
+        try:
+            from .reactivity import extract_server_actions, build_action_bindings_js
+            actions = extract_server_actions(page_source)
+            action_js = build_action_bindings_js(actions)
+        except Exception:
+            pass
+        
+        script = f"<script>\n{runtime_js}\n{client_lib_js}\n{action_js}\n{state_init}\n</script>"
         if "</body>" in html_text:
             return html_text.replace("</body>", script + "\n</body>", 1)
         return html_text + script
     except Exception:
         if os.environ.get("TW_STRICT_EVAL", "").strip().lower() in {"1", "true", "yes", "on"}:
             raise
-        logger.exception("Failed to inject reactivity runtime; continuing without reactivity script")
+        logger.exception("Failed to inject VDOM runtime; continuing without runtime script")
         return html_text
-
 
 def _inject_on_load_inits(html_text: str, handlers: Any) -> Any:
     handlers = [str(h).strip() for h in (handlers or []) if str(h).strip()]
