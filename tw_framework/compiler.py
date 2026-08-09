@@ -24,6 +24,7 @@ from .module_boundaries import (
 )
 from .component_classifier import ComponentClassifier
 from .tw_image.component import BUILTIN_IMAGE_COMPONENTS as _BUILTIN_TW_COMPONENTS, render_image_component as _render_tw_image
+_BUILTIN_TW_COMPONENTS = set(_BUILTIN_TW_COMPONENTS) | {"Icon"}
 from .runtime_loader import PageCapability, RuntimeLoader
 
 # Tailwind CSS utility class support for .tss files
@@ -34,6 +35,7 @@ except ImportError:
         return None
     def expand_tailwind_class(cls):
         return None
+from .icons import get_icon_svg, ICONS as TW_ICONS
 import concurrent.futures
 import unicodedata
 import errno
@@ -4543,6 +4545,24 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
 
         # TW Image component — render to optimized <img>
         if isinstance(node, ComponentNode) and (node.name in _BUILTIN_TW_COMPONENTS or node.name.lower() in _BUILTIN_TW_COMPONENTS):
+            if node.name in ("Icon", "icon"):
+                icon_name = ""
+                icon_size = 24
+                icon_class = ""
+                for attr_name, attr_val in node.props:
+                    val = interpolate(str(attr_val), current_context) if attr_val else ""
+                    if attr_name == "name":
+                        icon_name = val
+                    elif attr_name == "size":
+                        try:
+                            icon_size = int(val)
+                        except (ValueError, TypeError):
+                            icon_size = 24
+                    elif attr_name == "class":
+                        icon_class = val
+                svg = get_icon_svg(icon_name, size=icon_size, class_name=icon_class)
+                out.append(f"{pad}{svg}\n")
+                continue
             img_html = _render_tw_image(
                 node.props, context,
                 project_root=getattr(node, "_tw_project_root", ""),

@@ -3,6 +3,26 @@
 All notable changes to TW Framework are documented here.
 
 
+## [0.7.2] — 2026-08-09
+
+### Added
+- **App Router scaffold** — `tw create` now generates an App Router project with
+  `layout.tw` (TW component with `children` keyword), `page.tw`, `not-found.tw`,
+  `route.tw` API handlers. No more legacy `pages/` + `layouts/` in new projects.
+- **Built-in Icons** — 60+ SVG icons with zero external dependency. Use
+  `Icon { name "home" }` in any .tw file. Icons render as inline SVG (no JS,
+  Zero-JS compatible). Supports `size` and `class` props.
+- **Detailed App Router guide** — `docs/app-router-guide.md` with sections:
+  Getting Started, Layouts, Route Groups, Dynamic Routes, Client-Side Navigation,
+  generateStaticParams, route.tw API Routes, Icons, Special Files.
+
+### Changed
+- `tw create` scaffold generates App Router structure (not legacy `pages/` + `layouts/`).
+- README rewritten — App Router is primary focus, clean and relevant.
+- `create_project` directory structure updated — removed `pages/`, `layouts/`, `app/` dirs.
+
+
+
 ## [0.7.1] — 2026-08-09
 
 ### Added

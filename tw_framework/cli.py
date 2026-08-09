@@ -24,7 +24,7 @@ GLOBAL_CONFIG_FILE = os.path.join(GLOBAL_CONFIG_DIR, "config.json")
 STARTER_FILES = {
     "tw.config": """name: My TW Site
 site_url: http://localhost:3000
-description: A TW starter project
+description: A TW App Router starter project
 theme: system
 pretty_urls: true
 search: true
@@ -40,247 +40,139 @@ API_TOKEN=change-me
     header "X-Frame-Options" "DENY"
 }
 ''',
-    "[home]/index.tw": '''page {
+    "[home]/layout.tw": '''page {
     title "My TW Site"
-    layout "main"
     render static
 }
 
-let siteName = "My TW Site"
-let heroTitle = "Build websites in TW"
-let heroText = "Write .tw, .tss and .ts. Run dev. Ship fast."
+load "@./style.tss"
 
 head {
+    meta { charset "utf-8" }
+    meta { name "viewport", content "width=device-width, initial-scale=1" }
     seo {
-        description "A TW starter project"
-        og_title "{siteName}"
-        og_description "{heroText}"
+        description "A TW App Router starter project"
     }
 }
 
-BODY {
-    import "Hero"
-    import "ThemeToggle"
-
-    ThemeToggle {}
-    Hero {
-        title "{heroTitle}"
-        text "{heroText}"
-        ctaText "Open About Page"
-        ctaLink "/about"
+body {
+    nav { class "navbar"
+        a "Home" { href "/", class "nav-link" }
+        a "About" { href "/about", class "nav-link" }
+        a "Counter" { href "/counter", class "nav-link" }
+        a "Contact" { href "/contact", class "nav-link" }
+    }
+    main { class "container"
+        children
+    }
+    footer { class "footer"
+        p "Built with TW App Router"
     }
 }
 ''',
-    "[home]/pages/about.tw": '''page {
-    title "About"
-    layout "main"
+    "[home]/page.tw": '''page {
+    title "Home"
     render static
 }
 
-BODY {
-    div {
-        class "page"
-        h1 "About this project"
-        p "This page is written in TW."
-        a {
-            href "/"
-            text "Back home"
-        }
+body {
+    section { class "hero"
+        h1 "Build websites with TW"
+        p "Write .tw files. Run tw dev. Ship fast. Zero JS by default."
+        a "Get Started" { href "/about", class "button" }
     }
 }
 ''',
-    "[home]/pages/counter.tw": '''page {
+    "[home]/about/page.tw": '''page {
+    title "About"
+    render static
+}
+
+body {
+    div { class "page"
+        h1 "About this project"
+        p "This site is built with TW Framework App Router."
+        p "Layouts are TW components. Routes come from page.tw files."
+        a "Back home" { href "/", class "button" }
+    }
+}
+''',
+    "[home]/counter/page.tw": '''page {
     title "Counter Demo"
-    layout "main"
     render static
 }
 
 state {
     count 0
-    name "World"
 }
 
-BODY {
-    div {
-        class "page"
+body {
+    div { class "page"
         h1 "TW Reactive Counter"
-
-        p { tw-text "count" }
-
+        p "Count: {count}"
         button {
-            on:click "__tw.set(\'count\', __tw.get(\'count\') + 1)"
+            on:click "__tw.set('count', __tw.get('count') + 1)"
             class "button"
-            text "+"
+            "+"
         }
         button {
-            on:click "__tw.set(\'count\', __tw.get(\'count\') - 1)"
+            on:click "__tw.set('count', __tw.get('count') - 1)"
             class "button"
-            text "-"
+            "-"
         }
-
-        hr {}
-        p "Your name:"
-        input {
-            type "text"
-            bind:value "name"
-            placeholder "Type here..."
-        }
-        p { tw-text "\'Hello, \' + name + \'!\'"}
     }
 }
 ''',
-    "[home]/pages/contact.tw": '''page {
+    "[home]/contact/page.tw": '''page {
     title "Contact"
-    layout "main"
     render static
 }
 
-BODY {
-    import "ContactForm"
-    ContactForm {
-        action "/api/contact"
-    }
-}
-''',
-    "[home]/pages/search.tw": '''page {
-    title "Search"
-    layout "main"
-    render static
-}
-
-BODY {
-    div {
-        class "page"
-        h1 "Search"
-        input {
-            id "tw-search"
-            type "search"
-            placeholder "Type to search..."
-            input "__twSearchInput"
-        }
-        div { id "tw-search-results" }
-        script {
-          window.__twSearchInput = async function(event) {
-            try {
-              var q = (event && event.target && event.target.value) ? event.target.value : '';
-              var results = await window.__twSearch(q, {limit: 15});
-              var root = document.getElementById('tw-search-results');
-              if (!root) return;
-              if (!q) { root.innerHTML = ''; return; }
-              root.innerHTML = results.map(function(r){
-                var href = r.route || '/';
-                return '<div style=\"padding:10px 0;border-bottom:1px solid var(--tw-border)\">' +
-                  '<a href=\"' + href + '\" style=\"color:inherit;text-decoration:none;font-weight:700\">' +
-                  (r.title || href) + '</a>' +
-                  '<div style=\"opacity:.8;font-size:14px\">' + (r.excerpt || '') + '</div>' +
-                '</div>';
-              }).join('');
-            } catch (e) {}
-          };
+body {
+    div { class "page"
+        h1 "Contact Us"
+        form { class "contact-form", method "post", action "/api/contact"
+            input { type "text", name "name", placeholder "Your name" }
+            input { type "email", name "email", placeholder "Email" }
+            textarea { name "message", placeholder "Message", rows 5 }
+            button { type "submit", class "button", "Send" }
         }
     }
 }
 ''',
-    "[home]/pages/dashboard.tw": '''page {
-    title "Dashboard"
-    layout "main"
-    render server
-    revalidate 60
+    "[home]/not-found.tw": '''page {
+    title "Page Not Found"
+    render static
 }
 
-BODY {
-    div {
-        class "page"
-        h1 "Private dashboard"
-        p "Protected by middleware.tw cookie auth."
+body {
+    div { class "page not-found"
+        h1 "404"
+        p "Page not found."
+        a "Go home" { href "/", class "button" }
     }
 }
 ''',
-    "[home]/api/users/route.twm": '''fn get(request) {
-    return {
-        status: 200,
-        json: [{ id: 1, name: "Ada" }]
-    };
-}
-
-fn post(request) {
-    return {
-        status: 201,
-        json: { ok: true, source: request.body || {} }
-    };
-}
-''',
-    "[home]/api/contact/route.twm": '''fn post(request) {
+    "[home]/api/contact/route.tw": '''fn post(request) {
     return {
         status: 200,
         json: { ok: true, message: "Thanks!", received: request.body || {} }
     };
 }
 ''',
-    "[home]/components/Hero.tw": '''section {
-    class "hero"
-    h1 "{title}"
-    p "{text}"
-    a {
-        href "{ctaLink}"
-        class "button"
-        text "{ctaText}"
-    }
+    "[home]/api/users/route.tw": '''fn get(request) {
+    return {
+        status: 200,
+        json: [{ id: 1, name: "Ada" }, { id: 2, name: "Grace" }]
+    };
 }
 ''',
-    "[home]/components/ThemeToggle.tw": '''button {
-    class "theme-toggle"
-    click "__twToggleTheme"
-    aria-label "Toggle theme"
-    text "Toggle theme"
-}
-''',
-    "[home]/components/ContactForm.tw": '''form {
-    class "contact-form"
-    method "post"
-    action "{action}"
-    input {
-        type "text"
-        name "name"
-        placeholder "Your name"
-        required true
-    }
-    input {
-        type "email"
-        name "email"
-        placeholder "Email"
-        required true
-    }
-    textarea {
-        name "message"
-        placeholder "Message"
-        rows 5
-        required true
-    }
-    button {
-        type "submit"
-        class "button"
-        text "Send"
-    }
-}
-''',
-    "[home]/layouts/main.tw": """<!DOCTYPE html>
-<html>
-<head>
-{head}
-{styles}
-</head>
-<body>
-{slot}
-{scripts}
-</body>
-</html>
-""",
     "[home]/style.tss": '''body {
     margin 0
-    font-family system-ui, sans-serif
+    font-family system-ui, -apple-system, sans-serif
     background var(--tw-bg)
     color var(--tw-fg)
+    line-height 1.6
 }
 
 :root[data-theme="dark"] {
@@ -297,65 +189,83 @@ fn post(request) {
     --tw-border rgba(2, 6, 23, 0.12)
 }
 
-.hero {
-    min-height 100
-    padding 64
+.navbar {
     display flex
-    flex-direction column
     gap 16
-    justify-content center
-    align-items flex-start
+    padding 16 24
+    border-bottom 1 solid var(--tw-border)
+    background var(--tw-card)
+}
+
+.nav-link {
+    color var(--tw-fg)
+    text-decoration none
+    font-weight 600
+    opacity 0.8
+}
+
+.container {
+    max-width 800
+    margin 0 auto
+    padding 48 24
+}
+
+.hero {
+    text-align center
+    padding 80 24
+}
+
+.hero h1 {
+    font-size 48
+    font-weight 800
+    margin-bottom 16
 }
 
 .button {
     display inline-block
-    margin-top 12
-    padding 12 18
+    margin-top 16
+    padding 12 24
     border-radius 12
     background #38bdf8
     color #082f49
     text-decoration none
     font-weight 700
+    border none
+    cursor pointer
+    font-size 16
 }
 
-.theme-toggle {
-    position fixed
-    top 16
-    right 16
-    padding 10 12
-    border-radius 12
-    border 1 solid var(--tw-border)
-    background var(--tw-card)
-    color var(--tw-fg)
-    cursor pointer
+.page {
+    padding 24 0
 }
 
 .contact-form {
     display flex
     flex-direction column
     gap 12
-    padding 48
-    max-width 680
+    max-width 480
 }
 
-.contact-form input {
-    padding 12 12
-    border-radius 12
+.contact-form input, .contact-form textarea {
+    padding 12
+    border-radius 8
     border 1 solid var(--tw-border)
     background var(--tw-card)
     color var(--tw-fg)
+    font-size 16
 }
 
-.contact-form textarea {
-    padding 12 12
-    border-radius 12
-    border 1 solid var(--tw-border)
-    background var(--tw-card)
-    color var(--tw-fg)
+.footer {
+    text-align center
+    padding 24
+    border-top 1 solid var(--tw-border)
+    opacity 0.7
+    font-size 14
 }
 
-.page {
-    padding 48
+.not-found {
+    text-align center
+    padding 80 24
 }
 ''',
     ".gitignore": """.tw/
@@ -488,24 +398,20 @@ def create_project(project_name, parent_dir=None) -> None:
         os.path.join(root, ".tw", "cache"),
         os.path.join(root, ".tw", "manifest"),
         os.path.join(root, ".tw", "compiler", "chunks"),
-        os.path.join(root, "app"),
-        os.path.join(root, "pages"),
         os.path.join(root, "components"),
-        os.path.join(root, "layouts"),
-        os.path.join(root, "api"),
-        os.path.join(root, "middleware"),
         os.path.join(root, "dist"),
         os.path.join(root, "public"),
         os.path.join(root, "[home]", "assets", "images"),
         os.path.join(root, "[home]", "assets", "js"),
         os.path.join(root, "[home]", "assets", "css"),
         os.path.join(root, "[home]", "assets", "fonts"),
-        os.path.join(root, "[home]", "api"),
-        os.path.join(root, "[home]", "hooks"),
-        os.path.join(root, "[home]", "stores"),
-        os.path.join(root, "[home]", "middleware"),
-        os.path.join(root, "[home]", "plugins"),
-        os.path.join(root, "[home]", "types"),
+        os.path.join(root, "[home]", "api", "contact"),
+        os.path.join(root, "[home]", "api", "users"),
+        os.path.join(root, "[home]", "about"),
+        os.path.join(root, "[home]", "counter"),
+        os.path.join(root, "[home]", "contact"),
+        os.path.join(root, "[home]", "components"),
+        os.path.join(root, "[home]", "lib"),
     ]:
         ensure_dir(extra_dir)
 
