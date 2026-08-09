@@ -227,16 +227,43 @@ def strip_trailing_slash(path: str) -> Any:
 
 
 def route_from_static_page(page_info: dict) -> Any:
+    # App Router pages have a canonical url_path — use it directly
+    # to avoid double-nesting (rel_dir="about" + name="about" → "/about/about")
+    # (fixed v0.8.2)
+    url_path = page_info.get("url_path")
+    if url_path:
+        return url_path
     segments = []
     if page_info["rel_dir"]:
         segments.extend(page_info["rel_dir"].split(os.sep))
     if page_info["name"] != "index":
-        segments.append(page_info["name"])
+        is_app_router = page_info.get("app_router", False)
+        if is_app_router:
+            # Don't duplicate: if name is already the last segment of rel_dir, skip
+            if segments and segments[-1] == page_info["name"]:
+                pass
+            else:
+                segments.append(page_info["name"])
+        else:
+            segments.append(page_info["name"])
     route = "/" + "/".join(filter(None, segments))
     return route if route != "" else "/"
 
 
 def route_from_dynamic_page(page_info: dict, item: dict) -> Any:
+    # App Router dynamic pages: use url_path with segment substitution
+    url_path = page_info.get("url_path")
+    if url_path:
+        dyn = compiler.resolve_dynamic_segments(page_info, item)
+        if dyn:
+            seg = "/".join(dyn)
+            param = page_info.get("param", "")
+            if param and f"[{param}]" in url_path:
+                return url_path.replace(f"[{param}]", seg)
+            if param and f"[...{param}]" in url_path:
+                return url_path.replace(f"[...{param}]", seg)
+            return f"{url_path.rstrip('/')}/{seg}" if seg else url_path
+        return url_path
     segments = []
     if page_info["rel_dir"]:
         segments.extend(page_info["rel_dir"].split(os.sep))

@@ -1646,6 +1646,22 @@ def collect_page_dependencies(tw_path) -> Any:
 
 
 def route_path_from_page_info(page_info, item=None) -> str:
+    # App Router pages have a canonical url_path — use it directly.
+    # This avoids the double-nesting bug where rel_dir="about" + name="about"
+    # produces "/about/about" (fixed v0.8.2).
+    url_path = page_info.get("url_path")
+    if url_path:
+        if item and page_info.get("type") == "dynamic":
+            dyn = resolve_dynamic_segments(page_info, item)
+            if dyn:
+                # Replace the dynamic segment placeholder in url_path
+                seg = "/".join(dyn)
+                param = page_info.get("param", "")
+                if param and param in url_path:
+                    return url_path.replace(f"[{param}]", seg).replace(f"[...{param}]", seg)
+                return f"{url_path.rstrip('/')}/{seg}" if seg else url_path
+        return url_path
+
     route_parts = []
     rel_dir = page_info.get("rel_dir", "")
     if rel_dir:
@@ -1655,7 +1671,17 @@ def route_path_from_page_info(page_info, item=None) -> str:
     else:
         name = page_info.get("name", "index")
         if name != "index":
-            route_parts.append(name)
+            # App Router: name may already be part of rel_dir (e.g. rel_dir="about", name="about")
+            # Don't duplicate — only append if name is not already the last segment of rel_dir
+            is_app_router = page_info.get("app_router", False)
+            if is_app_router:
+                rel_segments = rel_dir.split("/") if rel_dir else []
+                if rel_segments and rel_segments[-1] == name:
+                    pass  # name already in rel_dir, skip
+                else:
+                    route_parts.append(name)
+            else:
+                route_parts.append(name)
     route = "/" + "/".join(filter(None, route_parts))
     return route or "/"
 

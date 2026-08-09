@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.8.2 (2026-08-10)
+
+### Bug Fixes
+
+#### Route Path Double-Nesting (Critical)
+- `route_path_from_page_info()` in `compiler.py` — App Router pages had `rel_dir` and `name` both set to the same value (e.g. "about"), producing `/about/about` in sitemap.xml, `__TW_DATA__` JSON, and HTML comment metadata. Fixed by checking `url_path` first and skipping duplicate `name` append for App Router pages.
+- `route_from_static_page()` and `route_from_dynamic_page()` in `framework.py` — Same double-nesting bug existed in these separate functions used by sitemap.xml and RSS generation. Fixed with the same `url_path`-first + duplicate-detection logic.
+- All three route path generators now produce consistent, correct URLs: `/about`, `/contact`, `/counter`, `/react` (not `/about/about` etc.)
+
+#### Sitemap.xml / RSS Feed
+- Sitemap.xml now lists correct clean URLs (`/about` instead of `/about/about`)
+- RSS feed entries also fixed (same root cause)
+
+#### Previous v0.8.1 Fixes (carried forward)
+- `detect_package_manager()` — was dead code, now actually used by `install_packages()`, `remove_packages()`, `ensure_dependencies()`
+- `get_react_loader_script()` — both branches were identical, now returns different output based on installed React version and CDN/bundle mode
+- `ReactCompat` class — was never imported during build, now wired to build pipeline via `_inject_react_integration()` in both `render_html()` and App Router modular pipeline
+- `LOAD_RE` regex — `on:load` was matched as `load` directive, fixed with negative lookbehind
+- Counter template — bare strings `"+"`/`"-"` replaced with `text "+"`/`text "-"`
+- Duplicate `generate_deploy_metadata()` call removed from `cli.py`
+
 ## v0.8.1 (2026-08-10)
 
 ### Major Features
