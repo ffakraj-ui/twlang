@@ -110,25 +110,52 @@ Built-in CSP nonce generation, secure HTTP headers, input sanitization, and CSRF
 
 ## Layouts
 
+Layout files (`layout.tw`) use the standard `head { } body { children }` pattern.
+The `children` keyword injects the page content at that position.
+
 ```tw
-component layout {
-    html {
-        head {
-            title "{children.title}"
-        }
-        body {
-            nav { class "navbar"
-                a { href "/" } "Home"
-                a { href "/about" } "About"
-            }
-            main { class "container"
-                children
-            }
-            footer "© 2026"
-        }
+// [home]/layout.tw — root layout (wraps ALL pages)
+
+head {
+    title "My Site"
+    meta { charset "UTF-8" }
+    meta { name "viewport" content "width=device-width, initial-scale=1" }
+}
+
+body {
+    nav { class "navbar"
+        a { href "/" } "Home"
+        a { href "/about" } "About"
+    }
+
+    main { class "container"
+        children
+    }
+
+    footer "© 2026"
+}
+```
+
+Route-group layouts work the same way — place a `layout.tw` inside a
+`(group)/` folder to scope chrome to that group's routes only.
+
+```tw
+// [home]/(dashboard)/layout.tw — scoped to dashboard pages only
+
+body {
+    aside { class "sidebar"
+        a { href "/dashboard" } "Overview"
+        a { href "/settings" } "Settings"
+    }
+    main {
+        children
     }
 }
 ```
+
+> **Note:** The older `component layout { html { ... } }` pattern is
+> deprecated — it caused double rendering of `<html>`/`<body>` tags.
+> Use the `head { } body { children }` pattern shown above.
 
 ## Virtual DOM
 

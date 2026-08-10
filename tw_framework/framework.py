@@ -200,6 +200,11 @@ def invalidate_compiler_caches() -> None:
     # Optional caches introduced by newer versions
     if hasattr(compiler, "_LAYOUT_META_CACHE"):
         compiler._LAYOUT_META_CACHE.clear()
+    # v0.8.48: _LAYOUT_AST_CACHE was missing from invalidation, causing
+    # layout structure edits (adding/removing components) to stay stale
+    # in `tw dev` until a full `tw clean` + restart. (Issue D)
+    if hasattr(compiler, "_LAYOUT_AST_CACHE"):
+        compiler._LAYOUT_AST_CACHE.clear()
 
 
 def use_modular_pipeline(config: Optional[Dict] = None) -> Any:

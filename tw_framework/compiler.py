@@ -159,6 +159,23 @@ CSS_PROPERTIES = {
     "transition", "animation", "transform", "opacity", "cursor",
     "list-style", "pointer-events", "user-select", "content",
     "radius", "shadow", "bg",
+    # v0.8.48 (Issue C): vendor-prefixed properties were silently dropped
+    # because _is_new_tss_declaration() didn't recognize them, causing them
+    # to be merged into the previous declaration's value and lost.
+    "-webkit-background-clip", "-webkit-text-fill-color",
+    "-webkit-box-shadow", "-webkit-transform", "-webkit-transition",
+    "-webkit-animation", "-webkit-appearance", "-webkit-tap-highlight-color",
+    "-webkit-user-select", "-webkit-font-smoothing",
+    "-moz-appearance", "-moz-user-select", "-moz-box-shadow",
+    "-moz-transform", "-moz-transition", "-moz-tab-size",
+    "-ms-user-select", "-ms-transform", "-ms-overflow-style",
+    "-o-transform", "-o-transition",
+    # Non-prefixed versions that were also missing
+    "background-clip", "text-fill-color", "object-fit", "object-position",
+    "filter", "backdrop-filter", "-webkit-backdrop-filter",
+    "clip-path", "-webkit-clip-path", "mask", "-webkit-mask",
+    "aspect-ratio", "writing-mode", "text-orientation",
+    "scroll-behavior", "overscroll-behavior", "gap",
 }
 
 CSS_ALIASES = {
@@ -2603,7 +2620,20 @@ def get_layout_meta(name: str):
     with _CACHE_LOCK:
         loaded = name in _LAYOUT_CACHE
     if not loaded:
-        load_layout(name)
+        try:
+            load_layout(name)
+        except FileNotFoundError:
+            # v0.8.48 (Issue A): don't propagate the raw traceback —
+            # emit a clean one-line warning and return empty meta so
+            # the build can continue (the page still renders, just
+            # without that layout's responsive flag).
+            expected = os.path.join(LAYOUTS_DIR, f"{name}.tw")
+            logger.warning(
+                "TW: named layout `%s` is referenced but not found "
+                "(expected: %s). Create the file or remove the `layout \"%s\"` key.",
+                name, expected, name,
+            )
+            return {}
     with _CACHE_LOCK:
         return dict(_LAYOUT_META_CACHE.get(name, {}) or {})
 
@@ -3666,6 +3696,24 @@ def parse_page_block(tokens, i, page) -> Any:
             page.title = str(value)
             continue
         if key == "layout":
+            # v0.8.48: The named-layout system (layout "x" + [home]/layouts/x.tw)
+            # is DEPRECATED in favor of file-based layouts (layout.tw in route
+            # dirs). It still works but emits a deprecation warning guiding
+            # users to the file-based system. (Proposal: deprecate named layouts)
+            import warnings as _warnings
+            _warnings.warn(
+                f"`layout \"{value}\"` (named layout) is deprecated. "
+                f"Use file-based layouts instead: place a `layout.tw` in the "
+                f"route directory ([home]/ or [home]/(group)/). "
+                f"See the Layouts section in the README.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            logger.warning(
+                "TW: `layout \"%s\"` (named layout) is deprecated. "
+                "Use file-based layouts (layout.tw in route dirs) instead.",
+                value,
+            )
             # Allow multiple layout layers:
             # 1) repeated `layout` keys inside the same `page {}` block
             # 2) `layout "base,docs"` or `layout "base > docs"` style chains
@@ -3761,7 +3809,14 @@ def build_tw_ast(tokens, base_dir, file_path, source) -> Any:
             i += 1
             if not peek(tokens, i) or peek(tokens, i).type not in {"STRING", "WORD"}:
                 raise CompilerError("Expected layout name after `layout`", token=peek(tokens, i - 1))
-            for name in parse_layout_chain(peek(tokens, i).value):
+            # v0.8.48: named-layout deprecation warning (second parser path)
+            _layout_val = peek(tokens, i).value
+            logger.warning(
+                "TW: `layout \"%s\"` (named layout) is deprecated. "
+                "Use file-based layouts (layout.tw in route dirs) instead.",
+                _layout_val,
+            )
+            for name in parse_layout_chain(_layout_val):
                 page.layouts.append(name)
                 page.layout = name
             i += 1
@@ -3920,6 +3975,16 @@ def _attach_component_stylesheets(page, source) -> None:
             dep_paths = collect_component_dependencies(comp_name)
         except CompilerError:
             continue
+        # v0.8.48 (Issue B): Call load_component_ast to populate
+        # _COMPONENT_STYLESHEET_PATHS for components used as child
+        # elements (not just via `import`). Without this, `load` in
+        # component files was silently ignored because the stylesheet
+        # dict was empty when _attach ran (load_component_ast was only
+        # called during rendering, which happens AFTER build_tw_ast).
+        try:
+            load_component_ast(comp_name)
+        except Exception:
+            pass
         for dep_path in dep_paths:
             if dep_path in _COMPONENT_STYLESHEET_PATHS and dep_path not in seen_paths:
                 seen_paths.add(dep_path)
@@ -3952,6 +4017,11 @@ def _is_new_tss_declaration(item) -> bool:
         if first_word.startswith("--"):
             return True
         if first_word.lower() in CSS_PROPERTIES or first_word.lower() in CSS_ALIASES:
+            return True
+        # v0.8.48 (Issue C): vendor-prefixed properties (-webkit-*, -moz-*, -ms-*, -o-*)
+        # are always new declarations, even if not in CSS_PROPERTIES. Without this,
+        # they'd be silently merged into the previous declaration's value and lost.
+        if first_word.startswith(("-webkit-", "-moz-", "-ms-", "-o-", "-khtml-")):
             return True
     return False
 
@@ -5151,7 +5221,10 @@ def render_html(page, context, css_href) -> Any:
                 layout_responsive = True
                 break
     except Exception:
-        logger.exception("Failed to inspect layout meta for responsive mode")
+        # v0.8.48 (Issue A): get_layout_meta now handles missing layouts
+        # gracefully with a clean warning, so this should rarely fire.
+        # Demoted from logger.exception (full traceback) to logger.debug.
+        logger.debug("Failed to inspect layout meta for responsive mode", exc_info=True)
         layout_responsive = False
 
     context["_tw_responsive"] = (

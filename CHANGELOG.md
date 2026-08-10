@@ -1,5 +1,54 @@
 # Changelog
 
+## v0.8.48 (2026-08-11)
+
+### Named-Layout System Deprecation (Proposal)
+- **Deprecated `layout "x"` page key + `[home]/layouts/` folder** (reported by Suraj):
+  The framework already has a complete file-based layout model that matches Next.js
+  (`[home]/layout.tw` for global chrome, `[home]/(group)/layout.tw` for scoped chrome).
+  The named-layout system added a third, manual mechanism that only applies where
+  explicitly referenced, causing duplicate chrome, raw tracebacks on missing files,
+  and docs confusion. Named layouts still work but now emit a `DeprecationWarning`
+  and a `logger.warning` guiding users to the file-based system. They will be
+  removed in a future release.
+
+### Bug Fixes — Community Issue Report (Suraj)
+- **Issue A — Missing named layout prints raw traceback**:
+  When a page set `layout "main"` but `[home]/layouts/main.tw` didn't exist,
+  `tw preview` printed "Failed to inspect layout meta for responsive mode" plus a
+  full `FileNotFoundError` traceback per page. Fix: `get_layout_meta()` now catches
+  `FileNotFoundError`, emits a clean one-line warning naming the layout and expected
+  path, and returns empty meta so the build continues. The `render_html()` fallback
+  was also demoted from `logger.exception` (full traceback) to `logger.debug`.
+- **Issue B — `load` inside component files silently ignored**:
+  `load "@./style/chrome.tss"` at the top of `components/Header.tw` produced no
+  error but the stylesheet was never injected. Root cause: `_attach_component_stylesheets()`
+  checked `_COMPONENT_STYLESHEET_PATHS`, but that dict was only populated by
+  `load_component_ast()` — which ran during rendering (after `_attach` had already
+  executed). For components used as child elements without `import`, the stylesheet
+  dict was empty when `_attach` ran. Fix: `_attach_component_stylesheets()` now calls
+  `load_component_ast()` for each used component before checking the stylesheet dict,
+  ensuring component `load` directives are always honored.
+- **Issue C — TSS silently drops vendor-prefixed declarations**:
+  `-webkit-background-clip text`, `background-clip text`, `-webkit-text-fill-color transparent`
+  were silently dropped (rule partially applied, no warning). Root cause:
+  `_is_new_tss_declaration()` didn't recognize vendor-prefixed properties, so they
+  were merged into the previous declaration's value and lost. Fix: (1) added common
+  vendor-prefixed and modern CSS properties to `CSS_PROPERTIES`, and (2) added a
+  general fallback in `_is_new_tss_declaration()` that treats any property starting
+  with `-webkit-`, `-moz-`, `-ms-`, `-o-`, or `-khtml-` as a new declaration.
+- **Issue D — Hot-reload: layout structure edits still stale**:
+  Removing a component usage (`Loader { }`) from `[home]/layout.tw` while `tw dev`
+  runs didn't take effect on refresh; only `tw clean` + restart worked. Root cause:
+  `_LAYOUT_AST_CACHE` was missing from `invalidate_compiler_caches()` — the v0.8.47
+  fix cleared `_LAYOUT_CACHE` (raw HTML) but not `_LAYOUT_AST_CACHE` (parsed AST),
+  so structural edits (add/remove components) stayed stale. Fix: added
+  `_LAYOUT_AST_CACHE.clear()` to `invalidate_compiler_caches()`.
+- **Issue E — README layout example updated**:
+  Replaced the old `component layout { html { ... } }` example (which caused double
+  rendering of `<html>`/`<body>` tags) with the working `head { } body { children }`
+  pattern. Added route-group layout example and a deprecation note for the old pattern.
+
 ## v0.8.47 (2026-08-10)
 
 ### Bug Fix — Dev Server Hot Reload
@@ -12,7 +61,7 @@
   stale content. Fix: in `compile_match_response()` (dev server), force-clear
   all layout/component caches before EVERY render when `dev_mode=True`. Also
   added cache clear in `build_page_with_modular_pipeline()`'s `render_and_write()`.
-** Thanks to Suraj**
+
 ## v0.8.46 (2026-08-10)
 
 
