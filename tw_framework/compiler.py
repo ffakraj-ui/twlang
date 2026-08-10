@@ -235,6 +235,8 @@ LAYOUT_RESPONSIVE_RE = re.compile(
 )
 
 IMPORT_RE = re.compile(r'\bimport\s+"([^"]+)"')
+IMPORT_ES6_RE = re.compile(r'\bimport\s+\{([^}]+)\}\s+from\s+"([^"]+)"')
+_ES6_IMPORTS = []  # v0.8.43
 LAYOUT_RE = re.compile(r'\blayout\s+(?:"([^"]+)"|([^\s{}]+))')
 LOAD_RE = re.compile(r'(?<![\w:])\bload\s+(?:"([^"]+)"|(@[^\s{}"\']+))')
 COMPONENT_LOAD_RE = re.compile(r'(?m)^[ \t]*load\s+(?:"([^"]+)"|(@[^\s{}"\']+))[ \t]*$')
@@ -1520,6 +1522,7 @@ def resolve_load_target(raw_path, base_dir, *, token=None, location="load") -> D
 
 def extract_directives_from_source(raw, base_dir) -> Dict[str, Any]:
     imports = IMPORT_RE.findall(raw)
+    es6_imports = IMPORT_ES6_RE.findall(raw)
     layouts = []
     for quoted, bare in LAYOUT_RE.findall(raw):
         name = quoted or bare
@@ -1541,12 +1544,21 @@ def extract_directives_from_source(raw, base_dir) -> Dict[str, Any]:
             component_files.append(load_info["full_path"])
     return {
         "imports": imports,
+        "es6_imports": es6_imports,
         "layouts": layouts,
         "stylesheets": stylesheets,
         "json_files": json_files,
         "component_files": component_files,
         "module_files": module_files,
     }
+    # v0.8.43: ES6 import paths
+    for _names, _path in es6_imports:
+        _resolved = resolve_source_path(_path.strip(), base_dir)
+        for _ext in ["", ".js", ".ts", ".mjs"]:
+            _candidate = _resolved + _ext
+            if os.path.isfile(_candidate) and _candidate not in module_files:
+                module_files.append(_candidate)
+                break
 
 
 def collect_component_dependencies(name, stack=None, seen=None) -> Any:
@@ -2881,9 +2893,43 @@ def write_chunk(content, ext) -> Any:
         return url
 
 
+def _parse_es6_import(tokens, i) -> Any:
+    """Parse ES6 import: import { fn1, fn2 } from "@/lib/file"."""
+    i += 1  # skip {
+    names = []
+    while i < len(tokens):
+        tok = peek(tokens, i)
+        if not tok:
+            raise CompilerError("Unterminated ES6 import")
+        if tok.type == "BRACE" and tok.value == "}":
+            i += 1
+            break
+        if tok.type == "WORD":
+            names.append(tok.value)
+        i += 1
+    from_tok = peek(tokens, i)
+    if not from_tok or from_tok.type != "WORD" or from_tok.value != "from":
+        raise CompilerError("Expected `from` after import names",
+            token=from_tok, suggestion='import { name } from "path"')
+    i += 1
+    path_tok = peek(tokens, i)
+    if not path_tok or path_tok.type != "STRING":
+        raise CompilerError("Expected path after `from`",
+            token=path_tok, suggestion='import { fn } from "@/lib/file"')
+    i += 1
+    try:
+        _ES6_IMPORTS.append({"names": names, "path": path_tok.value})
+    except NameError:
+        pass
+    return None, i
+
+
 def parse_import(tokens, i) -> Any:
     i += 1
     token = peek(tokens, i)
+    # v0.8.43: ES6 import { fn } from "path"
+    if token and token.type == "BRACE" and token.value == "{":
+        return _parse_es6_import(tokens, i)
     if not token or token.type != "STRING":
         raise CompilerError("Expected component name after `import`", token=peek(tokens, i - 1))
     name = token.value

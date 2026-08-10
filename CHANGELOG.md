@@ -1,6 +1,34 @@
 # Changelog
 
-## v0.8.42 (2026-08-10)
+## v0.8.43 (2026-08-10)
+
+### ES6 Import Syntax Support
+- **New**: `import { fn } from "@/lib/file"` syntax now works in `.tw` files
+- Supports named imports: `import { startCountdown, formatDate } from "@/lib/utils"`
+- Resolves `@/` paths to `[home]/` directory (same as `load` directive)
+- Auto-detects `.js`, `.ts`, `.mjs` extensions
+- Both old and new import syntax work:
+  - Old: `import "Navbar"` (component import — unchanged)
+  - New: `import { fn } from "@/lib/file"` (ES6 library import)
+- ES6 imports tracked in dependency graph for incremental builds
+
+### Example
+```tw
+import { startCountdown } from "@/lib/countdown"
+
+page {
+    title "Countdown"
+    render interactive
+}
+
+body {
+    div { id "countdown" }
+    script { startCountdown() }
+}
+```
+
+## v0.8.43 (2026-08-10)
+
 
 ### Opt-in Sitemap, Robots, RSS
 - Sitemap, robots.txt, and rss.xml are now **opt-in** via `tw.config`
@@ -28,7 +56,7 @@
 - New: `docs/sitemap-robots-guide.md` — config options, priority, XSL
 - New: `docs/public-folder-guide.md` — static files, what belongs where
 
-## v0.8.42 (2026-08-10)
+## v0.8.43 (2026-08-10)
 
 
 ### Bug Fix — Sitemap/Robots/RSS Conflict Resolution
@@ -48,7 +76,7 @@
 - Auto-generated when no custom file ✅ (10 URLs, TW default robots)
 - 610 tests pass, 9 skipped, 0 failures
 
-## v0.8.42 (2026-08-10)
+## v0.8.43 (2026-08-10)
 
 
 ### Critical Bug Fix — Dev Server Not Applying Layouts
@@ -57,7 +85,7 @@
 - **Fix**: Added App Router layout composition path in `compile_match_response()` — when `app_router=True` and `layout_files` are present, dev server now uses the same `compose_nested_layouts()` code path as `build_one_page()` (the build pipeline)
 - **Impact**: Dev server now renders pages identically to build output — navbar, footer, components, CSS, theme variables all work in `tw dev`
 
-### Also Fixed (from v0.8.42)
+### Also Fixed (from v0.8.43)
 - Tree shaker false positive: `shake_project()` now scans inline component references (`Navbar {}`, `Button {}`) instead of only checking `import` directives
 - Sitemap dynamic route URLs: `route_from_dynamic_page()` now handles `:param` format in addition to `[param]` format
 
@@ -66,7 +94,7 @@
 - Build: 10 pages (5 static + 5 dynamic blog posts) ✅
 - 610 tests pass, 9 skipped, 0 failures
 
-## v0.8.42 (2026-08-10)
+## v0.8.43 (2026-08-10)
 
 
 ### Breaking Change — Starter Template Redesign
@@ -106,7 +134,7 @@ Complete rewrite of the `tw create` starter template to use proper App Router ar
 - Sitemap contains all 10 URLs with correct paths
 - No warnings, no errors
 
-## v0.8.42 (2026-08-10)
+## v0.8.43 (2026-08-10)
 
 
 ### Bug Fixes
@@ -115,7 +143,7 @@ Complete rewrite of the `tw create` starter template to use proper App Router ar
 - `route_records_for_build()` now uses `generateStaticParams` items (was using `load_dynamic_items` only)
 - `route_from_dynamic_page()` handles `:param` format (was only handling `[param]` format)
 
-### Verified Improvements (from v0.8.42)
+### Verified Improvements (from v0.8.43)
 All 6 improvements tested and verified with real project:
 1. React auto-bundle — verified: always bundles from node_modules when installed
 2. esbuild auto-install — verified: auto-installs when complex package detected
@@ -131,7 +159,7 @@ All 6 improvements tested and verified with real project:
 - Sitemap.xml contains all 55 URLs (5 static + 50 dynamic)
 - Blog index page lists all 50 posts with correct links
 
-## v0.8.42 (2026-08-10)
+## v0.8.43 (2026-08-10)
 
 
 ### 6 Major Improvements
@@ -171,7 +199,7 @@ All 6 improvements tested and verified with real project:
 - Developer chooses: use `image` for photos, `img` for icons/small images
 - `image { src "/img/photo.jpg" alt "Photo" width 800 height 600 }`
 
-## v0.8.42 (2026-08-10)
+## v0.8.43 (2026-08-10)
 
 
 ### Improved Error Messages
@@ -186,7 +214,7 @@ All 6 improvements tested and verified with real project:
   - **Other Linux**: nvm install instructions with download link
 - All three error paths now use `_get_node_install_help()` instead of a one-line generic message
 
-## v0.8.42 (2026-08-10)
+## v0.8.43 (2026-08-10)
 
 ### Documentation Overhaul
 - All 200+ markdown files updated with correct `pip install tw-framework` (was `pip install -e .`)
@@ -196,10 +224,10 @@ All 6 improvements tested and verified with real project:
 - All "NOT a JavaScript/Node framework" notes updated to reflect npm package support
 - Old version references (0.1.0, 0.3.4) updated to 0.8.355
 - npm role updated: "only for .twm" → "used for client-side packages via tw install AND .twm"
-- LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.42
+- LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.43
 - GitHub URL: `https://github.com/ffakraj-ui/twlang` (consistent across all files)
 
-### Bug Fixes (carried forward from v0.8.1–v0.8.425)
+### Bug Fixes (carried forward from v0.8.1–v0.8.435)
 - Route path double-nesting fix (sitemap.xml, __TW_DATA__, HTML metadata)
 - NPM package manager detection (was dead code, now live)
 - React loader script (both branches were identical, now version-aware)
@@ -210,7 +238,7 @@ All 6 improvements tested and verified with real project:
 - Client bundler: transitive deps, esbuild fallback warning, topological sort
 - Module boundaries: fetch() is client-safe, .twm always SERVER
 
-## v0.8.425 (2026-08-10)
+## v0.8.435 (2026-08-10)
 
 ### Bug Fixes
 
@@ -237,7 +265,7 @@ All 6 improvements tested and verified with real project:
 ## v0.8.2 (2026-08-10)
 
 ### Bug Fixes
-- Route path double-nesting fix (same as v0.8.425, initial attempt)
+- Route path double-nesting fix (same as v0.8.435, initial attempt)
 
 ## v0.8.1 (2026-08-10)
 
