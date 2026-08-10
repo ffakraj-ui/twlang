@@ -48,6 +48,20 @@ def generate_srcset(src: str, widths: list = None) -> str:
     return ", ".join(parts)
 
 
+def auto_alt_from_filename(src: str, max_chars: int = 8) -> str:
+    """
+    Generate a default alt text from the image filename.
+    Takes the filename (without extension), replaces hyphens/underscores
+    with spaces, and truncates to max_chars.
+    """
+    filename = os.path.basename(src)
+    stem = os.path.splitext(filename)[0]
+    stem = stem.replace("-", " ").replace("_", " ").strip()
+    if len(stem) > max_chars:
+        stem = stem[:max_chars]
+    return stem if stem else "image"
+
+
 def render_optimized_image(attrs: Dict[str, Any], src: str = "") -> str:
     """
     Render an optimized <img> tag with lazy loading, srcset, etc.
@@ -149,6 +163,7 @@ def generate_image_variants(
 __all__ = [
     "is_optimizable_image",
     "generate_srcset",
+    "auto_alt_from_filename",
     "render_optimized_image",
     "generate_image_variants",
 ]

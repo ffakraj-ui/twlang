@@ -19,7 +19,7 @@ from .tw_image.component import BUILTIN_IMAGE_COMPONENTS
 
 # Full-stack architecture imports (v0.6.0)
 from .scoped_css import find_scoped_stylesheet, process_scoped_css, generate_scope_id
-from .image_optimizer import render_optimized_image, is_optimizable_image
+from .image_optimizer import render_optimized_image, is_optimizable_image, auto_alt_from_filename
 from .module_boundaries import (
     ALL_TW_PACKAGES, TW_PACKAGE_BOUNDARIES, TW_PACKAGE_ALIASES,
     ImportClassifier, ImportInfo, is_tw_package, get_package_boundary,
@@ -5024,6 +5024,14 @@ def _render_image_tag(attrs: dict, text: str = "") -> str:
     src = attrs.get("src", "")
     if not src:
         return ""
+    # v0.8.42: auto_image_alt
+    if not attrs.get("alt"):
+        try:
+            _cfg = load_config()
+            if to_bool(_cfg.get("auto_image_alt", False)):
+                attrs["alt"] = auto_alt_from_filename(src)
+        except Exception:
+            pass
     return render_optimized_image(attrs, src)
 
 

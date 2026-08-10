@@ -2,7 +2,7 @@
 
 A high-performance, HTML-first web framework with Virtual DOM, App Router, and Zero-JS static sites.
 
-**v0.8.40** — NPM Package Manager, React Compatibility, esbuild Bundling, Security Module, Route Fixes
+**v0.8.42** — NPM Package Manager, React Compatibility, esbuild Bundling, Security Module, Route Fixes
 
 ## Quick Start
 
@@ -17,7 +17,7 @@ That's it. Your static site is in `dist/` — deploy it anywhere.
 
 > **Pre-release / development install:** `pip install tw-framework` from a clone of this repo.
 
-## What's New in v0.8.40
+## What's New in v0.8.42
 
 ### Route Path Fix (Critical)
 - App Router route paths no longer double-nested (`/about/about` → `/about`)

@@ -37,6 +37,10 @@ pretty_urls: true
 search: true
 modular_pipeline: true
 allow_raw_script: true
+sitemap: true
+robots: true
+rss: true
+auto_image_alt: true
 """,
     ".env": """SITE_NAME=My TW Site
 API_TOKEN=change-me

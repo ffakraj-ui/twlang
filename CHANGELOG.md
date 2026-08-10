@@ -1,6 +1,55 @@
 # Changelog
 
-## v0.8.40 (2026-08-10)
+## v0.8.42 (2026-08-10)
+
+### Opt-in Sitemap, Robots, RSS
+- Sitemap, robots.txt, and rss.xml are now **opt-in** via `tw.config`
+- New config options: `sitemap: true`, `robots: true`, `rss: true` (all default OFF)
+- No files generated unless explicitly enabled
+
+### Priority: Developer File > Auto-Generated
+- If developer places custom `sitemap.xml`, `robots.txt`, or `rss.xml` in `public/` folder or project root, TW uses that file instead of auto-generating
+- Developer's custom file always wins over auto-generation
+- Build log clearly shows which source was used
+
+### XSL Stylesheet for Sitemap
+- Auto-generated `sitemap.xml` includes XSL stylesheet reference
+- `sitemap.xsl` auto-generated with dark theme, summary cards, URL table
+- Sitemap renders as styled page in browser (like Next.js)
+- Custom XSL supported: place `sitemap.xsl` in `public/`
+
+### Auto Image Alt
+- New config: `auto_image_alt: true` in `tw.config`
+- When enabled, images without `alt` attribute get auto-generated alt from filename
+- Takes filename, replaces hyphens/underscores with spaces, truncates to 8 chars
+- Example: `/img/my-profile-photo.jpg` → alt="my profi"
+
+### Documentation
+- New: `docs/sitemap-robots-guide.md` — config options, priority, XSL
+- New: `docs/public-folder-guide.md` — static files, what belongs where
+
+## v0.8.42 (2026-08-10)
+
+
+### Bug Fix — Sitemap/Robots/RSS Conflict Resolution
+- **Bug**: TW `tw build` would blindly overwrite `sitemap.xml`, `robots.txt`, and `rss.xml` in `dist/` — even if the developer had placed their own custom versions
+- **Fix**: TW now checks for developer-provided files in `public/` directory or project root before generating
+  - If developer provided a custom `robots.txt` → TW copies it to `dist/` (no overwrite)
+  - If developer provided a custom `sitemap.xml` → TW copies it to `dist/` (no overwrite)
+  - If developer provided a custom `rss.xml` → TW copies it to `dist/` (no overwrite)
+  - If no custom file found → TW auto-generates as before
+- **Build log**: Now shows whether each file was auto-generated or developer-provided:
+  - `✅ sitemap.xml: auto-generated`
+  - `✅ sitemap.xml: using developer file (public/sitemap.xml)`
+
+### Test Results
+- Developer custom robots.txt preserved ✅ (GoogleBot, Disallow: /admin)
+- Developer custom sitemap.xml preserved ✅ (custom-page URL)
+- Auto-generated when no custom file ✅ (10 URLs, TW default robots)
+- 610 tests pass, 9 skipped, 0 failures
+
+## v0.8.42 (2026-08-10)
+
 
 ### Critical Bug Fix — Dev Server Not Applying Layouts
 - **Bug**: `tw dev` was not applying `layout.tw`, components (Navbar, Footer, Button, Card), or CSS (`style.tss`) when rendering pages
@@ -8,7 +57,7 @@
 - **Fix**: Added App Router layout composition path in `compile_match_response()` — when `app_router=True` and `layout_files` are present, dev server now uses the same `compose_nested_layouts()` code path as `build_one_page()` (the build pipeline)
 - **Impact**: Dev server now renders pages identically to build output — navbar, footer, components, CSS, theme variables all work in `tw dev`
 
-### Also Fixed (from v0.8.40)
+### Also Fixed (from v0.8.42)
 - Tree shaker false positive: `shake_project()` now scans inline component references (`Navbar {}`, `Button {}`) instead of only checking `import` directives
 - Sitemap dynamic route URLs: `route_from_dynamic_page()` now handles `:param` format in addition to `[param]` format
 
@@ -17,7 +66,7 @@
 - Build: 10 pages (5 static + 5 dynamic blog posts) ✅
 - 610 tests pass, 9 skipped, 0 failures
 
-## v0.8.40 (2026-08-10)
+## v0.8.42 (2026-08-10)
 
 
 ### Breaking Change — Starter Template Redesign
@@ -57,7 +106,7 @@ Complete rewrite of the `tw create` starter template to use proper App Router ar
 - Sitemap contains all 10 URLs with correct paths
 - No warnings, no errors
 
-## v0.8.40 (2026-08-10)
+## v0.8.42 (2026-08-10)
 
 
 ### Bug Fixes
@@ -66,7 +115,7 @@ Complete rewrite of the `tw create` starter template to use proper App Router ar
 - `route_records_for_build()` now uses `generateStaticParams` items (was using `load_dynamic_items` only)
 - `route_from_dynamic_page()` handles `:param` format (was only handling `[param]` format)
 
-### Verified Improvements (from v0.8.40)
+### Verified Improvements (from v0.8.42)
 All 6 improvements tested and verified with real project:
 1. React auto-bundle — verified: always bundles from node_modules when installed
 2. esbuild auto-install — verified: auto-installs when complex package detected
@@ -82,7 +131,7 @@ All 6 improvements tested and verified with real project:
 - Sitemap.xml contains all 55 URLs (5 static + 50 dynamic)
 - Blog index page lists all 50 posts with correct links
 
-## v0.8.40 (2026-08-10)
+## v0.8.42 (2026-08-10)
 
 
 ### 6 Major Improvements
@@ -122,7 +171,7 @@ All 6 improvements tested and verified with real project:
 - Developer chooses: use `image` for photos, `img` for icons/small images
 - `image { src "/img/photo.jpg" alt "Photo" width 800 height 600 }`
 
-## v0.8.40 (2026-08-10)
+## v0.8.42 (2026-08-10)
 
 
 ### Improved Error Messages
@@ -137,7 +186,7 @@ All 6 improvements tested and verified with real project:
   - **Other Linux**: nvm install instructions with download link
 - All three error paths now use `_get_node_install_help()` instead of a one-line generic message
 
-## v0.8.40 (2026-08-10)
+## v0.8.42 (2026-08-10)
 
 ### Documentation Overhaul
 - All 200+ markdown files updated with correct `pip install tw-framework` (was `pip install -e .`)
@@ -147,10 +196,10 @@ All 6 improvements tested and verified with real project:
 - All "NOT a JavaScript/Node framework" notes updated to reflect npm package support
 - Old version references (0.1.0, 0.3.4) updated to 0.8.355
 - npm role updated: "only for .twm" → "used for client-side packages via tw install AND .twm"
-- LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.40
+- LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.42
 - GitHub URL: `https://github.com/ffakraj-ui/twlang` (consistent across all files)
 
-### Bug Fixes (carried forward from v0.8.1–v0.8.405)
+### Bug Fixes (carried forward from v0.8.1–v0.8.425)
 - Route path double-nesting fix (sitemap.xml, __TW_DATA__, HTML metadata)
 - NPM package manager detection (was dead code, now live)
 - React loader script (both branches were identical, now version-aware)
@@ -161,7 +210,7 @@ All 6 improvements tested and verified with real project:
 - Client bundler: transitive deps, esbuild fallback warning, topological sort
 - Module boundaries: fetch() is client-safe, .twm always SERVER
 
-## v0.8.405 (2026-08-10)
+## v0.8.425 (2026-08-10)
 
 ### Bug Fixes
 
@@ -188,7 +237,7 @@ All 6 improvements tested and verified with real project:
 ## v0.8.2 (2026-08-10)
 
 ### Bug Fixes
-- Route path double-nesting fix (same as v0.8.405, initial attempt)
+- Route path double-nesting fix (same as v0.8.425, initial attempt)
 
 ## v0.8.1 (2026-08-10)
 
