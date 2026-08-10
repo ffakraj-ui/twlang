@@ -258,10 +258,16 @@ def route_from_dynamic_page(page_info: dict, item: dict) -> Any:
         if dyn:
             seg = "/".join(dyn)
             param = page_info.get("param", "")
-            if param and f"[{param}]" in url_path:
-                return url_path.replace(f"[{param}]", seg)
-            if param and f"[...{param}]" in url_path:
-                return url_path.replace(f"[...{param}]", seg)
+            if param:
+                # Handle [param] format (Next.js style)
+                if f"[{param}]" in url_path:
+                    return url_path.replace(f"[{param}]", seg)
+                # Handle [...param] format (catch-all)
+                if f"[...{param}]" in url_path:
+                    return url_path.replace(f"[...{param}]", seg)
+                # Handle :param format (Express style) (v0.8.38 fix)
+                if f":{param}" in url_path:
+                    return url_path.replace(f":{param}", seg)
             return f"{url_path.rstrip('/')}/{seg}" if seg else url_path
         return url_path
     segments = []
@@ -2825,7 +2831,13 @@ def route_records_for_build() -> List[dict]:
                 "pipeline": metadata["pipeline"],
             })
             continue
-        for item in compiler.load_dynamic_items(page["path"]):
+        # v0.8.38: Check generateStaticParams first (same as build pipeline)
+        gsp_items = compiler.load_generate_static_params(page_ast, page["path"])
+        if gsp_items is not None:
+            items = gsp_items
+        else:
+            items = compiler.load_dynamic_items(page["path"])
+        for item in items:
             if not isinstance(item, dict):
                 continue
             route = route_from_dynamic_page(page, item)

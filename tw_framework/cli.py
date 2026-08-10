@@ -31,7 +31,7 @@ GLOBAL_CONFIG_FILE = os.path.join(GLOBAL_CONFIG_DIR, "config.json")
 STARTER_FILES = {
     "tw.config": """name: My TW Site
 site_url: http://localhost:3000
-description: A TW App Router starter project
+description: A modern TW App Router project
 theme: system
 pretty_urls: true
 search: true
@@ -57,24 +57,18 @@ load "@./style.tss"
 head {
     meta { charset "utf-8" }
     meta { name "viewport", content "width=device-width, initial-scale=1" }
+    meta { name "theme-color", content "#0f172a" }
     seo {
-        description "A TW App Router starter project"
+        description "A modern TW App Router project - zero JS by default"
     }
 }
 
 body {
-    nav { class "navbar"
-        a "Home" { href "/", class "nav-link" }
-        a "About" { href "/about", class "nav-link" }
-        a "Counter" { href "/counter", class "nav-link" }
-        a "Contact" { href "/contact", class "nav-link" }
-    }
-    main { class "container"
+    Navbar {}
+    main { class "main-content"
         children
     }
-    footer { class "footer"
-        p "Built with TW App Router"
-    }
+    Footer {}
 }
 ''',
     "[home]/page.tw": '''page {
@@ -84,9 +78,375 @@ body {
 
 body {
     section { class "hero"
-        h1 "Build websites with TW"
-        p "Write .tw files. Run tw dev. Ship fast. Zero JS by default."
-        a "Get Started" { href "/about", class "button" }
+        h1 "Build Modern Web Apps"
+        p { class "hero-sub" text "Write .tw files. Run tw dev. Ship fast. Zero JS by default." }
+        Button { href "/about", label "Get Started" }
+    }
+    section { class "features"
+        h2 { class "section-title" text "Why TW Framework?" }
+        div { class "feature-grid"
+            Card { title "Zero JS by Default", description "Static HTML output with zero client-side JavaScript unless you opt in." }
+            Card { title "App Router", description "Nested layouts, dynamic routes, API routes - all file-based." }
+            Card { title "Component System", description "Build reusable UI components with scoped CSS and props." }
+            Card { title "Image Optimization", description "Use the image tag for lazy loading, srcset, and responsive images." }
+            Card { title "Scoped CSS", description "Component-level styles that do not leak - CSS Modules built in." }
+            Card { title "Deploy Anywhere", description "Static output that works on Vercel, Netlify, GitHub Pages, or any host." }
+        }
+    }
+}
+''',
+    "[home]/style.tss": '''body {
+    margin 0
+    font-family system-ui, -apple-system, sans-serif
+    background var(--tw-bg)
+    color var(--tw-fg)
+    line-height 1.6
+    -webkit-font-smoothing antialiased
+}
+
+:root {
+    --tw-bg #ffffff
+    --tw-fg #0b1220
+    --tw-card #f8fafc
+    --tw-border #e2e8f0
+    --tw-accent #3b82f6
+    --tw-accent-fg #ffffff
+    --tw-muted #64748b
+    --tw-radius 12
+    --tw-shadow 0 1 3 rgba(0,0,0,0.08)
+    --tw-shadow-hover 0 8 25 rgba(0,0,0,0.12)
+}
+
+:root[data-theme="dark"] {
+    --tw-bg #0f172a
+    --tw-fg #e2e8f0
+    --tw-card #1e293b
+    --tw-border #334155
+    --tw-accent #38bdf8
+    --tw-accent-fg #082f49
+    --tw-muted #94a3b8
+    --tw-shadow 0 1 3 rgba(0,0,0,0.3)
+    --tw-shadow-hover 0 8 25 rgba(0,0,0,0.4)
+}
+
+.navbar {
+    position sticky
+    top 0
+    z-index 100
+    display flex
+    align-items center
+    justify-content space-between
+    padding 16 24
+    background var(--tw-card)
+    border-bottom 1 solid var(--tw-border)
+    backdrop-filter blur(12)
+}
+
+.nav-logo {
+    font-size 22
+    font-weight 800
+    color var(--tw-accent)
+    text-decoration none
+}
+
+.nav-links {
+    display flex
+    gap 24
+}
+
+.nav-link {
+    color var(--tw-fg)
+    text-decoration none
+    font-weight 600
+    font-size 15
+    opacity 0.8
+}
+
+.nav-link:hover {
+    opacity 1
+}
+
+.main-content {
+    min-height calc(100vh - 120)
+}
+
+.hero {
+    text-align center
+    padding 100 24
+    background linear-gradient(135deg, var(--tw-card), var(--tw-bg))
+}
+
+.hero h1 {
+    font-size 56
+    font-weight 800
+    margin 0 0 16
+    background linear-gradient(135deg, var(--tw-accent), #8b5cf6)
+    -webkit-background-clip text
+    -webkit-text-fill-color transparent
+    background-clip text
+}
+
+.hero-sub {
+    font-size 20
+    color var(--tw-muted)
+    max-width 600
+    margin 0 auto 32
+}
+
+.features {
+    padding 80 24
+    max-width 1200
+    margin 0 auto
+}
+
+.section-title {
+    font-size 36
+    font-weight 800
+    text-align center
+    margin-bottom 48
+}
+
+.feature-grid {
+    display grid
+    grid-template-columns repeat(auto-fill, minmax(320, 1fr))
+    gap 24
+}
+
+.card {
+    background var(--tw-card)
+    border 1 solid var(--tw-border)
+    border-radius var(--tw-radius)
+    padding 28
+    box-shadow var(--tw-shadow)
+}
+
+.card:hover {
+    transform translateY(-4)
+    box-shadow var(--tw-shadow-hover)
+}
+
+.card h3 {
+    font-size 20
+    font-weight 700
+    margin 0 0 12
+    color var(--tw-fg)
+}
+
+.card p {
+    font-size 15
+    color var(--tw-muted)
+    margin 0
+    line-height 1.6
+}
+
+.btn {
+    display inline-block
+    padding 14 32
+    border-radius var(--tw-radius)
+    background var(--tw-accent)
+    color var(--tw-accent-fg)
+    text-decoration none
+    font-weight 700
+    font-size 16
+    border none
+    cursor pointer
+}
+
+.btn:hover {
+    transform translateY(-2)
+    opacity 0.9
+}
+
+.page {
+    max-width 800
+    margin 0 auto
+    padding 48 24
+}
+
+.page h1 {
+    font-size 40
+    font-weight 800
+    margin-bottom 16
+}
+
+.blog-list {
+    max-width 800
+    margin 0 auto
+    padding 48 24
+}
+
+.blog-list h1 {
+    font-size 40
+    font-weight 800
+    margin-bottom 32
+}
+
+.blog-card {
+    display block
+    background var(--tw-card)
+    border 1 solid var(--tw-border)
+    border-radius var(--tw-radius)
+    padding 24
+    margin-bottom 16
+    text-decoration none
+    color var(--tw-fg)
+    box-shadow var(--tw-shadow)
+}
+
+.blog-card:hover {
+    transform translateY(-2)
+    box-shadow var(--tw-shadow-hover)
+}
+
+.blog-card h2 {
+    font-size 22
+    font-weight 700
+    margin 0 0 8
+}
+
+.blog-card p {
+    color var(--tw-muted)
+    margin 0 0 8
+    font-size 15
+}
+
+.blog-card .meta {
+    font-size 13
+    color var(--tw-muted)
+    opacity 0.7
+}
+
+.blog-post {
+    max-width 720
+    margin 0 auto
+    padding 48 24
+}
+
+.blog-post h1 {
+    font-size 40
+    font-weight 800
+    margin-bottom 8
+}
+
+.blog-post .meta {
+    color var(--tw-muted)
+    font-size 15
+    margin-bottom 32
+}
+
+.blog-post .excerpt {
+    font-size 18
+    line-height 1.7
+    color var(--tw-fg)
+}
+
+.counter {
+    max-width 400
+    margin 0 auto
+    text-align center
+    padding 80 24
+}
+
+.counter h1 {
+    font-size 40
+    font-weight 800
+    margin-bottom 32
+}
+
+.counter-display {
+    font-size 72
+    font-weight 800
+    color var(--tw-accent)
+    margin-bottom 32
+}
+
+.counter-buttons {
+    display flex
+    gap 16
+    justify-content center
+}
+
+.contact-form {
+    display flex
+    flex-direction column
+    gap 16
+    max-width 480
+    margin 0 auto
+}
+
+.contact-form input, .contact-form textarea {
+    padding 14
+    border-radius var(--tw-radius)
+    border 1 solid var(--tw-border)
+    background var(--tw-card)
+    color var(--tw-fg)
+    font-size 16
+    font-family inherit
+}
+
+.contact-form input:focus, .contact-form textarea:focus {
+    outline none
+    border-color var(--tw-accent)
+}
+
+.footer {
+    text-align center
+    padding 32 24
+    border-top 1 solid var(--tw-border)
+    color var(--tw-muted)
+    font-size 14
+}
+
+.footer p {
+    margin 4 0
+}
+
+.not-found {
+    text-align center
+    padding 120 24
+}
+
+.not-found h1 {
+    font-size 120
+    font-weight 800
+    color var(--tw-accent)
+    margin 0
+}
+
+.not-found p {
+    font-size 20
+    color var(--tw-muted)
+    margin-bottom 32
+}
+
+@media (max-width: 768) {
+    .hero h1 {
+        font-size 36
+    }
+    .hero-sub {
+        font-size 16
+    }
+    .nav-links {
+        gap 16
+    }
+    .feature-grid {
+        grid-template-columns 1fr
+    }
+    .section-title {
+        font-size 28
+    }
+}
+''',
+    "[home]/not-found.tw": '''page {
+    title "Page Not Found"
+    render static
+}
+
+body {
+    div { class "not-found"
+        h1 "404"
+        p "The page you are looking for does not exist."
+        Button { href "/", label "Go Home" }
     }
 }
 ''',
@@ -97,13 +457,58 @@ body {
 
 body {
     div { class "page"
-        h1 "About this project"
-        p "This site is built with TW Framework App Router."
-        p "Layouts are TW components. Routes come from page.tw files."
-        a "Back home" { href "/", class "button" }
+        h1 "About TW Framework"
+        p "TW Framework is a modern web framework that compiles .tw files into optimized static HTML. It uses an App Router architecture with zero JavaScript by default."
+        p "Built for developers who want fast, secure, and lightweight websites without sacrificing developer experience."
+        h2 { class "section-title" text "Key Features" }
+        div { class "feature-grid"
+            Card { title "File-based Routing", description "Create pages by adding .tw files. No configuration needed." }
+            Card { title "Zero JS Default", description "Static HTML output. Add interactivity only where needed." }
+            Card { title "Type Safe", description "Built-in TypeScript-like type checking for templates." }
+        }
+        Button { href "/", label "Back Home" }
     }
 }
 ''',
+    "[home]/blog/page.tw": '''page {
+    title "Blog"
+    render static
+}
+
+load "@./blog/posts.json"
+
+body {
+    div { class "blog-list"
+        h1 "Blog"
+        p "Latest articles and updates from the TW Framework team."
+        each posts as post {
+            a { class "blog-card", href "/blog/{post.slug}"
+                h2 "{post.title}"
+                p "{post.excerpt}"
+                p { class "meta" text "By {post.author} - {post.date}" }
+            }
+        }
+    }
+}
+''',
+    "[home]/blog/[slug]/page.tw": '''page {
+    title "{title}"
+    render static
+    generateStaticParams "../posts.json"
+}
+
+body {
+    article { class "blog-post"
+        h1 "{title}"
+        p { class "meta" text "By {author} - {date}" }
+        div { class "excerpt"
+            p "{excerpt}"
+        }
+        a { class "btn", href "/blog", text "Back to Blog" }
+    }
+}
+''',
+    "[home]/blog/posts.json": '[\n    {"slug": "getting-started", "title": "Getting Started with TW", "author": "TW Team", "date": "2026-08-01", "excerpt": "Learn how to build your first TW Framework app from scratch. Install the CLI, create a project, and deploy in minutes."},\n    {"slug": "app-router-guide", "title": "App Router Guide", "author": "TW Team", "date": "2026-08-03", "excerpt": "Understand nested layouts, dynamic routes, and API routes in TW Framework App Router architecture."},\n    {"slug": "components-explained", "title": "Components Explained", "author": "TW Team", "date": "2026-08-05", "excerpt": "Build reusable UI components with TW component system. Props, scoped CSS, and composition patterns."},\n    {"slug": "styling-with-tss", "title": "Styling with TSS", "author": "TW Team", "date": "2026-08-07", "excerpt": "Master the TW Style System with CSS variables, dark mode support, and responsive design."},\n    {"slug": "deployment-guide", "title": "Deployment Guide", "author": "TW Team", "date": "2026-08-09", "excerpt": "Deploy your TW app to Vercel, Netlify, GitHub Pages, or any static hosting provider."}\n]\n',
     "[home]/counter/page.tw": '''page {
     title "Counter Demo"
     render static
@@ -114,18 +519,25 @@ state {
 }
 
 body {
-    div { class "page"
-        h1 "TW Reactive Counter"
-        p "Count: {count}"
-        button {
-            on:click "__tw.set('count', __tw.get('count') + 1)"
-            class "button"
-            text "+"
-        }
-        button {
-            on:click "__tw.set('count', __tw.get('count') - 1)"
-            class "button"
-            text "-"
+    div { class "counter"
+        h1 "Reactive Counter"
+        p { class "counter-display" text "{count}" }
+        div { class "counter-buttons"
+            button {
+                on:click "__tw.set('count', __tw.get('count') + 1)"
+                class "btn"
+                text "+"
+            }
+            button {
+                on:click "__tw.set('count', __tw.get('count') - 1)"
+                class "btn"
+                text "-"
+            }
+            button {
+                on:click "__tw.set('count', 0)"
+                class "btn"
+                text "Reset"
+            }
         }
     }
 }
@@ -138,141 +550,57 @@ body {
 body {
     div { class "page"
         h1 "Contact Us"
+        p "Have a question? Send us a message and we will get back to you."
         form { class "contact-form", method "post", action "/api/contact"
-            input { type "text", name "name", placeholder "Your name" }
-            input { type "email", name "email", placeholder "Email" }
-            textarea { name "message", placeholder "Message", rows 5 }
-            button { type "submit", class "button", "Send" }
+            input { type "text", name "name", placeholder "Your name", required true }
+            input { type "email", name "email", placeholder "Email address", required true }
+            textarea { name "message", placeholder "Your message", rows 5, required true }
+            button { type "submit", class "btn", text "Send Message" }
         }
     }
 }
 ''',
-    "[home]/not-found.tw": '''page {
-    title "Page Not Found"
-    render static
-}
-
-body {
-    div { class "page not-found"
-        h1 "404"
-        p "Page not found."
-        a "Go home" { href "/", class "button" }
+    "[home]/components/Navbar.tw": '''nav { class "navbar"
+    a "TW" { href "/", class "nav-logo" }
+    div { class "nav-links"
+        a "Home" { href "/", class "nav-link" }
+        a "About" { href "/about", class "nav-link" }
+        a "Blog" { href "/blog", class "nav-link" }
+        a "Counter" { href "/counter", class "nav-link" }
+        a "Contact" { href "/contact", class "nav-link" }
     }
+}
+''',
+    "[home]/components/Footer.tw": '''footer { class "footer"
+    p "Built with TW Framework"
+    p "Zero JS by default - App Router - Static-first"
+}
+''',
+    "[home]/components/Button.tw": '''a { class "btn", href "{href}"
+    text "{label}"
+}
+''',
+    "[home]/components/Card.tw": '''div { class "card"
+    h3 "{title}"
+    p "{description}"
 }
 ''',
     "[home]/api/contact/route.tw": '''fn post(request) {
     return {
         status: 200,
-        json: { ok: true, message: "Thanks!", received: request.body || {} }
+        json: { ok: true, message: "Thanks for your message!", received: request.body || {} }
     };
 }
 ''',
     "[home]/api/users/route.tw": '''fn get(request) {
     return {
         status: 200,
-        json: [{ id: 1, name: "Ada" }, { id: 2, name: "Grace" }]
+        json: [
+            { id: 1, name: "Ada Lovelace" },
+            { id: 2, name: "Grace Hopper" },
+            { id: 3, name: "Dennis Ritchie" }
+        ]
     };
-}
-''',
-    "[home]/style.tss": '''body {
-    margin 0
-    font-family system-ui, -apple-system, sans-serif
-    background var(--tw-bg)
-    color var(--tw-fg)
-    line-height 1.6
-}
-
-:root[data-theme="dark"] {
-    --tw-bg #0f172a
-    --tw-fg #e2e8f0
-    --tw-card rgba(15, 23, 42, 0.7)
-    --tw-border rgba(148, 163, 184, 0.25)
-}
-
-:root[data-theme="light"] {
-    --tw-bg #ffffff
-    --tw-fg #0b1220
-    --tw-card rgba(255, 255, 255, 0.8)
-    --tw-border rgba(2, 6, 23, 0.12)
-}
-
-.navbar {
-    display flex
-    gap 16
-    padding 16 24
-    border-bottom 1 solid var(--tw-border)
-    background var(--tw-card)
-}
-
-.nav-link {
-    color var(--tw-fg)
-    text-decoration none
-    font-weight 600
-    opacity 0.8
-}
-
-.container {
-    max-width 800
-    margin 0 auto
-    padding 48 24
-}
-
-.hero {
-    text-align center
-    padding 80 24
-}
-
-.hero h1 {
-    font-size 48
-    font-weight 800
-    margin-bottom 16
-}
-
-.button {
-    display inline-block
-    margin-top 16
-    padding 12 24
-    border-radius 12
-    background #38bdf8
-    color #082f49
-    text-decoration none
-    font-weight 700
-    border none
-    cursor pointer
-    font-size 16
-}
-
-.page {
-    padding 24 0
-}
-
-.contact-form {
-    display flex
-    flex-direction column
-    gap 12
-    max-width 480
-}
-
-.contact-form input, .contact-form textarea {
-    padding 12
-    border-radius 8
-    border 1 solid var(--tw-border)
-    background var(--tw-card)
-    color var(--tw-fg)
-    font-size 16
-}
-
-.footer {
-    text-align center
-    padding 24
-    border-top 1 solid var(--tw-border)
-    opacity 0.7
-    font-size 14
-}
-
-.not-found {
-    text-align center
-    padding 80 24
 }
 ''',
     ".gitignore": """.tw/
@@ -280,6 +608,7 @@ body {
 dist/
 __pycache__/
 *.pyc
+node_modules/
 """,
 }
 
@@ -405,7 +734,6 @@ def create_project(project_name, parent_dir=None) -> None:
         os.path.join(root, ".tw", "cache"),
         os.path.join(root, ".tw", "manifest"),
         os.path.join(root, ".tw", "compiler", "chunks"),
-        os.path.join(root, "components"),
         os.path.join(root, "dist"),
         os.path.join(root, "public"),
         os.path.join(root, "[home]", "assets", "images"),
@@ -415,6 +743,7 @@ def create_project(project_name, parent_dir=None) -> None:
         os.path.join(root, "[home]", "api", "contact"),
         os.path.join(root, "[home]", "api", "users"),
         os.path.join(root, "[home]", "about"),
+        os.path.join(root, "[home]", "blog", "[slug]"),
         os.path.join(root, "[home]", "counter"),
         os.path.join(root, "[home]", "contact"),
         os.path.join(root, "[home]", "components"),
