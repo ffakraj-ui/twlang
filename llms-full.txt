@@ -1,4 +1,4 @@
-# TW Framework — Project Metadata (v0.8.44)
+# TW Framework — Project Metadata (v0.8.45)
 # Source: https://github.com/ffakraj-ui/twlang
 # Generated: 2026-08-10
 
@@ -80,13 +80,28 @@
 
 ## Import Syntax
 
-- import "Navbar" — component import from [home]/components/
+- import "Navbar" — component import from [home]/components/ (OPTIONAL — auto-discovery works)
 - import { fn } from "@/lib/file" — ES6 library import from [home]/lib/
 - load "@/data.json" — JSON data load
 - load "@/style.tss" — stylesheet load
 - load "@/lib/auth" — .twm module load
 
-## Key Features (v0.8.44)
+## Component System
+
+- Components in [home]/components/ are **auto-discovered** — no import needed
+- File name = component name: Button.tw → use as `Button {}`
+- Props via `let` keyword in component file
+- `import "Button"` also works but is optional
+- Scoped CSS: ComponentName.tss auto-scoped via data-tw-{hash}
+
+## Script Blocks
+
+- Inline: `script { console.log("hello") }` — raw JS
+- {prop} interpolation works in scripts (v0.8.45+)
+- External: `script { src "@/lib/file.js" }` — @/ resolved, file copied to dist/ (v0.8.45+)
+- External URL: `script { src "https://cdn.example.com/lib.js" }`
+
+## Key Features (v0.8.45)
 
 - App Router with nested layouts
 - Zero JS by default (static HTML + CSS)

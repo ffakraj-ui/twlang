@@ -1,6 +1,28 @@
 # Changelog
 
+## v0.8.45 (2026-08-10)
+
+### Bug Fixes — Community Issue Report
+- **TSS custom properties merge bug (Issue 3)**: `:root { --accent #00f0ff --bg-dark #0f172a }` was merging
+  into one line. Fixed `_is_new_tss_declaration()` to recognize CSS custom properties (`--var-name`).
+  Now `rgba()`, `var()`, `linear-gradient()` all work correctly in TSS.
+- **Script {prop} interpolation (Issue 4)**: `script { new Date("{target}") }` was leaving `{target}`
+  as literal text. Fixed ScriptNode rendering to interpolate `{prop}` with context values before output.
+- **Script src @/ resolution (Issue 5)**: `script { src "@/lib/helper.js" }` was passing `@/` to browser
+  (404). Fixed ScriptTagNode to resolve `@/` alias, copy file to `dist/_tw/scripts/`, and use served URL.
+- **Component auto-discovery documented (Issue 6)**: Components in `[home]/components/` are auto-discovered.
+  No `import` needed. Added clear documentation to README, llms.txt, llms-full.txt, llms-full_part1.txt.
+  Also documented `let` props pattern and script block behavior.
+
+### Documentation Updates
+- All 3 LLM txt files updated: component auto-discovery, script interpolation, script src @/ resolution
+- README.md: Components and Script Blocks sections added/updated
+- llms.txt: Full component section rewritten with auto-discovery + let props
+- llms-full.txt: Component system + script blocks sections added
+- llms-full_part1.txt: Component creating + auto-discovery + script docs added
+
 ## v0.8.44 (2026-08-10)
+
 
 ### Documentation Overhaul
 - All 3 LLM txt files completely rewritten with accurate v0.8.44 syntax, examples, and features

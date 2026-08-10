@@ -2,7 +2,7 @@
 
 A high-performance, HTML-first web framework with Virtual DOM, App Router, and Zero-JS static sites.
 
-**v0.8.44** — NPM Package Manager, React Compatibility, esbuild Bundling, Security Module, Route Fixes
+**v0.8.45** — NPM Package Manager, React Compatibility, esbuild Bundling, Security Module, Route Fixes
 
 ## Quick Start
 
@@ -17,7 +17,7 @@ That's it. Your static site is in `dist/` — deploy it anywhere.
 
 > **Pre-release / development install:** `pip install tw-framework` from a clone of this repo.
 
-## What's New in v0.8.44
+## What's New in v0.8.45
 
 ### Route Path Fix (Critical)
 - App Router route paths no longer double-nested (`/about/about` → `/about`)
@@ -258,3 +258,32 @@ Output is static HTML/CSS/JS in `dist/`. Deploy to any host:
 ## License
 
 MIT
+
+
+## Components
+
+**Auto-Discovery:** Components in `[home]/components/` are auto-discovered.
+No `import` needed — just use `ComponentName {}` directly.
+
+File: `[home]/components/Button.tw`
+```tw
+let label "Click"
+let href "#"
+
+a { class "btn", href "{href}" text "{label}" }
+```
+
+Usage (no import needed):
+```tw
+body {
+    Button { href "/about", label "Get Started" }
+}
+```
+
+`import "Button"` also works but is optional.
+
+## Script Blocks
+
+- Inline: `script { console.log("hello") }` — raw JS
+- **{prop} interpolation in scripts** (v0.8.45+): `script { new Date("{target}") }`
+- **External `script { src "@/lib/file.js" }`** — @/ resolved, file copied to `dist/_tw/scripts/` (v0.8.45+)

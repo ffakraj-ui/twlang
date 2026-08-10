@@ -3945,9 +3945,11 @@ def _is_new_tss_declaration(item) -> bool:
                     break
             if from_tailwind:
                 return True
-    # Check if first word is a known CSS property or alias
+    # CSS custom properties (--accent, --bg-dark, etc.) are always new declarations
     if parts:
         first_word = parts[0].strip(":;,")
+        if first_word.startswith("--"):
+            return True
         if first_word.lower() in CSS_PROPERTIES or first_word.lower() in CSS_ALIASES:
             return True
     return False
@@ -4577,6 +4579,28 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
         if isinstance(node, ScriptTagNode):
             raw_src = render_value(node.src, current_context)
             src = interpolate(raw_src, current_context) if isinstance(raw_src, str) else str(raw_src or "")
+            # Resolve @/ alias — copy file to dist/_tw/scripts/ and use served URL
+            if src.startswith("@/"):
+                try:
+                    resolved = resolve_source_path(src, file_path or ".")
+                    if os.path.exists(resolved):
+                        script_name = os.path.basename(resolved)
+                        # Find project root (where tw.config lives) to locate dist/
+                        proj_root = file_path or "."
+                        for _ in range(10):
+                            if os.path.exists(os.path.join(proj_root, "tw.config")):
+                                break
+                            parent = os.path.dirname(proj_root)
+                            if parent == proj_root:
+                                break
+                            proj_root = parent
+                        dist_scripts = os.path.join(proj_root, "dist", "_tw", "scripts")
+                        os.makedirs(dist_scripts, exist_ok=True)
+                        import shutil
+                        shutil.copy2(resolved, os.path.join(dist_scripts, script_name))
+                        src = f"/_tw/scripts/{script_name}"
+                except Exception:
+                    pass  # Fall through with original src if resolution fails
             strategy = str(getattr(node, "strategy", "afterInteractive") or "afterInteractive")
 
             if strategy == "beforeInteractive":
@@ -4614,7 +4638,13 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
                         "To disable raw scripts, set `allow_raw_script: false` in `tw.config`."
                     ),
                 )
-            src = write_chunk(node.raw_js, "js")
+            # Interpolate {prop} placeholders in script content with context values
+            js_content = node.raw_js
+            if isinstance(current_context, dict) and "{" in js_content:
+                for ctx_key, ctx_val in current_context.items():
+                    if isinstance(ctx_val, (str, int, float)) and not str(ctx_key).startswith("_"):
+                        js_content = js_content.replace("{" + str(ctx_key) + "}", str(ctx_val))
+            src = write_chunk(js_content, "js")
             out.append(f'{pad}<script src="{src}"></script>\n')
             continue
 

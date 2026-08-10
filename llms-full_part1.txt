@@ -3,7 +3,7 @@ TW Framework — Complete Technical Reference for AI Coding Assistants
 ================================================================================
 
 Source of truth: github.com/ffakraj-ui/twlang (default branch: main)
-Version: v0.8.44 (2026-08-10)
+Version: v0.8.45 (2026-08-10)
 
 Where the README and the source code/tests disagree, this document follows
 the source code and tests.
@@ -122,7 +122,7 @@ body {
 }
 ```
 
-### 2.2 ES6 Library Import (v0.8.44+)
+### 2.2 ES6 Library Import (v0.8.45+)
 ```tw
 import { startCountdown } from "@/lib/countdown"
 import { formatData, parseJSON } from "@/lib/utils"
@@ -142,19 +142,38 @@ load "@/style.tss"               # stylesheet
 load "@/lib/auth"                # .twm server module
 ```
 
+### 2.4 Script Blocks
+- Inline: `script { console.log("hello") }` — raw JS
+- {prop} interpolation in scripts (v0.8.45+): `script { new Date("{target}") }`
+- External: `script { src "@/lib/file.js" }` — @/ resolved to /_tw/scripts/ (v0.8.45+)
+- External URL: `script { src "https://cdn.example.com/lib.js" }`
+
 ================================================================================
 3. COMPONENTS
 ================================================================================
 
-### 3.1 Creating
+### 3.1 Creating Components
 File: `[home]/components/Button.tw`
 ```tw
+let label "Click"
+let href "#"
+
 a { class "btn", href "{href}"
     text "{label}"
 }
 ```
+No wrapper needed — file IS the component. `let` defines props.
 
-### 3.2 Scoped CSS (v0.8.37+)
+### 3.2 Auto-Discovery (v0.8.43+)
+Components in `[home]/components/` are auto-discovered. No `import` needed:
+```tw
+body {
+    Button { href "/about", label "Get Started" }
+}
+```
+`import "Button"` also works but is optional.
+
+### 3.3 Scoped CSS (v0.8.37+)
 File: `[home]/components/Button.tss`
 ```tss
 btn-primary {
