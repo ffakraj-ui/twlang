@@ -1,18 +1,12 @@
 ================================================================================
-TW Framework — Complete Reference for AI Coding Assistants (llms-full_part1.txt)
+TW Framework — Complete Technical Reference for AI Coding Assistants
 ================================================================================
 
 Source of truth: github.com/ffakraj-ui/twlang (default branch: main)
-Version: v0.8.43 (2026-08-10)
-Generated from: README.md, CHANGELOG.md, MIGRATION_V0.8.1.md, DOCUMENTATION.md,
-IMPLEMENTED_FEATURES.md, CONTRIBUTING.md, API_TESTING_GUIDE.md, docs/**, tests/**,
-and the actual tw_framework/ source (compiler.py, framework.py, cli.py,
-npm_manager.py, react_compat.py, client_bundler.py, esbuild_integration.py,
-security.py, module_boundaries.py, twm_parser.py, lib_executor.py, js_interop.py,
-reactivity.py, render_html.py).
+Version: v0.8.44 (2026-08-10)
 
 Where the README and the source code/tests disagree, this document follows
-the source code and tests (the README is a simplified marketing surface).
+the source code and tests.
 
 ================================================================================
 0. WHAT TW IS (AND IS NOT)
@@ -21,489 +15,335 @@ the source code and tests (the README is a simplified marketing surface).
 TW ("TW Framework", package name `tw-framework`, PyPI) is a custom language +
 framework in one package. It is NOT React, NOT Vue, NOT Svelte, and NOT
 TypeScript, although it borrows ideas from each. It CAN use React alongside
-its own VDOM via the React compatibility layer (v0.8.1+).
+its own VDOM via the React compatibility layer.
 
 - Language: `.tw` files (markup + page logic) and `.tss` files (styles) compile
   to plain HTML, CSS, and JS. TW has its own lexer, parser, and compiler
   pipeline written in Python.
 - Framework: file-based App Router routing, `.twm` API routes, middleware,
-  dev server, NPM package manager, React compatibility, esbuild bundling,
-  client-side bundler, security module.
-- Package manager: `pip install tw-framework` (Python). NPM packages via
-  `tw install` command (auto-detects npm/pnpm/yarn/bun).
+  dev server, NPM package manager, React compatibility, esbuild bundling.
+- Package: `pip install tw-framework` (Python). NPM packages via `tw install`.
+- Project root marker: `tw.config` file.
+- Source folder: `[home]/` (literal brackets — App Router root).
 
 ================================================================================
-1. VERSION HISTORY (recent)
+1. SYNTAX — .tw FILES
 ================================================================================
 
-v0.8.43 (2026-08-10):
-  - Route path double-nesting fix (sitemap.xml, __TW_DATA__, HTML metadata)
-  - README Quick Start fix (pip install tw-framework instead of pip install -e .)
-  - All v0.8.1/v0.8.2 fixes carried forward
+TW uses block-based syntax with curly braces. NOT JSX. NOT HTML angle brackets.
 
-v0.8.2 (2026-08-10):
-  - Initial route path double-nesting fix attempt
-
-v0.8.1 (2026-08-10):
-  - NPM Package Manager (tw install/remove/list — pnpm/yarn/bun auto-detection)
-  - React Compatibility Layer (ReactCompat — bootstrap, loader, version detection)
-  - ReactCompat wired to build pipeline via _inject_react_integration()
-  - esbuild Integration (real bundling, not just roadmap)
-  - Client-side Bundler (esbuild + IIFE fallback, topological sort)
-  - Security Module (CSP, headers, sanitization, CSRF)
-  - Enhanced Lib System (createRequire, npm package resolution)
-  - LOAD_RE regex fix (on:load no longer matched as load directive)
-  - Counter template bare string fix
-  - Duplicate deploy metadata call removed
-  - Module boundaries fix (fetch() is client-safe, .twm always SERVER)
-
-v0.8.0:
-  - Virtual DOM (~3KB, no React dependency)
-  - Lib System Overhaul (import syntax, async/await, type annotations)
-  - Server Actions (action {} blocks)
-  - ISR (revalidate N)
-  - Metadata API (metadata {} / generateMetadata {})
-  - Suspense & Streaming
-  - Error Boundaries (error.tw)
-  - Zero-JS Preserved
-
-================================================================================
-2. PROJECT STRUCTURE (App Router)
-================================================================================
-
-```
-my-project/
-  tw.config                  # Required. Simple key-value config.
-  package.json               # Optional. For npm dependencies (tw install).
-  middleware.tw              # Optional. Global request middleware.
-  vercel.json                # Optional. Vercel deployment override.
-  netlify.toml               # Optional. Netlify deployment override.
-  [home]/                    # App Router root (literal brackets)
-    layout.tw                # Root layout
-    page.tw                  # Home page (route: /)
-    about/
-      page.tw                # Route: /about
-    blog/
-      page.tw                # Route: /blog
-      [slug]/
-        page.tw              # Dynamic route: /blog/:slug
-      (dashboard)/           # Route group (doesn't appear in URL)
-        layout.tw
-        stats/
-          page.tw            # Route: /stats
-    api/
-      route.twm              # API route: /api
-      health/
-        route.twm            # API route: /api/health
-    lib/                     # Lib modules (.twm files for shared logic)
-      data.twm
-      utils.twm
-      react-component.twm   # React component module
-    not-found.tw             # 404 page
-    error.tw                 # Error boundary
-```
-
-================================================================================
-3. PAGE SYNTAX
-================================================================================
-
-Every `.tw` page file MUST start with a `page { }` block.
-
-Valid keys inside `page { }`:
-  - title (string, required) — page title
-  - render (string) — static | server | edge | interactive | dynamic
-  - layout (string) — layout name (filename without .tw)
-  - revalidate (number) — ISR seconds
-  - responsive (boolean) — enable responsive meta tags
-
-Example:
+### 1.1 Page Block
 ```tw
 page {
-    title "About"
+    title "My Page"
+    render static
+}
+```
+
+### 1.2 Render Modes
+- `render static` — SSG, build-time HTML (default)
+- `render server` — SSR, per-request server render
+- `render edge` — edge runtime
+- `render interactive` — React client-side hydration
+- `render dynamic` — auto-detect (state/for/if → server, else static)
+
+### 1.3 Body
+```tw
+body {
+    h1 "Hello World"
+    p "This is a paragraph."
+    div { class "card"
+        h2 "Title"
+        p "Content"
+    }
+    a "Click me" { href "/about", class "link" }
+}
+```
+
+### 1.4 Text Interpolation
+```tw
+h1 "Hello {name}"
+p "Count: {count}"
+a { href "/blog/{post.slug}" text "Read more" }
+```
+
+### 1.5 State Management
+```tw
+state {
+    count 0
+    name "Guest"
+}
+
+body {
+    h1 "Count: {count}"
+    button {
+        on:click "__tw.set('count', __tw.get('count') + 1)"
+        text "+"
+    }
+}
+```
+
+### 1.6 Conditional Rendering
+```tw
+if isLoggedIn {
+    h1 "Welcome back!"
+}
+else {
+    h1 "Please log in"
+}
+```
+
+### 1.7 Loops
+```tw
+each posts as post {
+    div { class "card"
+        h2 "{post.title}"
+        p "{post.excerpt}"
+    }
+}
+```
+
+================================================================================
+2. IMPORTS
+================================================================================
+
+TW supports TWO import syntaxes:
+
+### 2.1 Component Import
+```tw
+import "Navbar"
+import "Button"
+```
+Loads `.tw` files from `[home]/components/`. Use as tags:
+```tw
+body {
+    Navbar {}
+    Button { href "/about", label "Click" }
+}
+```
+
+### 2.2 ES6 Library Import (v0.8.44+)
+```tw
+import { startCountdown } from "@/lib/countdown"
+import { formatData, parseJSON } from "@/lib/utils"
+```
+Loads `.js`/`.ts`/`.mjs` files from `[home]/lib/`. Use in script:
+```tw
+body {
+    div { id "countdown" }
+    script { startCountdown() }
+}
+```
+
+### 2.3 Load Directive
+```tw
+load "@/blog/posts.json"        # JSON data (key = filename)
+load "@/style.tss"               # stylesheet
+load "@/lib/auth"                # .twm server module
+```
+
+================================================================================
+3. COMPONENTS
+================================================================================
+
+### 3.1 Creating
+File: `[home]/components/Button.tw`
+```tw
+a { class "btn", href "{href}"
+    text "{label}"
+}
+```
+
+### 3.2 Scoped CSS (v0.8.37+)
+File: `[home]/components/Button.tss`
+```tss
+btn-primary {
+    background blue
+    color white
+}
+```
+Auto-scoped via `data-tw-{hash}`. `@media` preserved. `@keyframes` global.
+
+================================================================================
+4. LAYOUTS
+================================================================================
+
+File: `[home]/layout.tw`
+```tw
+page {
+    title "My Site"
     render static
 }
 
-body {
-    h1 "About Us"
-    p "We build amazing things."
-}
-```
+load "@/style.tss"
 
-Render modes:
-  - static (default) — Zero-JS HTML
-  - interactive — VDOM runtime + React integration
-  - server — Server-side rendering
-  - edge — Edge rendering
-  - dynamic — With generateStaticParams
-
-================================================================================
-4. BODY SYNTAX
-================================================================================
-
-Tag patterns:
-  - Tag with text: `h1 "Welcome"`
-  - Tag with attributes: `div { class "container" }`
-  - Tag with both: `a "Click" { href "/page" class "btn" }`
-  - Nested children: `div { class "box" h1 "Title" p "Text" }`
-  - Text pseudo-attribute: `p { class "desc" text "Content" }`
-
-Attribute syntax: space-separated key-value pairs inside { }. No equals signs.
-Reactive directives use colons: on:click, bind:value, show:visible, tw-text.
-
-CRITICAL: Use `text "..."` for text content inside { } blocks, NOT bare strings.
-  WRONG: button { on:click "count++" "+" }
-  CORRECT: button { on:click "count++" text "+" }
-
-================================================================================
-5. NPM PACKAGE MANAGER (v0.8.1+)
-================================================================================
-
-Module: tw_framework/npm_manager.py
-
-Commands:
-  tw install <pkg>            — Install npm package
-  tw install <pkg>@<version>  — Install specific version
-  tw install --save-dev <pkg> — Save as devDependency
-  tw install --exact <pkg>    — Save exact version (no ^)
-  tw install                  — Install all from package.json
-  tw add <pkg>                — Alias for install
-  tw remove <pkg>             — Remove package
-  tw rm <pkg>                 — Alias for remove
-  tw list                     — List installed packages
-  tw list --detailed          — Show installed versions
-  tw ls                       — Alias for list
-
-Auto-detection (detect_package_manager):
-  - pnpm-lock.yaml → pnpm
-  - yarn.lock → yarn
-  - bun.lockb → bun
-  - package-lock.json → npm
-  - Fallback: check PATH, default npm
-
-Package manager commands:
-  - pnpm: add / remove / install
-  - yarn: add --dev / remove / install
-  - bun: add / remove / install
-  - npm: install --save-dev / uninstall / install
-
-tw.config integration: tw install auto-updates server.external_packages.
-
-================================================================================
-6. REACT COMPATIBILITY (v0.8.1+)
-================================================================================
-
-Module: tw_framework/react_compat.py
-
-ReactCompat class:
-  - is_react_installed() — checks node_modules/react/package.json
-  - get_react_version() — reads version from installed React
-  - get_bootstrap_js() — returns REACT_BOOTSTRAP_JS (defines __tw.react API)
-  - get_react_loader_script(use_cdn=True) — returns script tags:
-    - Installed + CDN: uses installed version (react@17/18/19, NOT hardcoded)
-    - Installed + no CDN: points to /js/react-bundle.js
-    - Not installed + CDN: latest CDN fallback
-    - Not installed + no CDN: empty string
-  - detect_react_usage(source) — checks for React imports, useState, etc.
-
-Build pipeline integration (v0.8.1 fix — was dead code before):
-  - _inject_react_integration() in compiler.py
-  - Called in render_html() both branches (layout + default)
-  - Also called in framework.py App Router modular pipeline
-  - Detects React in .tw source, .twm modules, and render interactive mode
-  - Injects bootstrap JS + loader script before </body>
-  - Config: react_cdn (default true) — set false to bundle from node_modules
-
-React page example:
-```tw
-import { Counter } from "@/lib/react-component"
-
-page {
-    title "React Demo"
-    render interactive
-}
-
-body {
-    div { id "react-root" }
-    script { on:load "__tw.react.mount('Counter', 'react-root')" }
-}
-```
-
-================================================================================
-7. ESBUILD INTEGRATION & CLIENT BUNDLER (v0.8.1+)
-================================================================================
-
-Module: tw_framework/esbuild_integration.py
-  - detect_esbuild() — finds esbuild binary (npx esbuild or local)
-  - get_esbuild_version() — caches version globally
-  - bundle_with_esbuild(entry, outfile, options) — invokes esbuild CLI
-
-Module: tw_framework/client_bundler.py
-  - ClientBundler class:
-    - bundle_package(pkg_name) — tries esbuild first, falls back to IIFE
-    - bundle_imports(source) — finds imports, bundles each package
-    - render_chunk_script_tags() — uses _topological_sort() (Kahn's algorithm)
-    - _topological_sort() — dependency ordering with cycle detection
-    - Transitive deps: iterates _cache to find and write all deps to disk + import map
-    - Fallback warning: "esbuild is not installed — using fallback IIFE bundler"
-
-esbuild bundling:
-  - process.env.NODE_ENV = "production"
-  - Output format: IIFE
-  - Target: browser
-  - CLI syntax: --flag=value (not --flag value)
-
-================================================================================
-8. ROUTE PATH GENERATION (v0.8.43 FIX)
-================================================================================
-
-Three functions generate route paths — all now consistent:
-
-1. route_path_from_page_info() in compiler.py
-   - Used for: __TW_DATA__ JSON, HTML metadata comments
-   - Fix: checks url_path first, then falls back to rel_dir + name
-   - App Router: skips name if it's already the last segment of rel_dir
-
-2. route_from_static_page() in framework.py
-   - Used for: sitemap.xml, RSS feed
-   - Fix: same url_path-first logic + duplicate detection
-
-3. route_from_dynamic_page() in framework.py
-   - Used for: sitemap.xml dynamic routes
-   - Fix: url_path with segment substitution for dynamic params
-
-Before fix: /about/about, /contact/contact, /counter/counter
-After fix: /about, /contact, /counter
-
-Pretty URLs (pretty_urls: true in tw.config):
-  - /about → dist/about/index.html (NOT dist/about/about/index.html)
-  - App Router: rel_dir already contains route name, name NOT appended again
-
-================================================================================
-9. LIB SYSTEM & .twm MODULES
-================================================================================
-
-Import syntax in .tw pages:
-  import { getApps, getApp } from "@/lib/data"
-  import formatPrice from "@/lib/utils"
-
-.twm module files:
-  - Server-side functions: export async function, export function
-  - Client-side functions: export client function (shipped to browser)
-  - Type annotations: stripped before execution
-  - NPM imports: import dayjs from "dayjs" (resolved via createRequire)
-
-Lib executor (tw_framework/lib_executor.py):
-  - Bridge script uses createRequire for npm package resolution
-  - Env helpers: globalThis.env, globalThis.secrets, globalThis.firebase, globalThis.helpers
-  - No Module._resolveFilename override (removed for stability)
-
-twm_parser.py (tw_framework/twm_parser.py):
-  - Parses .twm files — imports, exports, async/await, type annotations
-  - Returns dict with {exports, client_exports, source}
-  - _convert_es_import_to_cjs() — converts ESM imports to CJS require
-
-================================================================================
-10. API ROUTES (.twm)
-================================================================================
-
-File naming: MUST be route.twm
-  [home]/api/route.twm → /api
-  [home]/api/health/route.twm → /api/health
-
-Handler functions:
-  fn get(request) { return { json: { ok: true } }; }
-  fn post(request) { return { status: 201, json: { created: true } }; }
-  fn handler(request) { ... } // catches all methods
-  async fn get(request) { const data = await http.get(url); return { json: data }; }
-
-Request object:
-  request.method, request.path, request.query, request.body,
-  request.headers, request.cookies, request.env, request.project_root
-
-Response formats:
-  - String → 200 text/plain
-  - Plain object → 200 application/json (auto)
-  - Explicit: { status, headers, json, text, html, body, content_type, cookies }
-  - Tuple: [{ ok: true }, 200, { "X-Test": "1" }]
-
-Built-in helpers:
-  - http.get/post/put/patch/delete(url, options?) — async HTTP client
-  - env.KEY / env.get("KEY") / env.require("KEY")
-  - secrets.KEY / secrets.get("KEY") / secrets.require("KEY")
-  - pkg.require("package-name") — load npm package from node_modules
-  - firebase.app() / firebase.firestore() / firebase.auth()
-
-================================================================================
-11. SECURITY MODULE (v0.8.1+)
-================================================================================
-
-Module: tw_framework/security.py
-  - CSP nonce generation
-  - Secure HTTP headers
-  - Input sanitization
-  - CSRF protection
-
-================================================================================
-12. MODULE BOUNDARIES (v0.8.1+)
-================================================================================
-
-Module: tw_framework/module_boundaries.py
-  - classify_module_source(source, file_path=None) — SERVER or CLIENT
-  - .twm files always classified as SERVER
-  - fetch() is client-safe (Node.js 18+ has fetch natively)
-  - BROWSER_ONLY_PATTERNS: innerHTML, onclick, onload, document.write
-  - CLIENT_API_PATTERNS: window, document, localStorage, etc.
-
-================================================================================
-13. VIRTUAL DOM & REACTIVITY (v0.8.0+)
-================================================================================
-
-VDOM: auto-detected (~3KB, no React dependency). Injected when page uses state, events, or bindings.
-
-State:
-  state { count 0 name "hello" items [] }
-
-Bindings:
-  - bind:value "name" — two-way binding
-  - on:click "count++" — event handler
-  - show:visible "count > 0" — conditional display
-  - tw-text "count" — text binding
-  - tw-html "htmlContent" — HTML binding
-  - tw-ref "myInput" — DOM ref (window.__tw.refs.myInput)
-  - tw-class '{"active": "isActive"}' — conditional classes
-  - tw-for "items" — list rendering
-
-Built-in: __twToggleTheme (toggles data-theme="dark" on <html>)
-Client fetch: window.__twFetch(url, options)
-
-================================================================================
-14. MIDDLEWARE
-================================================================================
-
-File: middleware.tw in project root
-
-  fn before(request) {
-    request.headers["X-Custom"] = "value"
-    return request  // or null, or response object, or "skip"
-  }
-
-  fn after(response) {
-    response.headers["X-Frame-Options"] = "DENY"
-    return response
-  }
-
-================================================================================
-15. SERVER ACTIONS (v0.8.0+)
-================================================================================
-
-  action createPost {
-    method POST
-    handler "createPost"
-    require_auth true
-  }
-
-  body {
-    button { on:click "__twAction('createPost', { title: 'Hello' })" text "Create" }
-  }
-
-================================================================================
-16. TSS STYLESHEET SYNTAX
-================================================================================
-
-NO colons between property and value. NO semicolons. Space-separated.
-
-  body {
-    margin 0
-    background var(--bg-color)
-    color #333
-  }
-
-  .btn:hover {
-    transform translateY(-2)
-  }
-
-  @media (max-width:768) {
-    .container {
-      padding 0 18
+head {
+    meta { charset "utf-8" }
+    meta { name "viewport", content "width=device-width, initial-scale=1" }
+    seo {
+        description "Site description"
     }
-  }
+}
+
+body {
+    Navbar {}
+    main { class "main-content"
+        children
+    }
+    Footer {}
+}
+```
+
+`children` keyword injects page content.
 
 ================================================================================
-17. CLI COMMANDS
+5. DYNAMIC ROUTES
 ================================================================================
 
-  tw create <name>           — Create new App Router project
-  tw build                   — Build to dist/
-  tw build --prod            — Production build
-  tw dev                     — Dev server (port 3000)
-  tw dev --port 4000         — Custom port
-  tw serve                   — Production server
-  tw install <pkg>           — Install npm package
-  tw install                 — Install all from package.json
-  tw install --save-dev <p>  — Save as devDependency
-  tw install --exact <p>@v   — Save exact version
-  tw add <pkg>               — Alias for install
-  tw remove <pkg>            — Remove npm package
-  tw rm <pkg>                — Alias for remove
-  tw list                    — List installed packages
-  tw list --detailed         — Show installed versions
-  tw ls                      — Alias for list
-  tw info                    — Project info
-  tw dead                    — Find unused files
-  tw version                 — Show version
+```
+[home]/blog/[slug]/page.tw    # route: /blog/:slug
+[home]/blog/posts.json        # data
+```
+
+```tw
+page {
+    title "{title}"
+    render static
+    generateStaticParams "posts.json"
+}
+
+body {
+    h1 "{title}"
+    p "{excerpt}"
+}
+```
+
+JSON: `[{"slug": "post-1", "title": "First", "excerpt": "..."}]`
 
 ================================================================================
-18. DEPLOYMENT
+6. TSS STYLESHEETS
 ================================================================================
 
-Output: static HTML/CSS/JS in dist/. Deploy anywhere.
+```tss
+body {
+    margin 0
+    font-family system-ui, sans-serif
+    background var(--bg)
+}
 
-Vercel:
-  { "framework": "tw", "buildCommand": "tw build", "outputDirectory": "dist",
-    "installCommand": "pip install tw-framework" }
+:root {
+    --bg #ffffff
+    --fg #0b1220
+}
 
-Netlify:
-  [build]
-    command = "tw build --prod"
-    publish = "dist"
+.btn {
+    padding 14 32
+    border-radius 12
+    background var(--accent)
+}
+```
 
-GitHub Actions CI/CD:
-  .github/workflows/publish.yml — triggers on v* tags, publishes to PyPI
-
-================================================================================
-19. FRAMEWORK MODULES REFERENCE
-================================================================================
-
-| Module | Purpose |
-|--------|---------|
-| compiler.py | Lexer, parser, HTML renderer, route paths, React injection |
-| framework.py | Build pipeline, dev server, route discovery, sitemap/RSS |
-| cli.py | CLI commands (create, build, dev, install, remove, list) |
-| npm_manager.py | NPM package manager — pnpm/yarn/bun auto-detection |
-| react_compat.py | React compatibility — bootstrap, loader, version detection |
-| client_bundler.py | Client bundler — esbuild + IIFE, topological sort |
-| esbuild_integration.py | esbuild detection and bundling |
-| security.py | CSP, headers, sanitization, CSRF |
-| module_boundaries.py | Server/client module classification |
-| twm_parser.py | .twm parser — imports, exports, async/await |
-| lib_executor.py | .twm execution — createRequire, env helpers |
-| js_interop.py | JS interop — import maps, client bundling |
-| reactivity.py | Reactive bindings — state, events, bind:*, tw-* |
-| render_html.py | HTML document builder |
-| tss_parser.py | TSS stylesheet parser |
-| common.py | Shared utilities — log, content_hash |
-| dependency_graph.py | Page dependency tracking, build caching |
-| icons.py | Built-in 60+ SVG icons |
+Space-separated values. Numbers without units get `px`.
 
 ================================================================================
-20. TEST SUITE
+7. API ROUTES (.twm)
 ================================================================================
 
-Total: 619 tests (all passing)
-  - tests/test_v081_features.py — 69 tests (v0.8.1 features)
-  - tests/test_client_bundler.py — 45 tests (client bundler)
-  - tests/test_esbuild_integration.py — 15 tests (esbuild)
-  - tests/test_bugfixes.py — 16 tests (bug fixes)
-  - 474 existing tests from v0.8.0 and earlier
+File: `[home]/api/users/route.tw`
+```tw
+fn get(request) {
+    return {
+        status: 200,
+        json: [{ id: 1, name: "Ada" }]
+    };
+}
 
-Test command: python -m pytest tests/ -q
+fn post(request) {
+    return {
+        status: 201,
+        json: { ok: true }
+    };
+}
+```
+
+Server-only. Not in dist/. Methods: get, post, put, patch, delete, options.
+
+================================================================================
+8. tw.config OPTIONS
+================================================================================
+
+```
+name: My TW Site
+site_url: https://example.com
+description: Site description
+theme: system
+pretty_urls: true
+search: true
+modular_pipeline: true
+allow_raw_script: true
+sitemap: true
+robots: true
+rss: true
+auto_image_alt: true
+```
+
+### 8.1 Sitemap/Robots/RSS (v0.8.42+)
+All opt-in (default OFF). Developer file > auto-generated.
+Place custom files in `public/` to override.
+
+### 8.2 XSL Sitemap (v0.8.42+)
+Auto-generated `sitemap.xsl` for stylish sitemap display.
+Custom: `public/sitemap.xsl`.
+
+### 8.3 Auto Image Alt (v0.8.42+)
+Filename → alt text (first 8 chars).
+
+================================================================================
+9. IMAGE OPTIMIZATION (v0.8.37+)
+================================================================================
+
+- `image { src "..." alt "..." width 800 }` → optimized (lazy, srcset, async)
+- `img { src "..." alt "..." }` → normal (no optimization)
+
+================================================================================
+10. BUILD FEATURES
+================================================================================
+
+- Zero JS by default (HTML + CSS only)
+- Code splitting (shared chunks)
+- Incremental build (v0.8.37+ — modified files only)
+- Error overlay (v0.8.37+ — dev server shows styled errors)
+- Tree shaking (detects inline component usage)
+- Dev server auto-reload (SSE)
+- NPM support (tw install)
+- esbuild bundling
+- React compatibility (render interactive)
+
+================================================================================
+11. CLI COMMANDS
+================================================================================
+
+tw create <name>     — create project
+tw dev               — dev server (127.0.0.1:3000)
+tw build             — build to dist/
+tw serve             — production SSR server
+tw preview           — preview built site
+tw install <pkg>     — npm install
+tw clean             — clear cache
+tw doctor             — health check
+tw info              — project info
+tw export            — static export
+tw deploy            — deploy
+
+================================================================================
+12. WHAT TW IS NOT
+================================================================================
+
+- NOT React (no JSX, no function Page(), no useState)
+- NOT Next.js (no export default, no getStaticProps)
+- NOT Vue (no <template>, no v-if)
+- Own syntax: page { }, body { }, state { }, each ... as ... { }
+- CAN use React via render interactive + tw install react react-dom
+
+================================================================================
+End of reference.

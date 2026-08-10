@@ -1,6 +1,16 @@
 # Changelog
 
+## v0.8.44 (2026-08-10)
+
+### Documentation Overhaul
+- All 3 LLM txt files completely rewritten with accurate v0.8.44 syntax, examples, and features
+- 291 MD files bulk-fixed for version numbers and outdated info
+- Fixed: AI assistants were producing incorrect TW code due to docs contradictions
+- Key fixes: all 5 render modes documented, ES6 import syntax, all tw.config options, public folder, XSL, image optimization, scoped CSS, error overlay, incremental build, generateStaticParams
+- Removed wrong patterns: React hooks, JSX syntax, export default in TW docs
+
 ## v0.8.43 (2026-08-10)
+
 
 ### ES6 Import Syntax Support
 - **New**: `import { fn } from "@/lib/file"` syntax now works in `.tw` files
@@ -222,12 +232,12 @@ All 6 improvements tested and verified with real project:
 - All `tw init` references replaced with `tw create` (App Router CLI)
 - All `[home]/pages/` path references replaced with `[home]/` (App Router structure)
 - All "NOT a JavaScript/Node framework" notes updated to reflect npm package support
-- Old version references (0.1.0, 0.3.4) updated to 0.8.355
+- Old version references (0.1.0, 0.3.4) updated to 0.8.35
 - npm role updated: "only for .twm" → "used for client-side packages via tw install AND .twm"
 - LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.43
 - GitHub URL: `https://github.com/ffakraj-ui/twlang` (consistent across all files)
 
-### Bug Fixes (carried forward from v0.8.1–v0.8.435)
+### Bug Fixes (carried forward from v0.8.1–v0.8.43)
 - Route path double-nesting fix (sitemap.xml, __TW_DATA__, HTML metadata)
 - NPM package manager detection (was dead code, now live)
 - React loader script (both branches were identical, now version-aware)
@@ -238,7 +248,7 @@ All 6 improvements tested and verified with real project:
 - Client bundler: transitive deps, esbuild fallback warning, topological sort
 - Module boundaries: fetch() is client-safe, .twm always SERVER
 
-## v0.8.435 (2026-08-10)
+## v0.8.43 (2026-08-10)
 
 ### Bug Fixes
 
@@ -265,7 +275,7 @@ All 6 improvements tested and verified with real project:
 ## v0.8.2 (2026-08-10)
 
 ### Bug Fixes
-- Route path double-nesting fix (same as v0.8.435, initial attempt)
+- Route path double-nesting fix (same as v0.8.43, initial attempt)
 
 ## v0.8.1 (2026-08-10)
 

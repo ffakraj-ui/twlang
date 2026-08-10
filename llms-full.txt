@@ -1,169 +1,109 @@
-# TW Framework – Extracted Information (v0.8.43)
+# TW Framework — Project Metadata (v0.8.44)
 # Source: https://github.com/ffakraj-ui/twlang
 # Generated: 2026-08-10
 
 ## pyproject.toml
 
-- Build system:
-  - Requires: `setuptools>=68`, `wheel`
-  - Build backend: `setuptools.build_meta`
-- Project:
-  - Name: `tw-framework`
-  - Version: `0.8.3`
-  - Description: `TW framework CLI with create, dev, build, and deploy commands`
-  - Readme: `README.md`
-  - Requires-Python: `>=3.9`
-  - Authors: `[{ name = "TW Framework" }]`
-  - Dependencies: `[]`
-- Optional dependencies:
-  - dev: `["pytest>=7"]`
-- Scripts:
-  - `tw = "tw_framework.cli:main"`
-- Tool setuptools:
-  - Packages: `["tw_framework", "tw_framework.adapters"]`
-  - Package data: `tw_framework = ["*.js"]`
+- Name: tw-framework
+- Version: 0.8.44
+- Description: TW framework CLI with create, dev, build, and deploy commands
+- Requires-Python: >=3.9
+- Dependencies: []
+- Optional dependencies: dev = ["pytest>=7"]
+- Scripts: tw = "tw_framework.cli:main"
 
 ## package.json
 
-- Name: `twlang-main`
-- Private: `true`
-- Version: `0.8.3`
-- Scripts:
-  - `dev`: `tw dev`
-  - `build`: `tw build`
-  - `export`: `tw export`
-  - `preview`: `tw preview`
-  - `clean`: `tw clean`
-  - `doctor`: `tw doctor`
-  - `info`: `tw info`
-  - `deploy`: `tw deploy`
+- Name: twlang-main
+- Private: true
+- Version: 0.8.44
+- Engines: node >= 18
 
-## Dockerfile
+## Project Structure
 
-- Base image: `nginx:alpine`
-- Copies `dist` to `/usr/share/nginx/html`
-- Exposes port `80`
-- Command: `nginx -g daemon off;`
+- Project root marker: tw.config file
+- Source folder: [home]/ (literal brackets — App Router root)
+- Components: [home]/components/*.tw
+- Layouts: [home]/layout.tw
+- Pages: [home]/page.tw, [home]/about/page.tw, etc.
+- Dynamic routes: [home]/blog/[slug]/page.tw
+- API routes: [home]/api/*/route.tw
+- Libraries: [home]/lib/*.js
+- Styles: [home]/style.tss
+- Static files: public/ (served as-is)
+- Build output: dist/
 
-## netlify.toml
+## File Extensions
 
-- Build command: `tw build --prod`
-- Publish directory: `dist`
+- .tw — pages, components, layouts (TW markup)
+- .tss — stylesheets (TW Style System)
+- .twm — API routes, server-side modules (TW Module)
+- .js/.ts — client-side libraries
+- .json — data files for dynamic routes
 
-## GitHub Actions CI/CD
+## CLI Commands
 
-- `.github/workflows/publish.yml` — triggers on `v*` tags
-- Publishes to PyPI automatically on tag push
-- Repo: `https://github.com/ffakraj-ui/twlang.git`
+- tw create <name> — create new project
+- tw dev — start dev server (127.0.0.1:3000)
+- tw build — build to dist/
+- tw serve — production SSR server
+- tw preview — preview built site
+- tw install <pkg> — install npm package
+- tw clean — clear cache
+- tw doctor — health check
+- tw info — project info
+- tw export — export static site
+- tw deploy — deploy
 
-## CONTRIBUTING.md
+## tw.config Options
 
-- Two AST representations:
-  - Legacy compiler AST in `tw_framework/compiler.py` centered around `PageNode` and legacy `ElementNode`
-  - Newer structured AST in `tw_framework/ast_nodes.py` centered around `Program`, `PageMeta`, and newer node dataclasses
-- Bridge between both worlds lives in `tw_framework/parser.py`
-  - `parse_text()` and `parse_file()` still call legacy tokenizer/parser from `compiler.py`
-  - `from_legacy_page()` converts resulting `PageNode` into modern `Program`
-  - `_convert_node()` recursively maps legacy node shapes into `ast_nodes.py` dataclasses
-- If you add a new node/property to legacy parser, update `_convert_node()` and `from_legacy_page()` at the same time
-- When debugging parser/compiler disagreements, inspect both legacy object and `Program` output
-- Safe workflow:
-  - Add or update tests in `tests/` with every parser/compiler change
-  - Prefer small compatibility shims over broad rewrites unless intentionally removing legacy path
-  - Document new directives or filename conventions in `docs/spec/tw-grammar.md`
+- name: site name
+- site_url: base URL (required for sitemap/RSS)
+- description: site description
+- theme: system | light | dark
+- pretty_urls: true/false
+- search: true/false
+- modular_pipeline: true/false
+- allow_raw_script: true/false
+- sitemap: true/false (default false — opt-in)
+- robots: true/false (default false — opt-in)
+- rss: true/false (default false — opt-in)
+- auto_image_alt: true/false (default false — opt-in)
 
-## Framework Modules (v0.8.43)
+## Render Modes
 
-| Module | Purpose |
-|--------|---------|
-| `compiler.py` | Main compiler — lexer, parser, HTML renderer, route path generation, React integration injection |
-| `framework.py` | Build pipeline, dev server, route discovery, sitemap/RSS, deploy metadata, modular pipeline |
-| `cli.py` | CLI — create, build, dev, serve, install, remove, list, info, dead |
-| `npm_manager.py` | NPM package manager — pnpm/yarn/bun auto-detection, install/remove/list |
-| `react_compat.py` | React compatibility — bootstrap JS, loader script, version detection, CDN/bundle |
-| `client_bundler.py` | Client-side bundler — esbuild + IIFE fallback, topological sort, import maps |
-| `esbuild_integration.py` | esbuild detection, version caching, bundling integration |
-| `security.py` | CSP nonces, secure HTTP headers, input sanitization, CSRF protection |
-| `module_boundaries.py` | Server/client module classification — .twm always SERVER, fetch() is client-safe |
-| `twm_parser.py` | .twm parser — imports, exports, async/await, type annotations, dict return |
-| `lib_executor.py` | .twm execution — createRequire bridge, env/secrets/firebase helpers |
-| `js_interop.py` | JS interop — import maps, client bundling delegation to ClientBundler |
-| `reactivity.py` | Reactive bindings — state, events, bind:*, show:*, tw-text, tw-html, tw-for |
-| `render_html.py` | HTML document builder, runtime context |
-| `tss_parser.py` | TSS stylesheet parser |
-| `common.py` | Shared utilities — log, content_hash, read_text_file |
-| `dependency_graph.py` | Page dependency tracking, build caching |
-| `icons.py` | Built-in 60+ SVG icons |
+- render static — SSG, build-time HTML (default)
+- render server — SSR, per-request server render
+- render edge — edge runtime
+- render interactive — React client-side hydration
+- render dynamic — auto-detect based on page content
 
-## v0.8.43 Bug Fixes (all carried forward)
+## Import Syntax
 
-### Route Path Double-Nesting (Critical)
-- `route_path_from_page_info()` in `compiler.py` — App Router pages had `rel_dir` and `name` both set to same value (e.g. "about"), producing `/about/about` in sitemap.xml, `__TW_DATA__` JSON, and HTML metadata. Fixed by checking `url_path` first and skipping duplicate `name` append.
-- `route_from_static_page()` and `route_from_dynamic_page()` in `framework.py` — same fix applied.
-- All three route generators now produce consistent URLs: `/about`, `/contact`, `/counter`, `/react`.
+- import "Navbar" — component import from [home]/components/
+- import { fn } from "@/lib/file" — ES6 library import from [home]/lib/
+- load "@/data.json" — JSON data load
+- load "@/style.tss" — stylesheet load
+- load "@/lib/auth" — .twm module load
 
-### NPM Package Manager Detection
-- `detect_package_manager()` was dead code — defined but never called. Now `install_packages()`, `remove_packages()`, `ensure_dependencies()` all use `find_package_manager()` which calls `detect_package_manager()`.
-- Supports npm, pnpm, yarn, bun with correct command generation (`add`/`remove`/`install`).
+## Key Features (v0.8.44)
 
-### React Loader Script
-- `get_react_loader_script()` — both branches returned identical output. Now:
-  - Installed + CDN → uses installed React version (react@17/18/19, not hardcoded)
-  - Installed + no CDN → points to `/js/react-bundle.js`
-  - Not installed + no CDN → empty string (correct)
-
-### ReactCompat Wired to Build Pipeline
-- `ReactCompat` class was defined but never imported during build.
-- `_inject_react_integration()` function added to `compiler.py`, called in both `render_html()` branches (layout + default).
-- Also injected in `framework.py` App Router modular pipeline after `compose_nested_layouts()`.
-- Detects React via import statements in .tw source and .twm modules, plus `render interactive` mode.
-
-### LOAD_RE Regex Fix
-- `on:load` was matched as `load` directive by `LOAD_RE` regex.
-- Fixed with negative lookbehind `(?<![\w:])`.
-
-### Counter Template Fix
-- Bare strings `"+"`/`"-"` in counter/page.tw replaced with `text "+"`/`text "-"`.
-
-### Duplicate Deploy Metadata
-- `generate_deploy_metadata()` was called twice — in `cli.py:607` and `framework.py:3209`.
-- Removed from `cli.py`, kept in `framework.py` (inside build pipeline).
-
-### Client Bundler Fixes
-- Transitive deps: bundled in memory but never written to disk or import map. Fixed — now iterates `_cache` to find and write transitive deps.
-- esbuild fallback: warning added when esbuild unavailable: "esbuild is not installed — using fallback IIFE bundler."
-- Script tag ordering: `render_chunk_script_tags()` now uses `_topological_sort()` (Kahn's algorithm) instead of `sorted()`.
-
-### Module Boundaries Fix
-- `fetch()` removed from `CLIENT_API_PATTERNS` (Node.js 18+ has fetch natively).
-- Added `innerHTML`, `onclick`, `onload`, `document.write` patterns to `BROWSER_ONLY_PATTERNS`.
-- `classify_module_source()` accepts `file_path` param — `.twm` files always classified as SERVER.
-
-## Test Suite
-
-- Total tests: 619 (all passing)
-- `tests/test_v081_features.py` — 69 tests for v0.8.1 features
-- `tests/test_client_bundler.py` — 45 tests for client bundler
-- `tests/test_esbuild_integration.py` — 15 tests for esbuild integration
-- `tests/test_bugfixes.py` — 16 tests for bug fixes
-- Remaining: 474 existing tests from v0.8.0 and earlier
-
-## Build Output Structure
-
-```
-dist/
-  index.html              # Home page
-  about/index.html        # /about (pretty_urls)
-  contact/index.html      # /contact
-  counter/index.html      # /counter
-  react/index.html        # /react (with React bootstrap injected)
-  sitemap.xml              # Correct URLs (no double-nesting)
-  rss.xml                  # Correct URLs
-  robots.txt               # Allow: / + Sitemap
-  tw.deploy.json           # Deployment metadata
-  _tw/
-    api-manifest.json      # API route manifest
-  js/
-    react-bundle.js        # Bundled React (when use_cdn=false)
-    chunks/                 # Code-split chunks
-```
+- App Router with nested layouts
+- Zero JS by default (static HTML + CSS)
+- React compatibility (render interactive)
+- NPM package support (tw install)
+- esbuild bundling for client-side imports
+- Dynamic routes with generateStaticParams
+- Image optimization (image tag vs img tag)
+- Scoped CSS for components (.tss files)
+- Dev server error overlay
+- Incremental build with cache
+- Opt-in sitemap.xml, robots.txt, rss.xml
+- XSL stylesheet for stylish sitemap
+- Auto image alt from filename
+- Dark/light theme support
+- Middleware (auth, headers, rewrites)
+- API routes (.twm files)
+- WebSocket support
+- Code splitting
+- Tree shaking

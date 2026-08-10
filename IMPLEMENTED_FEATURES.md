@@ -114,3 +114,31 @@ Important notes:
 - `render server` and `render edge` are implemented as framework-level route metadata plus dev/runtime behavior. Static export still emits HTML output for compatibility.
 - API routes are fully available in the dev server. Static build emits API manifests, but dynamic APIs still require a runtime host.
 - Middleware is active in the dev server and designed around route guarding, rewrites, headers, and cookies.
+
+
+## ES6 Import Syntax (v0.8.43+)
+
+TW supports ES6-style named imports for client-side JavaScript libraries in `.tw` files:
+
+\`\`\`tw
+import { startCountdown } from "@/lib/countdown"
+import { formatData, parseJSON } from "@/lib/utils"
+\`\`\`
+
+### Supported Features
+- Named imports: `import { fn1, fn2 } from "@/lib/file"`
+- File extensions: `.js`, `.ts`, `.mjs` (auto-detected)
+- Path alias: `@/` maps to `[home]/`
+- Works alongside component imports (`import "Navbar"`)
+- Imported functions usable in `script` blocks
+
+### Not Supported
+- `.twm` files in ES6 imports (use `load` directive instead)
+- Default imports (`import fn from "..."`)
+- Namespace imports (`import * as ns from "..."`)
+
+### Implementation
+- `IMPORT_ES6_RE` regex in `compiler.py` matches the syntax
+- `_parse_es6_import()` function parses named imports and resolves file paths
+- `_ES6_IMPORTS` list tracks imported functions for dependency graph
+- `extract_directives_from_source` updated to track ES6 imports

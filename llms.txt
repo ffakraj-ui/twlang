@@ -1,26 +1,24 @@
 # TW Framework — Complete Reference for AI Coding Assistants
 # Source: https://github.com/ffakraj-ui/twlang
-# Version: v0.8.43 (2026-08-10)
+# Version: v0.8.44 (2026-08-10)
 # Rule: If README and source code disagree, trust the source code and tests.
 
 ---
 
 ## 1. PROJECT OVERVIEW
 
-TW Framework (package: `tw-framework` on PyPI) is a Python-based full-stack web framework with Virtual DOM, App Router, Zero-JS static sites, NPM package manager, React compatibility, and esbuild bundling.
+TW Framework (package: `tw-framework` on PyPI) is a Python-based full-stack web framework with App Router, Zero-JS static sites, NPM package manager, React compatibility, and esbuild bundling.
 
 - **Language**: Custom DSL (`.tw` pages/components/layouts, `.tss` stylesheets, `.twm` API routes)
 - **Runtime**: Python (compiler + dev server + CLI). API routes (`.twm`) run on Node.js.
 - **Package manager**: `pip install tw-framework` (Python). NPM packages via `tw install` command.
-- **File extensions**: `.tw` (pages/components/layouts), `.tss` (stylesheets), `.twm` (API routes/lib modules)
+- **File extensions**: `.tw` (pages/components/layouts), `.tss` (stylesheets), `.twm` (API routes/lib modules), `.js`/`.ts` (client libraries)
 - **Project root marker**: `tw.config` file
 - **Source folder**: `[home]/` (literal brackets — App Router root)
 
 ### 1.1 Installation
 ```bash
 pip install tw-framework
-# or for development
-pip install -e .
 ```
 
 ### 1.2 Quick Start
@@ -28,714 +26,632 @@ pip install -e .
 pip install tw-framework
 tw create my-site
 cd my-site
-tw build
+tw dev
 ```
 
-### 1.3 Project Structure (App Router)
-```
-my-project/
-  tw.config                  # Required. Simple key-value config.
-  package.json               # Optional. For npm dependencies (tw install).
-  [home]/                    # App Router root (literal brackets)
-    layout.tw                # Root layout
-    page.tw                  # Home page (route: /)
-    about/
-      page.tw                # Route: /about
-    blog/
-      page.tw                # Route: /blog
-      [slug]/
-        page.tw              # Dynamic route: /blog/:slug
-      (dashboard)/           # Route group (doesn't appear in URL)
-      layout.tw
-      stats/
-        page.tw              # Route: /stats
-    api/
-      route.twm              # API route: /api
-      health/
-        route.twm            # API route: /api/health
-    not-found.tw             # 404 page
-    error.tw                # Error boundary
-    lib/                     # Lib modules (.twm files for shared logic)
-      data.twm
-      utils.twm
+### 1.3 Build
+```bash
+tw build       # outputs to dist/
+tw serve       # production SSR server
 ```
 
 ---
 
-## 2. PAGE SYNTAX (`page { }` block)
+## 2. PROJECT STRUCTURE
 
-Every `.tw` page file MUST start with a `page { }` block.
+```
+my-site/
+  tw.config              # project config
+  .env                   # environment variables
+  middleware.tw          # middleware (auth, headers, rewrites)
+  [home]/                 # App Router root (literal brackets)
+    layout.tw            # root layout (wraps all pages)
+    page.tw              # home page (/)
+    not-found.tw         # 404 page
+    style.tss            # global stylesheet
+    about/page.tw        # /about
+    blog/page.tw         # /blog (index)
+    blog/[slug]/page.tw  # /blog/:slug (dynamic route)
+    blog/posts.json      # data for dynamic routes
+    counter/page.tw      # /counter
+    contact/page.tw      # /contact
+    components/           # reusable components
+      Navbar.tw
+      Footer.tw
+      Button.tw
+      Card.tw
+    lib/                  # JavaScript libraries
+      countdown.js
+    api/                  # API routes (server-only)
+      contact/route.tw
+      users/route.tw
+    assets/               # images, fonts, etc.
+  public/                 # static files (copied as-is to dist/)
+    robots.txt
+    sitemap.xml
+    favicon.ico
+  dist/                   # build output
+```
 
-### 2.1 Valid Keys Inside `page { }`
+### 2.1 Public Folder
+Files in `public/` are served as-is (no compilation). Allowed: `.txt`, `.html`, `.css`, `.js`, `.xml`, `.ico`, images, fonts. NOT allowed: `.tw`, `.tss`, `.twm` (use `[home]/` for those).
 
-| Key | Type | Required | Description |
-|-----|------|----------|-------------|
-| `title` | string | Yes | Page title. Used in `<title>` tag. |
-| `render` | string | No | `static`, `server`, `edge`, `interactive`, `dynamic`. Default: `static`. |
-| `layout` | string | No | Layout name (filename without `.tw`). |
-| `revalidate` | number | No | ISR — seconds before background regeneration. |
-| `responsive` | boolean | No | Enable responsive meta tags. |
+---
 
-### 2.2 Example
+## 3. TW SYNTAX (.tw FILES)
+
+TW uses block-based syntax with curly braces. NOT JSX, NOT HTML angle brackets.
+
+### 3.1 Page Block
 ```tw
 page {
-    title "About"
+    title "My Page"
+    render static
+}
+```
+
+### 3.2 Render Modes
+```tw
+render static       # SSG — build-time HTML (default)
+render server       # SSR — server-side render per request
+render edge         # Edge runtime
+render interactive  # client-side hydration (React)
+render dynamic      # auto-detect: state/for/if → server, else static
+```
+
+### 3.3 Page Directives
+```tw
+page {
+    title "Blog Post"
+    render static
+    generateStaticParams "posts.json"   # dynamic route pre-rendering
+    revalidate 60                        # ISR — re-generate every 60s
+    redirect "/new-path"                 # redirect this page
+    rewrite "/other-page"                # rewrite to another route
+    cache_by "cookie:lang"              # cache key
+    cache_size 100                      # cache limit
+}
+```
+
+### 3.4 Body
+```tw
+body {
+    h1 "Hello World"
+    p "This is a paragraph."
+    div { class "card"
+        h2 "Title"
+        p "Content"
+    }
+    a "Click me" { href "/about", class "link" }
+}
+```
+
+### 3.5 Text Interpolation
+```tw
+h1 "Hello {name}"
+p "Count: {count}"
+a { href "/blog/{post.slug}" text "Read more" }
+```
+
+### 3.6 Attributes
+```tw
+div { class "container", id "main", data-value "123"
+    p "Content"
+}
+img { src "/photo.jpg", alt "Photo", width 800, height 600 }
+input { type "text", name "email", placeholder "Email", required true }
+```
+
+---
+
+## 4. IMPORTS
+
+TW supports TWO import syntaxes:
+
+### 4.1 Component Import (old syntax)
+```tw
+import "Navbar"
+import "Button"
+```
+Loads a `.tw` component from `[home]/components/`. Use the component as a tag:
+```tw
+body {
+    Navbar {}
+    Button { href "/about", label "Click" }
+}
+```
+
+### 4.2 ES6 Library Import (v0.8.44+)
+```tw
+import { startCountdown } from "@/lib/countdown"
+import { formatData, parseJSON } from "@/lib/utils"
+```
+Loads a `.js`/`.ts`/`.mjs` file from `[home]/lib/`. Use functions in script blocks:
+```tw
+body {
+    div { id "countdown" }
+    script { startCountdown() }
+}
+```
+
+### 4.3 Load Directive (data/styles/modules)
+```tw
+load "@/blog/posts.json"        # JSON data (key auto-inferred from filename)
+load "@/style.tss"               # stylesheet
+load "@/lib/auth"                # .twm module (server-side)
+```
+
+---
+
+## 5. COMPONENTS
+
+### 5.1 Creating Components
+File: `[home]/components/Button.tw`
+```tw
+a { class "btn", href "{href}"
+    text "{label}"
+}
+```
+
+### 5.2 Using Components
+```tw
+import "Button"
+
+body {
+    Button { href "/about", label "Get Started" }
+    Button { href "/contact", label "Contact Us" }
+}
+```
+
+### 5.3 Scoped CSS (v0.8.37+)
+File: `[home]/components/Button.tss`
+```tss
+btn-primary {
+    background blue
+    color white
+    padding 12 24
+}
+```
+CSS is automatically scoped to the component via `data-tw-{hash}` attribute. `@media` queries preserved, `@keyframes` stay global.
+
+---
+
+## 6. LAYOUTS
+
+### 6.1 Root Layout
+File: `[home]/layout.tw`
+```tw
+page {
+    title "My Site"
     render static
 }
 
-body {
-    h1 "About Us"
-    p "We build amazing things."
-}
-```
+load "@/style.tss"
 
-### 2.3 Render Modes
-- `static` — Zero-JS static HTML (default)
-- `interactive` — Enables VDOM runtime + React integration
-- `server` — Server-side rendering
-- `edge` — Edge rendering
-- `dynamic` — Dynamic page with `generateStaticParams`
-
-**CRITICAL**: The `page { }` block appears ONLY ONCE at the top of the file.
-
----
-
-## 3. BODY SYNTAX
-
-The `body { }` block (or `BODY { }`) contains the visual structure.
-
-### 3.1 Tag Syntax Rules
-
-**Pattern 1: Tag with text content**
-```tw
-h1 "Welcome to TW Framework"
-```
-
-**Pattern 2: Tag with attributes only**
-```tw
-section {
-    id "home"
-    class "home-hero"
-}
-```
-
-**Pattern 3: Tag with text AND attributes**
-```tw
-a "Search Now" {
-    href "/#search"
-    class "btn btn-primary"
-}
-```
-
-**Pattern 4: Tag with nested children**
-```tw
-div {
-    class "container"
-    h1 "Title"
-    p { text "Description paragraph." }
-}
-```
-
-**Pattern 5: Using `text` pseudo-attribute**
-```tw
-p {
-    class "card-copy"
-    text "Some text content."
-}
-```
-
-### 3.2 Supported HTML Tags
-- Structural: `div`, `span`, `section`, `article`, `main`, `header`, `footer`, `nav`, `aside`
-- Text: `h1`-`h6`, `p`, `strong`, `em`, `small`, `blockquote`, `pre`, `code`
-- Lists: `ul`, `ol`, `li`
-- Links/media: `a`, `img`, `video`, `audio`, `source`
-- Forms: `form`, `input`, `textarea`, `button`, `label`, `select`, `option`
-- Table: `table`, `thead`, `tbody`, `tr`, `th`, `td`
-- Meta: `head`, `meta`, `title`, `link`, `script`, `style`
-
-### 3.3 Attribute Syntax
-Attributes are space-separated key-value pairs inside `{ }`. NO equals signs. NO colons (except for reactive directives like `on:click`, `bind:value`).
-
-```tw
-button {
-    type "button"
-    class "theme-toggle"
-    on:click "__twToggleTheme"
-    text "Toggle"
-}
-```
-
----
-
-## 4. NPM PACKAGE MANAGER (v0.8.1+)
-
-TW Framework has a built-in NPM package manager — just like Next.js. Install, remove, and list npm packages directly from the TW CLI.
-
-### 4.1 Commands
-```bash
-tw install react react-dom        # Install packages
-tw install chart.js@4.0.0         # Install specific version
-tw install --save-dev jest         # Save as devDependency
-tw install --exact axios@1.6.0    # Save exact version (no ^)
-tw install                         # Install all from package.json
-tw add lodash                      # Alias for install
-tw remove react                    # Remove a package
-tw rm react                        # Alias for remove
-tw list                            # List installed packages
-tw list --detailed                 # Show installed versions from node_modules
-tw ls                              # Alias for list
-```
-
-### 4.2 Auto-Detection
-TW auto-detects the package manager from lockfiles:
-- `pnpm-lock.yaml` → pnpm
-- `yarn.lock` → yarn
-- `bun.lockb` → bun
-- `package-lock.json` → npm
-
-### 4.3 tw.config Integration
-`tw install` automatically updates `tw.config` `server.external_packages` so the build system knows which npm packages are allowed.
-
----
-
-## 5. REACT COMPATIBILITY (v0.8.1+)
-
-Use React alongside TW's native VDOM for islands of interactivity.
-
-### 5.1 Setup
-```bash
-tw install react react-dom
-```
-
-### 5.2 React Component (.twm file)
-```javascript
-// [home]/lib/react-component.twm
-import React, { useState } from "react"
-
-export client function Counter() {
-    const [count, setCount] = useState(0)
-    return React.createElement("div", { className: "counter" },
-        React.createElement("h2", null, "React Counter"),
-        React.createElement("p", null, "Count: " + count),
-        React.createElement("button", {
-            onClick: () => setCount(count + 1)
-        }, "Increment")
-    )
-}
-```
-
-### 5.3 React Page (.tw file)
-```tw
-import { Counter } from "@/lib/react-component"
-
-page {
-    title "React Demo"
-    render interactive
+head {
+    meta { charset "utf-8" }
+    meta { name "viewport", content "width=device-width, initial-scale=1" }
+    seo {
+        description "Site description"
+    }
 }
 
 body {
-    div { id "react-root" }
-    script { on:load "__tw.react.mount('Counter', 'react-root')" }
+    Navbar {}
+    main { class "main-content"
+        children
+    }
+    Footer {}
 }
 ```
 
-### 5.4 How It Works
-- `ReactCompat` class in `tw_framework/react_compat.py` detects React usage
-- `_inject_react_integration()` in `compiler.py` injects React bootstrap + loader scripts during build
-- React bootstrap JS defines `__tw.react` API (mount/unmount/register)
-- Loader script uses installed React version (not hardcoded) for CDN, or points to `/js/react-bundle.js` for node_modules bundling
-- Config option: `react_cdn` (default: true) — set to `false` to bundle React from node_modules
+The `children` keyword injects page content into the layout.
 
 ---
 
-## 6. ESBUILD INTEGRATION (v0.8.1+)
+## 7. DYNAMIC ROUTES
 
-Complex npm packages (like `dayjs`, `chart.js`) are bundled for the browser using esbuild.
+### 7.1 File Structure
+```
+[home]/blog/[slug]/page.tw    # dynamic route: /blog/:slug
+[home]/blog/posts.json        # data file
+```
 
-### 6.1 How It Works
-- `tw_framework/esbuild_integration.py` — detects esbuild availability and bundles packages
-- `tw_framework/client_bundler.py` — tries esbuild first, falls back to IIFE wrapper when esbuild is not installed
-- esbuild invoked via `npx esbuild` or local install
-- `process.env.NODE_ENV` set to `"production"` during bundling
-
-### 6.2 Fallback
-When esbuild is not available, a warning is generated: "esbuild is not installed — using fallback IIFE bundler. Complex npm packages may not bundle correctly. Install with: tw install --save-dev esbuild"
-
----
-
-## 7. LIB SYSTEM
-
-### 7.1 Import Syntax
+### 7.2 Page with generateStaticParams
 ```tw
-import { getApps, getApp } from "@/lib/data"
-import formatPrice from "@/lib/utils"
-
 page {
-    title "Apps"
+    title "{title}"
+    render static
+    generateStaticParams "posts.json"
+}
+
+body {
+    article { class "blog-post"
+        h1 "{title}"
+        p "{excerpt}"
+    }
+}
+```
+
+### 7.3 JSON Data File
+```json
+[
+    {"slug": "post-1", "title": "First Post", "excerpt": "Content..."},
+    {"slug": "post-2", "title": "Second Post", "excerpt": "Content..."}
+]
+```
+
+Each item in the JSON array generates a static page. The slug field becomes the URL.
+
+### 7.4 Blog Index Page
+```tw
+page {
+    title "Blog"
     render static
 }
 
-let apps = getApps()
+load "@/blog/posts.json"
 
 body {
-    each apps as app {
-        div { class "card"
-            h1 "{app.name}"
-            p "Price: {formatPrice(app.price)}"
+    each posts as post {
+        a { class "blog-card", href "/blog/{post.slug}"
+            h2 "{post.title}"
+            p "{post.excerpt}"
         }
     }
 }
 ```
 
-### 7.2 .twm Module Files
-```javascript
-// Server-side (build-time execution)
-export async function getApps() {
-    const res = await fetch("https://api.example.com/apps");
-    return res.json();
-}
-
-// Client-side (shipped to browser)
-export client function formatPrice(n) {
-    return "₹" + n.toFixed(2);
-}
-
-// Type annotations (stripped before execution)
-export function getApp(slug: string): Promise<App> {
-    return getApps().find(a => a.slug === slug);
-}
-```
-
-### 7.3 NPM Dependencies in .twm
-```twm
-import dayjs from "dayjs"
-
-export function formatDate(date) {
-    return dayjs(date).format("YYYY-MM-DD");
-}
-```
-NPM packages from `node_modules` are properly resolved via `createRequire` in the lib executor bridge script.
-
 ---
 
-## 8. VIRTUAL DOM (v0.8.0+)
-
-VDOM is auto-detected. If a page uses `state`, events, or bindings, the VDOM runtime is injected automatically (~3KB, no React dependency).
+## 8. STATE MANAGEMENT (Reactivity)
 
 ```tw
 page {
     title "Counter"
-    render interactive
+    render static
 }
 
 state {
     count 0
-    items []
+    name "Guest"
 }
 
 body {
-    button { on:click "count++" text "Increment" }
-    p { tw-text "count" text "" }
-    input { bind:value "name" }
-    div { show:visible "count > 5" text "Count is high!" }
+    h1 "Count: {count}"
+    button {
+        on:click "__tw.set('count', __tw.get('count') + 1)"
+        class "btn"
+        text "+"
+    }
+    button {
+        on:click "__tw.set('count', 0)"
+        class "btn"
+        text "Reset"
+    }
 }
 ```
 
-Static pages remain Zero-JS — no runtime, no overhead.
+State uses `__tw.set(key, value)` and `__tw.get(key)`. Changes auto-re-render the page.
 
 ---
 
-## 9. REACTIVE BINDINGS
+## 9. CONDITIONAL RENDERING
 
-### 9.1 State Declaration
 ```tw
-state {
-    count 0
-    name "hello"
-    items []
-    visible true
-}
-```
-
-### 9.2 Two-way Binding (`bind:value`)
-```tw
-input {
-    type "text"
-    bind:value "name"
-    placeholder "Enter your name"
-}
-```
-
-### 9.3 Event Handlers (`on:*`)
-```tw
-button {
-    class "btn"
-    on:click "count++"
-    text "Increment"
-}
-```
-Available: `on:click`, `on:input`, `on:change`, `on:submit`, `on:keydown`, `on:load`, etc.
-
-### 9.4 Conditional Display (`show:visible`)
-```tw
-div {
-    show:visible "count > 0"
-    text "Count is greater than zero"
-}
-```
-
-### 9.5 Text Binding (`tw-text`)
-```tw
-span { tw-text "count" }
-```
-
-### 9.6 HTML Binding (`tw-html`)
-```tw
-div { tw-html "htmlContent" }
-```
-
-### 9.7 List Rendering (`tw-for`)
-```tw
-ul {
-    tw-for "items"
-    li {
-        data-tw-for-template ""
-        style "display:none"
-        text "{item.name}"
+body {
+    if isLoggedIn {
+        h1 "Welcome back!"
+    }
+    else {
+        h1 "Please log in"
     }
 }
 ```
 
 ---
 
-## 10. ROUTING (APP ROUTER)
+## 10. LOOPS
 
-### 10.1 File-Based Routing
+```tw
+load "@/blog/posts.json"
+
+body {
+    each posts as post {
+        div { class "card"
+            h2 "{post.title}"
+            p "{post.excerpt}"
+        }
+    }
+}
 ```
-[home]/
-├── layout.tw          ← Root layout
-├── page.tw            ← Home page (/)
-├── about/
-│   └── page.tw        ← /about
-├── blog/
-│   ├── page.tw        ← /blog
-│   └── [slug]/
-│       └── page.tw    ← /blog/:slug (dynamic route)
-├── (dashboard)/       ← Route group (doesn't appear in URL)
-│   ├── layout.tw
-│   └── stats/
-│       └── page.tw    ← /stats
-├── api/
-│   └── route.twm      ← API route handler
-├── not-found.tw       ← 404 page
-└── error.tw           ← Error boundary
-```
-
-### 10.2 Route Path Generation (v0.8.43 Fix)
-Route paths are generated by three functions, all now consistent:
-- `route_path_from_page_info()` in `compiler.py` — used for `__TW_DATA__` JSON and HTML metadata
-- `route_from_static_page()` in `framework.py` — used by sitemap.xml and RSS
-- `route_from_dynamic_page()` in `framework.py` — used by sitemap.xml for dynamic routes
-
-All three use `url_path` first (from App Router discovery), then fall back to `rel_dir` + `name` with duplicate detection. This fixes the `/about/about` double-nesting bug.
-
-### 10.3 Pretty URLs
-When `pretty_urls: true` in `tw.config` (default):
-- `/about` → `dist/about/index.html` (NOT `dist/about/about/index.html`)
-- `/` → `dist/index.html`
-- App Router pages: `rel_dir` already contains the route name, so `page_info["name"]` is NOT appended again
 
 ---
 
-## 11. API ROUTES (`.twm` files)
+## 11. TSS STYLESHEETS (.tss FILES)
 
-API routes use `.twm` extension and run on Node.js runtime.
-
-### 11.1 File Naming
-Every API endpoint file MUST be named `route.twm`.
-
-| File | Route |
-|------|-------|
-| `[home]/api/route.twm` | `/api` |
-| `[home]/api/health/route.twm` | `/api/health` |
-| `[home]/api/auth/login/route.twm` | `/api/auth/login` |
-
-### 11.2 Handler Functions
-```twm
-fn get(request) {
-    return { ok: true, message: "Hello from GET" };
+```tss
+body {
+    margin 0
+    font-family system-ui, sans-serif
+    background var(--bg)
+    color var(--fg)
 }
 
-fn post(request) {
-    return { status: 201, json: { ok: true, created: true } };
+:root {
+    --bg #ffffff
+    --fg #0b1220
 }
 
-// Generic handler (catches all methods)
-fn handler(request) {
-    return { json: { method: request.method } };
+:root[data-theme="dark"] {
+    --bg #0f172a
+    --fg #e2e8f0
 }
 
-// Async
-async fn get(request) {
-    const data = await http.get("https://api.example.com/data");
-    return { json: data };
+.btn {
+    display inline-block
+    padding 14 32
+    border-radius 12
+    background var(--accent)
+    color white
+}
+
+@media (max-width: 768) {
+    .btn { width 100% }
+}
+
+@keyframes fadeIn {
+    from { opacity 0 }
+    to { opacity 1 }
 }
 ```
 
-### 11.3 Request Object
-- `request.method` — HTTP method string
-- `request.path` — normalized URL path
-- `request.query` — query parameters object
-- `request.body` — parsed body (JSON/form/raw)
-- `request.headers` — headers object
-- `request.cookies` — cookies object
-- `request.env` — server environment variables
-- `request.project_root` — absolute path to project root
+TSS uses space-separated values (not colons/semicolons). Numbers without units get `px`.
 
-### 11.4 Response Formats
-```twm
-// Simple string → 200 text/plain
-fn get(request) { return "ok"; }
+---
 
-// Auto JSON → 200 application/json
-fn get(request) { return { ok: true }; }
+## 12. API ROUTES (.twm FILES)
 
-// Explicit response
+File: `[home]/api/contact/route.tw`
+```tw
+fn post(request) {
+    return {
+        status: 200,
+        json: { ok: true, message: "Thanks!", received: request.body || {} }
+    };
+}
+
 fn get(request) {
     return {
-        status: 201,
-        headers: { "X-Test": "1" },
-        json: { ok: true }
+        status: 200,
+        json: [{ id: 1, name: "Ada" }, { id: 2, name: "Grace" }]
     };
 }
 ```
 
-### 11.5 Built-in Helpers
-- `http.get/post/put/patch/delete(url, options?)` — async HTTP client
-- `env.KEY` or `env.get("KEY")` or `env.require("KEY")` — environment variables
-- `secrets.KEY` or `secrets.get("KEY")` or `secrets.require("KEY")` — secrets
-- `pkg.require("package-name")` — load npm package from node_modules
-- `firebase.app()`, `firebase.firestore()`, `firebase.auth()` — Firebase Admin helpers
+Methods: `get`, `post`, `put`, `patch`, `delete`, `options`. API routes are server-only, not included in `dist/`.
 
 ---
 
-## 12. MIDDLEWARE
+## 13. MIDDLEWARE
 
-Middleware is defined in `middleware.tw` in the project root.
-
+File: `middleware.tw`
 ```tw
-fn before(request) {
-    request.headers["X-Custom-Header"] = "middleware-active"
-    return request
-}
-
-fn after(response) {
-    response.headers["X-Frame-Options"] = "DENY"
-    return response
-}
-```
-
-Return behavior:
-- Return `request` → continue with modified request
-- Return `null` → continue with original request
-- Return response object → halt and return that response
-- Return `"skip"` → skip remaining middleware
-
----
-
-## 13. SERVER ACTIONS (v0.8.0+)
-
-```tw
-action createPost {
-    method POST
-    handler "createPost"
-    require_auth true
-}
-
-body {
-    button { on:click "__twAction('createPost', { title: 'Hello' })" text "Create" }
+use {
+    match "/dashboard/**"
+    auth "session" "/"
+    header "X-Frame-Options" "DENY"
 }
 ```
 
 ---
 
-## 14. SECURITY MODULE (v0.8.1+)
+## 14. tw.config OPTIONS
 
-`tw_framework/security.py` provides:
-- CSP (Content Security Policy) nonce generation
-- Secure HTTP headers
-- Input sanitization
-- CSRF protection
+```
+name: My TW Site
+site_url: https://example.com
+description: Site description
+theme: system
+pretty_urls: true
+search: true
+modular_pipeline: true
+allow_raw_script: true
+sitemap: true
+robots: true
+rss: true
+auto_image_alt: true
+```
+
+### 14.1 Sitemap/Robots/RSS (v0.8.42+ — Opt-in)
+All three default to OFF. Set to `true` to enable auto-generation.
+
+Priority: developer file > auto-generated. If you place `public/sitemap.xml`, `public/robots.txt`, or `public/rss.xml`, TW uses your file instead of generating its own.
+
+### 14.2 XSL Sitemap Styling (v0.8.42+)
+When sitemap is auto-generated, TW also creates `sitemap.xsl` — a stylesheet that makes `/sitemap.xml` render as a styled page in the browser. Place your own `public/sitemap.xsl` to customize.
+
+### 14.3 Auto Image Alt (v0.8.42+)
+When `auto_image_alt: true`, images without an `alt` attribute get auto-generated alt from filename (first 8 chars, hyphens/underscores → spaces). Example: `/img/my-profile-photo.jpg` → `alt="my profi"`.
 
 ---
 
-## 15. TSS STYLESHEET SYNTAX
+## 15. IMAGE OPTIMIZATION (v0.8.37+)
 
-TSS uses whitespace-sensitive, semicolon-free syntax.
+Two image tags:
+- `image { src "..." alt "..." width 800 height 600 }` → optimized (lazy loading, srcset, responsive, decoding async)
+- `img { src "..." alt "..." }` → normal (no optimization)
 
-```tss
-:root {
-    --bg-color #f6f8fc
-    --text-color #0f172a
+Developer chooses which to use.
+
+---
+
+## 16. CLI COMMANDS
+
+```bash
+tw create <name>           # create new project
+tw dev                     # start dev server (http://127.0.0.1:3000)
+tw build                   # build to dist/
+tw serve                   # production server (SSR + API)
+tw serve --port 8000       # custom port
+tw preview                 # preview built site
+tw install <pkg>           # install npm package (react, lodash, etc.)
+tw clean                   # clear cache and dist
+tw doctor                  # check project health
+tw info                    # show project info
+tw export                  # export static site
+tw deploy                  # deploy (adapter-based)
+tw analyze                 # analyze build output
+```
+
+---
+
+## 17. NPM PACKAGES
+
+```bash
+tw install react react-dom    # install npm packages
+tw install lodash              # install any npm package
+```
+
+Packages go to `node_modules/`. TW auto-bundles imports from node_modules using esbuild. React is auto-detected and bundled from node_modules when installed.
+
+---
+
+## 18. BUILD FEATURES
+
+### 18.1 Zero JS by Default
+Static pages produce pure HTML + CSS. No JavaScript unless:
+- `render interactive` (React hydration)
+- `state {}` block (reactivity)
+- `on:click` events
+- `script {}` blocks
+
+### 18.2 Code Splitting
+TW auto-splits shared chunks (CSS, JS) across pages.
+
+### 18.3 Incremental Build (v0.8.37+)
+Modified files are tracked. Only changed pages are rebuilt. Cache hit rate shown in build stats.
+
+### 18.4 Error Overlay (v0.8.37+)
+Dev server shows a styled error overlay with source code, line numbers, and suggestions when a `.tw` file has syntax errors.
+
+### 18.5 Dev Server Auto-Reload
+Edit `.tw`, `.tss`, `.ts` files — browser auto-reloads via Server-Sent Events.
+
+---
+
+## 19. SEO
+
+```tw
+page {
+    title "My Page"
+    render static
 }
 
-body {
-    margin 0
-    background var(--bg-color)
-    color var(--text-color)
-    font-family Inter, system-ui, sans-serif
-}
-
-.btn:hover {
-    transform translateY(-2)
-}
-
-@media (max-width:768) {
-    .container {
-        padding 0 18
+head {
+    seo {
+        description "Page description"
+        keywords "keyword1, keyword2"
+        og-title "Open Graph Title"
+        og-image "/img/og.jpg"
+        json-ld {
+            "@type": "Article",
+            "headline": "My Article"
+        }
     }
 }
 ```
 
-**CRITICAL**: NO colons between property and value. NO semicolons at end of lines.
-
 ---
 
-## 16. LAYOUTS
+## 20. ENVIRONMENT VARIABLES
 
-Layouts are `.tw` files. They are NOT wrapped in `page { }`.
+File: `.env`
+```
+SITE_NAME=My Site
+API_TOKEN=change-me
+```
 
+Use in pages:
 ```tw
-component layout {
-    html {
-        head {
-            title "{children.title}"
-        }
-        body {
-            nav { class "navbar"
-                a { href "/" text "Home" }
-                a { href "/about" text "About" }
-            }
-            main { class "container"
-                children
-            }
-            footer "© 2026"
-        }
+page {
+    title "{env.SITE_NAME}"
+}
+```
+
+Public env vars (exposed to client) configured in tw.config:
+```
+env:
+  public: "SITE_NAME,API_TOKEN"
+```
+
+---
+
+## 21. COMMON PATTERNS
+
+### 21.1 Full Page Example
+```tw
+import "Navbar"
+import "Footer"
+import { startCountdown } from "@/lib/countdown"
+
+page {
+    title "Home"
+    render static
+}
+
+load "@/style.tss"
+
+body {
+    Navbar {}
+    section { class "hero"
+        h1 "Welcome"
+        p "Build modern web apps"
+        Button { href "/about", label "Learn More" }
     }
+    Footer {}
 }
 ```
 
-Layout placeholders:
-- `{title}` — page title
-- `{head}` — head block content
-- `{styles}` — loaded stylesheets
-- `{slot}` — page body content
-- `{scripts}` — generated scripts
+### 21.2 API Route Example
+```tw
+fn get(request) {
+    return {
+        status: 200,
+        json: { users: [{ id: 1, name: "Ada" }] }
+    };
+}
 
----
-
-## 17. CLI COMMANDS
-
-| Command | Description |
-|---------|-------------|
-| `tw create <name>` | Create new App Router project |
-| `tw build` | Build site to `dist/` |
-| `tw build --prod` | Production build (explicit) |
-| `tw dev` | Start dev server (default port 3000) |
-| `tw dev --port 4000` | Dev server on custom port |
-| `tw serve` | Production server |
-| `tw install <pkg>` | Install npm package (v0.8.1+) |
-| `tw install` | Install all from package.json |
-| `tw install --save-dev <pkg>` | Save as devDependency |
-| `tw install --exact <pkg>@ver` | Save exact version |
-| `tw add <pkg>` | Alias for install |
-| `tw remove <pkg>` | Remove npm package |
-| `tw rm <pkg>` | Alias for remove |
-| `tw list` | List installed packages |
-| `tw list --detailed` | Show installed versions |
-| `tw ls` | Alias for list |
-| `tw info` | Show project info |
-| `tw dead` | Find unused files |
-| `tw version` | Show version |
-
----
-
-## 18. DEPLOYMENT
-
-Output is static HTML/CSS/JS in `dist/`. Deploy to any host:
-- Vercel, Netlify, Cloudflare Pages
-- GitHub Pages
-- Any static file server
-
-### Vercel
-```json
-{
-    "framework": "tw",
-    "buildCommand": "tw build",
-    "outputDirectory": "dist",
-    "installCommand": "pip install tw-framework"
+fn post(request) {
+    return {
+        status: 201,
+        json: { ok: true, id: 999 }
+    };
 }
 ```
 
-### Netlify
-```toml
-[build]
-  command = "tw build --prod"
-  publish = "dist"
-```
+---
+
+## 22. ERROR REFERENCE
+
+| Code | Meaning |
+|------|---------|
+| TW1000 | Parser error (syntax) |
+| TW2001 | Undefined symbol |
+| TW2002 | Type mismatch |
+| TW3001 | Missing required attribute |
+| TW3102 | generateStaticParams JSON shape error |
 
 ---
 
-## 19. FRAMEWORK MODULES (v0.8.43)
+## 23. WHAT TW IS NOT
 
-| Module | Description |
-|--------|-------------|
-| `tw_framework/compiler.py` | Main compiler — lexer, parser, HTML renderer, route path generation |
-| `tw_framework/framework.py` | Build pipeline, dev server, route discovery, sitemap/RSS generation |
-| `tw_framework/cli.py` | CLI commands (create, build, dev, install, remove, list) |
-| `tw_framework/npm_manager.py` | NPM package manager — pnpm/yarn/bun auto-detection |
-| `tw_framework/react_compat.py` | React compatibility — bootstrap, loader, version detection |
-| `tw_framework/client_bundler.py` | Client-side bundler — esbuild + IIFE fallback, topological sort |
-| `tw_framework/esbuild_integration.py` | esbuild detection and bundling |
-| `tw_framework/security.py` | CSP nonces, secure headers, input sanitization, CSRF |
-| `tw_framework/module_boundaries.py` | Server/client module classification |
-| `tw_framework/twm_parser.py` | .twm file parser — imports, exports, async/await |
-| `tw_framework/lib_executor.py` | .twm module execution — createRequire, env helpers |
-| `tw_framework/js_interop.py` | JS interop — import maps, client bundling delegation |
-| `tw_framework/reactivity.py` | Reactive bindings — state, events, bind:*, show:*, tw-* |
-| `tw_framework/render_html.py` | HTML document builder |
-| `tw_framework/tss_parser.py` | TSS stylesheet parser |
+- TW is NOT React (no JSX, no `function Page()`, no `useState`)
+- TW is NOT Next.js (no `export default`, no `getStaticProps`)
+- TW is NOT Vue (no `<template>`, no `v-if`)
+- TW has its own syntax: `page { }`, `body { }`, `state { }`, `each ... as ... { }`
+- TW CAN use React via `render interactive` + `tw install react react-dom`
 
 ---
 
-## 20. COMMON MISTAKES
-
-1. **Writing JSX instead of TW syntax**
-   - WRONG: `<div className="app"><h1>Title</h1></div>`
-   - CORRECT: `div { class "app" h1 "Title" }`
-
-2. **Using `=` or `:` in variable declarations**
-   - WRONG: `let { name = "hello"; count: 0 }`
-   - CORRECT: `let { name "hello" count 0 }`
-
-3. **Writing CSS syntax in TSS files**
-   - WRONG: `body { margin: 0; color: #333; }`
-   - CORRECT: `body { margin 0 color #333 }`
-
-4. **Using `className` instead of `class`**
-   - WRONG: `className "btn-primary"`
-   - CORRECT: `class "btn-primary"`
-
-5. **Forgetting `route.twm` naming for API files**
-   - WRONG: `[home]/api/users.twm`
-   - CORRECT: `[home]/api/users/route.twm`
-
-6. **Using bare strings instead of `text` directive**
-   - WRONG: `button { on:click "count++" "+" }`
-   - CORRECT: `button { on:click "count++" text "+" }`
-
-7. **Nesting `page { }` inside layouts or components**
-   - Layouts are plain template files with `{slot}` placeholders
-
-8. **Using `render` key with invalid values**
-   - Valid: `static`, `server`, `edge`, `interactive`, `dynamic`
+End of reference. Always trust the source code and tests over documentation.

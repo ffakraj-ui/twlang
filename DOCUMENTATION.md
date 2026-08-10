@@ -37,6 +37,7 @@ TW Framework is a static‑site generator and server‑side rendering framework.
   - `head { ... }` for `<head>` content
   - `body { ... }` for the main content
   - `import "ComponentName"` to include components
+  - `import { fn } from "@/lib/file"` to include client-side JS libraries (v0.8.43+)
   - `{slot}` placeholder for layout content
   - `{title}`, `{head}`, `{styles}`, `{scripts}` placeholders
 - Example (`pages/index.tw`):
@@ -89,6 +90,31 @@ TW Framework supports two routing systems:
 - They are imported into pages using `import "ComponentName"`.
 - Components can accept parameters via attributes (e.g., `Button { label "Click" }`).
 - The component system is compiled by the pipeline and produces reusable HTML/JS.
+
+
+### 2.4.1 ES6 Library Imports (v0.8.43+)
+
+TW supports ES6-style named imports for client-side JavaScript libraries:
+
+```tw
+import { startCountdown } from "@/lib/countdown"
+import { formatData, parseJSON } from "@/lib/utils"
+```
+
+This loads `.js`, `.ts`, or `.mjs` files from `[home]/lib/`. Imported functions
+can be used in `script` blocks:
+
+```tw
+import { startCountdown } from "@/lib/countdown"
+
+body {
+    div { id "countdown" }
+    script { startCountdown() }
+}
+```
+
+ES6 imports support `.js`, `.ts`, `.mjs` files. `.twm` modules use `load` directive.
+Component imports and ES6 library imports work in parallel.
 
 ### 2.5 How Styling Works (`.tss`)
 
