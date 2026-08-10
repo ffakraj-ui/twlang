@@ -2013,6 +2013,72 @@ class TWProject:
                 )
                 return self.compile_match_response(rewritten_match, dev_mode=dev_mode, depth=depth + 1)
 
+        # ── App Router mode: compose with nested layouts (same as build_one_page) ──
+        # v0.8.40 fix: dev server was not applying layouts/components/CSS
+        # because it used compile_file_pipeline() which skips compose_nested_layouts().
+        if page_info.get("app_router") and page_info.get("layout_files"):
+            body_html, needs_router, head_scripts = compiler.render_elements_html(
+                page_ast.body, context
+            )
+            title = compiler.interpolate(page_ast.title, context) if page_ast.title else ""
+            head_extras = (
+                "".join(head_scripts)
+                + compiler.build_theme_inline_script(context)
+                + compiler.render_head_extras(page_ast.head, context)
+            )
+
+            style_lines = []
+            if page_ast.loaded_sheets:
+                combined = "\n\n".join(
+                    compiler.render_css(sheet, context) for sheet in page_ast.loaded_sheets
+                )
+                style_lines.append(f"  <style>\n{combined}\n  </style>")
+            style_blocks = ("\n".join(style_lines) + "\n") if style_lines else ""
+
+            raw_source = ""
+            try:
+                raw_source = compiler.read_text_file(page_ast._tw_source_path) if page_ast._tw_source_path else ""
+            except (OSError, UnicodeDecodeError):
+                raw_source = ""
+
+            from .reactivity import has_reactivity
+            reactive_enabled = bool(raw_source and has_reactivity(raw_source))
+            zero_js = compiler.is_zero_js_page(
+                page_ast, body_html=body_html,
+                needs_router_runtime=needs_router,
+                raw_source=raw_source, reactive_enabled=reactive_enabled,
+            )
+
+            rendered = compiler.compose_nested_layouts(
+                layout_files=page_info["layout_files"],
+                page_body_html=body_html,
+                page_title=title,
+                page_head_extras=head_extras,
+                page_style_blocks=style_blocks,
+                page_runtime_scripts="",
+                context=context,
+                page=page_ast,
+                zero_js=zero_js,
+            )
+            redirect_to = page_ast.redirect_to
+            status = 302 if redirect_to else 200
+            headers = []
+            if redirect_to:
+                headers.append(("Location", compiler.interpolate(redirect_to, context)))
+            if dev_mode:
+                rendered = inject_dev_client(rendered)
+            response = {"html": rendered, "status": status, "headers": headers}
+            hook_state = self.extensions.emit(
+                "afterRoute",
+                match=match,
+                page_info=page_info,
+                page_ast=page_ast,
+                context=context,
+                response=response,
+                dev_mode=dev_mode,
+            )
+            return hook_state.get("response", response)
+
         if self.modular_pipeline:
             artifacts = compiler.compile_file_pipeline(
                 tw_path,
