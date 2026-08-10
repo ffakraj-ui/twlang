@@ -1,4 +1,4 @@
-# TW Framework — Project Metadata (v0.8.45)
+# TW Framework — Project Metadata (v0.8.47)
 # Source: https://github.com/ffakraj-ui/twlang
 # Generated: 2026-08-10
 
@@ -97,11 +97,11 @@
 ## Script Blocks
 
 - Inline: `script { console.log("hello") }` — raw JS
-- {prop} interpolation works in scripts (v0.8.45+)
-- External: `script { src "@/lib/file.js" }` — @/ resolved, file copied to dist/ (v0.8.45+)
+- {prop} interpolation works in scripts (v0.8.47+)
+- External: `script { src "@/lib/file.js" }` — @/ resolved, file copied to dist/ (v0.8.47+)
 - External URL: `script { src "https://cdn.example.com/lib.js" }`
 
-## Key Features (v0.8.45)
+## Key Features (v0.8.47)
 
 - App Router with nested layouts
 - Zero JS by default (static HTML + CSS)

@@ -1,6 +1,33 @@
 # Changelog
 
+## v0.8.47 (2026-08-10)
+
+### Bug Fix — Dev Server Hot Reload
+- **Layout/style changes not picked up by `tw dev`** (reported by Suraj):
+  When editing `[home]/layout.tw` or `style.tss` while `tw dev` was running,
+  the browser reloaded but showed the OLD layout/CSS. Only `Ctrl+C` → `tw clean`
+  → `tw dev` again would show the change. Root cause: `invalidate_compiler_caches()`
+  was called by the file watcher, but between the cache clear and the browser's
+  reload request, a concurrent request could re-populate `_LAYOUT_CACHE` with
+  stale content. Fix: in `compile_match_response()` (dev server), force-clear
+  all layout/component caches before EVERY render when `dev_mode=True`. Also
+  added cache clear in `build_page_with_modular_pipeline()`'s `render_and_write()`.
+** Thanks to Suraj**
+## v0.8.46 (2026-08-10)
+
+
+### Critical Output Fixes
+- **Duplicate CSS fix**: Stylesheets loaded by both layout AND page rendered twice.
+  Added `_dedupe_loaded_sheets()` to deduplicate by sheet identity.
+- **Duplicate body content fix**: When layout had no explicit `children` marker,
+  page content was appended AND already present. Added duplication guard.
+- **Zero-JS violation fix**: `render static` pages incorrectly included theme
+  script (~1KB JS). Fixed by computing `zero_js` BEFORE `head_extras` and passing
+  `context["_zero_js"]` to `build_theme_inline_script()`. Static pages now produce
+  truly zero framework JavaScript.
+
 ## v0.8.45 (2026-08-10)
+
 
 ### Bug Fixes — Community Issue Report
 - **TSS custom properties merge bug (Issue 3)**: `:root { --accent #00f0ff --bg-dark #0f172a }` was merging

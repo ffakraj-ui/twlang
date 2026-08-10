@@ -2715,8 +2715,8 @@ def render_layout_body(layout_page: Any, children_html: str, context: dict) -> t
     # with the actual page content
     if "{children}" in rendered:
         rendered = rendered.replace("{children}", children_html)
-    else:
-        # No {children} marker found — append children at the end
+    elif children_html.strip() and children_html.strip() not in rendered:
+        # No {children} marker — append children (guard against duplication)
         rendered = before_html + "\n" + children_html + "\n" + after_html
     return rendered, needs_router, head_scripts
 
@@ -2775,8 +2775,9 @@ def compose_nested_layouts(
 
         # Merge layout's loaded sheets into style blocks
         if layout_page.loaded_sheets:
+            _layout_sheets = _dedupe_loaded_sheets(layout_page.loaded_sheets)
             layout_css = "\n\n".join(
-                render_css(sheet, context) for sheet in layout_page.loaded_sheets
+                render_css(sheet, context) for sheet in _layout_sheets
             )
             all_style_blocks = f"  <style>\n{layout_css}\n  </style>\n" + all_style_blocks
 
@@ -4046,6 +4047,17 @@ def _parse_tss_rule(selector, body) -> Any:
     return rule
 
 
+def _dedupe_loaded_sheets(sheets):
+    """Remove duplicate stylesheet entries (same rules object)."""
+    seen = set()
+    deduped = []
+    for sheet in sheets:
+        sheet_id = id(sheet)
+        if sheet_id not in seen:
+            seen.add(sheet_id)
+            deduped.append(sheet)
+    return deduped
+
 def build_tss_ast_from_text(text) -> Any:
     sheet = StyleSheetNode()
     code = re.sub(r"/\\*.*?\\*/", "", text, flags=re.S)
@@ -4417,13 +4429,10 @@ def get_search_runtime_url() -> Any:
 def build_theme_inline_script(context) -> Any:
     """
     Dark/Light mode support (static friendly).
-    Config keys supported:
-      - theme: "system" | "dark" | "light" | "off"
-      - theme_storage_key: override localStorage key (default: "tw_theme")
-    Adds:
-      - <html data-theme="dark|light"> + class "dark"/"light"
-      - window.__twSetTheme(mode), window.__twToggleTheme()
+    When context has _zero_js=True, returns empty string (no JS for static pages).
     """
+    if isinstance(context, dict) and context.get("_zero_js"):
+        return ""
     config = context.get("config", {}) if isinstance(context, dict) else {}
     raw_mode = config.get("theme", config.get("theme_mode", config.get("themeMode", "")))
     mode = str(raw_mode or "").strip().lower()
@@ -5169,7 +5178,8 @@ def render_html(page, context, css_href) -> Any:
     if css_href:
         style_lines.append(f'  <link rel="stylesheet" href="{css_href}">')
     if page.loaded_sheets:
-        combined = "\n\n".join(render_css(sheet, context) for sheet in page.loaded_sheets)
+        _sheets = _dedupe_loaded_sheets(page.loaded_sheets)
+        combined = "\n\n".join(render_css(sheet, context) for sheet in _sheets)
         style_lines.append(f"  <style>\n{combined}\n  </style>")
     style_blocks = ("\n".join(style_lines) + "\n") if style_lines else ""
 
@@ -5228,6 +5238,8 @@ def render_html(page, context, css_href) -> Any:
         raw_source=raw_source,
         reactive_enabled=reactive_enabled,
     )
+    if isinstance(context, dict):
+        context["_zero_js"] = zero_js
     if zero_js:
         runtime_scripts_html = ""
     # ────────────────────────────────────────────────────────────────────
@@ -5675,6 +5687,8 @@ def build_one_page(page_info, css_url) -> Any:
                 needs_router_runtime=needs_router,
                 raw_source=raw_source, reactive_enabled=reactive_enabled,
             )
+            if isinstance(context, dict):
+                context["_zero_js"] = zero_js
 
             html = compose_nested_layouts(
                 layout_files=page_info["layout_files"],
@@ -5733,6 +5747,8 @@ def build_one_page(page_info, css_url) -> Any:
                 needs_router_runtime=needs_router,
                 raw_source=raw_source, reactive_enabled=reactive_enabled,
             )
+            if isinstance(context, dict):
+                context["_zero_js"] = zero_js
 
             html = compose_nested_layouts(
                 layout_files=page_info["layout_files"],

@@ -283,6 +283,8 @@ def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
     pretty_urls = compiler.to_bool(config.get("pretty_urls", config.get("prettyUrls", False)))
 
     def render_and_write(route_path: str, render_context: Dict, out_path: str) -> Any:
+        # Clear caches before each page render so layout/style changes are fresh
+        invalidate_compiler_caches()
         # ── App Router mode: use compose_nested_layouts ───────────────
         if page_info.get("app_router") and page_info.get("layout_files"):
             page_ast = compiler.load_page_ast_from_file(tw_path)
@@ -290,15 +292,8 @@ def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
                 page_ast.body, render_context
             )
             title = compiler.interpolate(page_ast.title, render_context) if page_ast.title else ""
-            head_extras = "".join(head_scripts) + compiler.build_theme_inline_script(render_context) + compiler.render_head_extras(page_ast.head, render_context)
 
-            style_lines = []
-            if page_ast.loaded_sheets:
-                combined = "\n\n".join(compiler.render_css(sheet, render_context) for sheet in page_ast.loaded_sheets)
-                style_lines.append(f"  <style>\n{combined}\n  </style>")
-            style_blocks = ("\n".join(style_lines) + "\n") if style_lines else ""
-
-            # Zero-JS detection
+            # Compute zero_js BEFORE head_extras so theme script can be skipped
             raw_source = ""
             try:
                 raw_source = compiler.read_text_file(page_ast._tw_source_path) if page_ast._tw_source_path else ""
@@ -314,6 +309,17 @@ def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
                 raw_source=raw_source,
                 reactive_enabled=reactive_enabled,
             )
+            if isinstance(render_context, dict):
+                render_context["_zero_js"] = zero_js
+
+            head_extras = "".join(head_scripts) + compiler.build_theme_inline_script(render_context) + compiler.render_head_extras(page_ast.head, render_context)
+
+            style_lines = []
+            if page_ast.loaded_sheets:
+                _sheets = compiler._dedupe_loaded_sheets(page_ast.loaded_sheets)
+                combined = "\n\n".join(compiler.render_css(sheet, render_context) for sheet in _sheets)
+                style_lines.append(f"  <style>\n{combined}\n  </style>")
+            style_blocks = ("\n".join(style_lines) + "\n") if style_lines else ""
 
             html_text = compiler.compose_nested_layouts(
                 layout_files=page_info["layout_files"],
@@ -1975,6 +1981,10 @@ class TWProject:
         }
 
     def compile_match_response(self, match: RouteMatch, dev_mode: bool = False, depth: int = 0) -> dict:
+        # In dev mode, always clear layout/component caches so changes to
+        # layout.tw, style.tss, components/*.tw are picked up immediately.
+        if dev_mode:
+            invalidate_compiler_caches()
         if depth > 5:
             raise RuntimeError("Rewrite loop detected")
 
