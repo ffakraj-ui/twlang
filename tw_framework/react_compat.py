@@ -173,53 +173,46 @@ class ReactCompat:
 
     def get_react_loader_script(self, use_cdn: bool = True) -> str:
         """
-        Get script tags to load React.
+        Get script tags to load React — intelligent detection (v0.8.37).
 
-        - If React is installed in node_modules AND use_cdn=False:
-          Returns a <script> tag pointing to the bundled React chunk
-          that the build system generates from node_modules. This is
-          the production path — no CDN dependency.
+        Priority:
+        1. React installed in node_modules → ALWAYS bundle from node_modules.
+           No CDN dependency. This is what Next.js does — you installed React,
+           so we use YOUR React, not a CDN copy.
 
-        - If React is installed in node_modules AND use_cdn=True:
-          Returns a CDN script tag using the *installed* React version
-          (not a hardcoded version). Falls back to latest if version
-          can't be determined.
+        2. React NOT installed → fall back to CDN (latest stable).
+           This is the dev/quickstart path only. A warning is logged.
 
-        - If React is NOT installed AND use_cdn=True:
-          Returns a CDN script tag using the latest stable React.
-
-        - If React is NOT installed AND use_cdn=False:
-          Returns empty string — cannot bundle without React installed.
-          A warning should be logged by the caller.
+        The `use_cdn` config option is DEPRECATED — if React is installed,
+        it is always bundled from node_modules regardless of this flag.
+        CDN is only used as a last resort when React is not installed.
         """
         if self.is_react_installed():
-            version = self.get_react_version() or "18"
-            if use_cdn:
-                # Use installed version for CDN — not hardcoded react@18
-                return self._cdn_script_for_version(version)
-            else:
-                # Production: point to the bundled React chunk
-                # The build system (client_bundler.py) bundles React
-                # from node_modules into /dist/js/react-bundle.js
-                return (
-                    '<script src="/js/react-bundle.js"></script>\n'
-                    '<script>'
-                    'window.__twReact = window.React;'
-                    'window.__twReactDOM = window.ReactDOM;'
-                    'if (window.__tw && window.__tw.react && '
-                    'window.__tw.react._flushPending) {'
-                    'window.__tw.react._flushPending();'
-                    '}'
-                    '</script>'
-                )
+            # React is installed — always bundle from node_modules.
+            # This is the correct production behavior (like Next.js).
+            # The build system (client_bundler.py) bundles React
+            # from node_modules into /dist/js/react-bundle.js
+            return (
+                '<script src="/js/react-bundle.js"></script>\n'
+                '<script>'
+                'window.__twReact = window.React;'
+                'window.__twReactDOM = window.ReactDOM;'
+                'if (window.__tw && window.__tw.react && '
+                'window.__tw.react._flushPending) {'
+                'window.__tw.react._flushPending();'
+                '}'
+                '</script>'
+            )
         else:
-            # React not installed
-            if use_cdn:
-                # Fallback: use latest stable from CDN
-                return REACT_CDN_SCRIPT
-            else:
-                # Can't bundle without React — return empty
-                return ""
+            # React NOT installed — fall back to CDN
+            # This is a dev/quickstart fallback only
+            import logging
+            logging.getLogger("tw_framework").warning(
+                "React is not installed in node_modules. "
+                "Using CDN fallback. For production, install with: "
+                "tw install react react-dom"
+            )
+            return REACT_CDN_SCRIPT
 
     def _cdn_script_for_version(self, version: str) -> str:
         """Generate CDN script tags for a specific React version."""

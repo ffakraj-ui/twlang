@@ -1,4 +1,4 @@
-# TW Framework – Extracted Information (v0.8.36)
+# TW Framework – Extracted Information (v0.8.37)
 # Source: https://github.com/ffakraj-ui/twlang
 # Generated: 2026-08-10
 
@@ -72,7 +72,7 @@
   - Prefer small compatibility shims over broad rewrites unless intentionally removing legacy path
   - Document new directives or filename conventions in `docs/spec/tw-grammar.md`
 
-## Framework Modules (v0.8.36)
+## Framework Modules (v0.8.37)
 
 | Module | Purpose |
 |--------|---------|
@@ -95,7 +95,7 @@
 | `dependency_graph.py` | Page dependency tracking, build caching |
 | `icons.py` | Built-in 60+ SVG icons |
 
-## v0.8.36 Bug Fixes (all carried forward)
+## v0.8.37 Bug Fixes (all carried forward)
 
 ### Route Path Double-Nesting (Critical)
 - `route_path_from_page_info()` in `compiler.py` — App Router pages had `rel_dir` and `name` both set to same value (e.g. "about"), producing `/about/about` in sitemap.xml, `__TW_DATA__` JSON, and HTML metadata. Fixed by checking `url_path` first and skipping duplicate `name` append.

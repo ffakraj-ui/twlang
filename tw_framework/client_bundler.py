@@ -448,6 +448,7 @@ def read_entry_file(entry_path: str) -> Optional[str]:
 # ─── esbuild Detection (v0.8.1) ───────────────────────────────────────────────
 
 _esbuild_cached = None  # None = not checked, True/False = checked
+_esbuild_auto_install_attempted = False
 
 def _esbuild_available() -> bool:
     """Check if esbuild is available (cached)."""
@@ -459,6 +460,79 @@ def _esbuild_available() -> bool:
         except Exception:
             _esbuild_cached = False
     return _esbuild_cached
+
+def _try_auto_install_esbuild() -> bool:
+    """
+    Auto-install esbuild if not present (v0.8.37).
+    
+    When a complex npm package needs bundling and esbuild is not available,
+    this function automatically runs `npm install esbuild` in the project root.
+    This way the user doesn't have to manually install esbuild — it just works.
+    
+    Returns True if esbuild is available after the install attempt.
+    """
+    global _esbuild_cached, _esbuild_auto_install_attempted
+    
+    if _esbuild_available():
+        return True
+    
+    if _esbuild_auto_install_attempted:
+        return False  # Already tried, don't retry
+    
+    _esbuild_auto_install_attempted = True
+    
+    try:
+        from .common import log
+        from .npm_manager import find_package_manager
+        
+        # Find project root
+        import os
+        project_root = os.environ.get("TW_PROJECT_ROOT", os.getcwd())
+        
+        pm_name, pm_bin = find_package_manager(project_root)
+        if not pm_bin:
+            return False
+        
+        log("📦 esbuild not found — auto-installing for better bundling...", level="info")
+        
+        import subprocess
+        if pm_name == "pnpm":
+            cmd = [pm_bin, "add", "-D", "esbuild"]
+        elif pm_name == "yarn":
+            cmd = [pm_bin, "add", "--dev", "esbuild"]
+        elif pm_name == "bun":
+            cmd = [pm_bin, "add", "-d", "esbuild"]
+        else:
+            cmd = [pm_bin, "install", "--save-dev", "esbuild"]
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=project_root,
+            timeout=120,
+        )
+        
+        if result.returncode == 0:
+            log("  ✔ esbuild auto-installed successfully", level="info")
+            # Reset cache and re-check
+            _esbuild_cached = None
+            # Also reset esbuild_integration cache
+            try:
+                from .esbuild_integration import _esbuild_path_cache
+                import tw_framework.esbuild_integration as esi
+                esi._esbuild_path = None
+                esi._esbuild_version = None
+            except Exception:
+                pass
+            return _esbuild_available()
+        else:
+            log(f"  ⚠️  esbuild auto-install failed: {result.stderr[:200]}", level="warning")
+            log("  Falling back to IIFE bundler. You can manually install with: tw install --save-dev esbuild", level="warning")
+            return False
+    except Exception as e:
+        log(f"  ⚠️  esbuild auto-install error: {e}", level="warning")
+        return False
 
 # ─── Main Bundler Class ───────────────────────────────────────────────────────
 
@@ -675,8 +749,12 @@ class ClientBundler:
         result = BundleResult()
         visited: Set[str] = set()
 
-        # ── Detect esbuild availability (Fix #3) ──────────────────────────
+        # ── Detect esbuild availability — auto-install if missing (v0.8.37) ──
         esbuild_available = _esbuild_available()
+        if not esbuild_available:
+            # Try auto-installing esbuild (v0.8.37)
+            esbuild_available = _try_auto_install_esbuild()
+        
         if not esbuild_available:
             result.warnings.append(
                 "esbuild is not installed — using fallback IIFE bundler. "

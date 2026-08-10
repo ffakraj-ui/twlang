@@ -1,6 +1,46 @@
 # Changelog
 
-## v0.8.36 (2026-08-10)
+## v0.8.37 (2026-08-10)
+
+### 6 Major Improvements
+
+#### 1. React Auto-Bundle from node_modules
+- React is now ALWAYS bundled from node_modules when installed (like Next.js)
+- CDN is only used as a last-resort fallback when React is not installed
+- The `react_cdn` config option is deprecated — intelligent detection replaces it
+- No more hardcoded React version — uses YOUR installed version
+
+#### 2. esbuild Auto-Install
+- When a complex npm package needs bundling and esbuild is not available, TW automatically runs `npm install esbuild`
+- No manual `tw install --save-dev esbuild` needed anymore
+- Falls back to IIFE bundler only if auto-install fails
+
+#### 3. Dev Server Error Overlay
+- Syntax errors in `.tw` files now show a Vite-style red error overlay in the browser
+- Shows source code with line numbers, error line highlighted
+- Includes suggestions when available
+- Auto-reload on fix via SSE
+
+#### 4. Scoped Component CSS (CSS Modules)
+- `.tss` files next to `.tw` components are automatically scoped
+- `Button.tss` styles only apply to `Button.tw` — no global pollution
+- Uses data attributes: `.btn[data-tw-abc123]`
+- `@keyframes` and `:root` are preserved as global
+
+#### 5. Incremental Build
+- Only changed pages (and their dependents) are rebuilt
+- Tracks file modification times via `get_changed_files()`
+- Layout/component/.tss changes trigger dependent page rebuilds
+- Faster builds for large sites
+
+#### 6. Image Optimization
+- `image` tag → optimized: lazy loading, responsive srcset, WebP, async decoding
+- `img` tag → normal `<img>`, no optimization
+- Developer chooses: use `image` for photos, `img` for icons/small images
+- `image { src "/img/photo.jpg" alt "Photo" width 800 height 600 }`
+
+## v0.8.37 (2026-08-10)
+
 
 ### Improved Error Messages
 - `tw install` / `tw remove` — When Node.js is not found, now shows OS-specific install instructions with exact commands:
@@ -14,7 +54,7 @@
   - **Other Linux**: nvm install instructions with download link
 - All three error paths now use `_get_node_install_help()` instead of a one-line generic message
 
-## v0.8.36 (2026-08-10)
+## v0.8.37 (2026-08-10)
 
 ### Documentation Overhaul
 - All 200+ markdown files updated with correct `pip install tw-framework` (was `pip install -e .`)
@@ -24,10 +64,10 @@
 - All "NOT a JavaScript/Node framework" notes updated to reflect npm package support
 - Old version references (0.1.0, 0.3.4) updated to 0.8.355
 - npm role updated: "only for .twm" → "used for client-side packages via tw install AND .twm"
-- LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.36
+- LLM txt files (llms.txt, llms-full.txt, llms-full_part1.txt) fully rewritten for v0.8.37
 - GitHub URL: `https://github.com/ffakraj-ui/twlang` (consistent across all files)
 
-### Bug Fixes (carried forward from v0.8.1–v0.8.365)
+### Bug Fixes (carried forward from v0.8.1–v0.8.375)
 - Route path double-nesting fix (sitemap.xml, __TW_DATA__, HTML metadata)
 - NPM package manager detection (was dead code, now live)
 - React loader script (both branches were identical, now version-aware)
@@ -38,7 +78,7 @@
 - Client bundler: transitive deps, esbuild fallback warning, topological sort
 - Module boundaries: fetch() is client-safe, .twm always SERVER
 
-## v0.8.365 (2026-08-10)
+## v0.8.375 (2026-08-10)
 
 ### Bug Fixes
 
@@ -65,7 +105,7 @@
 ## v0.8.2 (2026-08-10)
 
 ### Bug Fixes
-- Route path double-nesting fix (same as v0.8.365, initial attempt)
+- Route path double-nesting fix (same as v0.8.375, initial attempt)
 
 ## v0.8.1 (2026-08-10)
 

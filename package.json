@@ -1,7 +1,7 @@
 {
   "name": "twlang-main",
   "private": true,
-  "version": "0.8.36",
+  "version": "0.8.37",
   "scripts": {
     "dev": "tw dev",
     "build": "tw build",
@@ -11,5 +11,8 @@
     "doctor": "tw doctor",
     "info": "tw info",
     "deploy": "tw deploy"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

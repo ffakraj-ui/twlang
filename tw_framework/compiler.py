@@ -18,6 +18,8 @@ import threading
 from .tw_image.component import BUILTIN_IMAGE_COMPONENTS
 
 # Full-stack architecture imports (v0.6.0)
+from .scoped_css import find_scoped_stylesheet, process_scoped_css, generate_scope_id
+from .image_optimizer import render_optimized_image, is_optimizable_image
 from .module_boundaries import (
     ALL_TW_PACKAGES, TW_PACKAGE_BOUNDARIES, TW_PACKAGE_ALIASES,
     ImportClassifier, ImportInfo, is_tw_package, get_package_boundary,
@@ -5010,6 +5012,32 @@ def _inject_react_integration(html_doc: str, page, raw_source: str, context: dic
         logger.debug("React integration skipped", exc_info=True)
 
     return html_doc
+
+
+
+def _render_image_tag(attrs: dict, text: str = "") -> str:
+    """
+    Render an optimized <image> tag (v0.8.37).
+    `image` tag → optimized <img> with lazy loading, srcset, WebP.
+    `img` tag → normal <img>, no optimization (developer choice).
+    """
+    src = attrs.get("src", "")
+    if not src:
+        return ""
+    return render_optimized_image(attrs, src)
+
+
+def _get_component_scope_attr(component_path: str) -> str:
+    """Get scoped CSS data attribute for a component if it has a .tss file (v0.8.37)."""
+    try:
+        tss_path = find_scoped_stylesheet(component_path)
+        if tss_path:
+            component_name = os.path.splitext(os.path.basename(component_path))[0]
+            scope_id = generate_scope_id(component_name)
+            return f"data-tw-{scope_id}"
+    except Exception:
+        pass
+    return ""
 
 
 def render_html(page, context, css_href) -> Any:

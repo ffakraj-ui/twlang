@@ -453,8 +453,18 @@ def _ip_footer_html(ip: str) -> Any:
   </div>"""
 
 
-def render_error_html(title: str, message: str, status_code: int = 500, ip: str = "") -> bytes:
+def render_error_html(title: str, message: str, status_code: int = 500, ip: str = "", page_path: str = "", error_line: int = 0, source_snippet: str = "", suggestion: str = "") -> bytes:
+    """
+    Render error HTML page.
+    v0.8.37: Enhanced with dev server error overlay — shows source code,
+    line numbers, and suggestions like Vite/Next.js.
+    """
     ip_footer = _ip_footer_html(ip)
+    
+    # If we have source context, render a rich error overlay
+    if source_snippet and (status_code >= 500 or (status_code == 0 and page_path)):
+        return _render_error_overlay(title, message, page_path, error_line, source_snippet, suggestion).encode("utf-8")
+    
     if status_code == 404:
         doc = f"""<!DOCTYPE html>
 <html>
@@ -506,6 +516,63 @@ def render_error_html(title: str, message: str, status_code: int = 500, ip: str 
 </body>
 </html>"""
     return doc.encode("utf-8")
+
+
+def _render_error_overlay(title, message, page_path, error_line, source_snippet, suggestion):
+    """Render a Vite-style error overlay for dev server (v0.8.37)."""
+    import html as _html
+    lines = source_snippet.split("\n")
+    source_html = ""
+    for i, line in enumerate(lines, 1):
+        is_error = (i == error_line)
+        bg = "#fee2e2" if is_error else "#1e1e1e"
+        fg = "#dc2626" if is_error else "#d4d4d4"
+        marker = "&#9654; " if is_error else "  "
+        escaped = _html.escape(line).replace(" ", "&nbsp;")
+        source_html += '<div style="background:{};color:{};padding:2px 8px;font-family:monospace;font-size:13px;line-height:1.6;"><span style="opacity:0.5;width:40px;display:inline-block;">{}</span>{}{}</div>\n'.format(bg, fg, i, marker, escaped)
+    suggestion_html = ""
+    if suggestion:
+        suggestion_html = '<div style="margin-top:16px;padding:12px 16px;background:#dbeafe;border-left:3px solid #3b82f6;border-radius:4px;"><div style="font-size:12px;font-weight:600;color:#1e40af;margin-bottom:4px;">&#128161; Suggestion</div><div style="font-size:13px;color:#1e3a5f;">{}</div></div>'.format(_html.escape(suggestion))
+    file_display = _html.escape(os.path.relpath(page_path, os.getcwd())) if page_path else "unknown"
+    return """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>&#9888; {}</title>
+<style>*{{margin:0;padding:0;box-sizing:border-box;}}body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,monospace;background:#0a0a0a;color:#f0f0f0;min-height:100vh;padding:24px;}}.overlay{{max-width:900px;margin:40px auto;}}.header{{background:#dc2626;padding:16px 24px;border-radius:8px 8px 0 0;}}.header h1{{font-size:18px;font-weight:600;}}.header .file{{font-size:13px;opacity:0.8;margin-top:4px;}}.source{{background:#1e1e1e;border-radius:0 0 8px 8px;overflow:hidden;max-height:400px;overflow-y:auto;}}.message{{padding:16px 24px;background:#1a1a1a;color:#f87171;font-family:monospace;font-size:13px;line-height:1.6;}}.actions{{margin-top:16px;display:flex;gap:12px;}}.btn{{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;}}.btn-reload{{background:#3b82f6;color:white;}}.auto-reload{{margin-top:8px;font-size:12px;color:#6b7280;}}</style>
+</head><body><div class="overlay"><div class="header"><h1>&#9888; {}</h1><div class="file">&#128196; {}{}</div></div><div class="message">&#128172; {}</div><div class="source">{}</div>{}<div class="actions"><button class="btn btn-reload" onclick="location.reload()">&#128260; Reload</button></div><div class="auto-reload">Auto-reload enabled &mdash; fix the error and save to reload automatically.</div></div><script>if(window.EventSource){{var es=new EventSource('/__tw/events');es.addEventListener('reload',function(){{location.reload();}});}}</script></body></html>""".format(
+        _html.escape(title), _html.escape(title), file_display,
+        ' (line {})'.format(error_line) if error_line else '',
+        _html.escape(message), source_html, suggestion_html
+    )
+
+
+def get_error_context(page_path, err):
+    """Extract source context around error for dev overlay (v0.8.37)."""
+    context = {"page_path": page_path, "error_line": 0, "source_snippet": "", "suggestion": ""}
+    if not page_path or not os.path.exists(page_path):
+        return context
+    try:
+        raw = compiler.read_text_file(page_path)
+        lines = raw.split("\n")
+        err_line = 0
+        if hasattr(err, 'token') and err.token:
+            err_line = getattr(err.token, 'line', 0) or 0
+        if not err_line:
+            import re as _re
+            m = _re.search(r'line (\d+)', str(err), _re.IGNORECASE)
+            if m:
+                err_line = int(m.group(1))
+        if err_line > 0:
+            start = max(0, err_line - 6)
+            end = min(len(lines), err_line + 5)
+            snippet = "\n".join(lines[start:end])
+            context["error_line"] = err_line - start
+        else:
+            snippet = "\n".join(lines[:20]) if len(lines) > 20 else raw
+        context["source_snippet"] = snippet
+        if hasattr(err, 'suggestion') and err.suggestion:
+            context["suggestion"] = str(err.suggestion)
+    except Exception:
+        pass
+    return context
 
 
 def format_compiler_error(page_path: str, err: Exception) -> Any:
@@ -2397,7 +2464,13 @@ def make_dev_handler(state: TWDevState) -> Any:
                     except Exception:
                         logger.exception("Failed to compile custom 500 page (dev)")
                     message = format_compiler_error(match.page_info["path"], err)
-                    body = render_error_html("Compile error", message, 500, ip=self.client_address[0] if self.client_address else "")
+                    ctx = get_error_context(match.page_info["path"], err)
+                    body = render_error_html("Compile error", message, 500,
+                        ip=self.client_address[0] if self.client_address else "",
+                        page_path=ctx["page_path"],
+                        error_line=ctx["error_line"],
+                        source_snippet=ctx["source_snippet"],
+                        suggestion=ctx["suggestion"])
                     self.respond_bytes(500, body, "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
 
         def handle_websocket(self, path: str) -> None:
@@ -2989,6 +3062,50 @@ def generate_deploy_metadata(output_dir: str, config: Dict[str, Any]) -> None:
     with open(deploy_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
     log(f"  ✅ Deployment metadata written: {deploy_path}")
+
+
+
+def get_changed_files(project_root: str, last_build_time: float) -> list:
+    """Get list of source files changed since last build (v0.8.37)."""
+    changed = []
+    src_path = os.path.join(project_root, "[home]")
+    if os.path.isdir(src_path):
+        for root, dirs, files in os.walk(src_path):
+            for fn in files:
+                if fn.endswith(('.tw', '.tss', '.twm')):
+                    fpath = os.path.join(root, fn)
+                    try:
+                        if os.path.getmtime(fpath) > last_build_time:
+                            changed.append(fpath)
+                    except OSError:
+                        pass
+    mw = os.path.join(project_root, "middleware.tw")
+    if os.path.isfile(mw):
+        try:
+            if os.path.getmtime(mw) > last_build_time:
+                changed.append(mw)
+        except OSError:
+            pass
+    return changed
+
+
+def get_affected_pages(changed_files: list) -> set:
+    """Given changed files, return set of page paths needing rebuild (v0.8.37)."""
+    affected = set()
+    for cf in changed_files:
+        if cf.endswith('.tw') and 'page.tw' in cf:
+            affected.add(cf)
+        elif cf.endswith('.tw') and 'layout' in cf.lower():
+            affected.add("*")
+        elif cf.endswith('.tw'):
+            affected.add(cf)
+        elif cf.endswith('.tss'):
+            affected.add("*")
+        elif cf.endswith('.twm'):
+            affected.add("*")
+    if "*" in affected:
+        return "*"
+    return affected
 
 
 def build_hidden_site(project_root: str, output_dir: str, force: bool = False, workers: Optional[int] = None, minify: bool = True, strict: bool = False, adapters: Optional[List[str]] = None, debug: bool = False) -> BuildSummary:
