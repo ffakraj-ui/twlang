@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.9.02 (2026-08-11)
+
+### Real WASM Runtime + Progress Tracker (Suraj)
+
+- **WASM runtime completely rewritten** — `wasm_adapter.py` now has real
+  `wasmtime` integration instead of being a placeholder. If `wasmtime` is
+  installed, uses wasmtime engine with WASI filesystem sandboxing. If not
+  installed, falls back to restricted Python sandbox with identical
+  permission enforcement.
+
+- **WasmPermissions class** — Deno-style permission system. All
+  capabilities OFF by default. Developer grants access via environment
+  variables:
+  - `TW_WASM_ALLOW_FS=1` → sandboxed filesystem
+  - `TW_WASM_ALLOW_NET=1` → network (HTTP fetch)
+  - `TW_WASM_ALLOW_DB=1` → database
+  - `TW_WASM_ALLOW_ENV=VAR1,VAR2` → specific env vars
+  - `TW_WASM_SANDBOX_DIR=/path` → custom sandbox directory
+
+- **WasmExecutor class** — dual-mode execution engine:
+  - `wasmtime` mode: uses wasmtime Engine + WasiConfig with preopened
+    sandbox directory for true filesystem isolation
+  - `python-sandbox` mode: restricted Python namespace with same
+    permission gates enforced at the Python level
+
+- **Path traversal protection** — `WasmStorage._resolve_safe_path()`
+  detects and blocks path traversal attacks (e.g. `../../etc/passwd`).
+  All file operations are confined to the sandbox directory.
+
+- **Permission-gated adapters** — WasmHttp raises PermissionError if
+  network not granted. WasmEnv only exposes explicitly allowed env vars.
+  WasmCrypto is always available (host-provided, safe).
+
+- **PROGRESS.md** — complete development progress tracker added. Tracks
+  all done/pending/baki work across all phases. Contains file locations,
+  runtime status summary, common API status, key code locations, and
+  instructions for resuming work after restart.
+
+- **Version format changed** — from `x.x.x` (0.9.1) to `x.x.xy` (0.9.02).
+  Future versions will follow: 0.9.03, 0.9.04, etc.
+
+---
+
 ## v0.9.1 (2026-08-11)
 
 ### PyPI Release Fix (Suraj)
