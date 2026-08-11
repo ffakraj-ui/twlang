@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.9.1 (2026-08-11)
+
+### PyPI Release Fix (Suraj)
+
+- Version bumped from `0.9.0` to `0.9.1` to resolve PyPI upload conflict
+  (PyPI does not allow re-uploading the same version number).
+- No code changes — all v0.9.0 features (multi-runtime architecture, common
+  abstraction layer, build-time validation, RUNTIMES.md documentation)
+  are included as-is.
+- Added `RUNTIMES.md` — complete developer documentation for the multi-runtime
+  system (11 sections: overview, 4 runtimes, runtime selection, common API
+  layer, capability system, build-time validation, examples, migration guide,
+  troubleshooting, architecture diagram, quick reference card).
+
+---
+
 ## v0.9.0 (2026-08-11)
 
 ### Multi-Runtime Architecture (Suraj)
