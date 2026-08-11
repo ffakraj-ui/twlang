@@ -167,3 +167,100 @@ __all__ = [
     "render_optimized_image",
     "generate_image_variants",
 ]
+
+
+# === v0.9.08: Build-time Image Optimizer ===
+
+DEFAULT_BREAKPOINTS = [640, 750, 828, 1080, 1200, 1920]
+
+
+class ImageOptimizer:
+    """Build-time image optimization: WebP variants, srcset, responsive."""
+
+    def __init__(self, output_dir: str = "dist"):
+        self.output_dir = output_dir
+        self._optimized = {}
+
+    def optimize(self, src_path: str, widths=None, quality: int = 80, formats=None):
+        try:
+            from PIL import Image
+        except ImportError:
+            return {"error": "Pillow not installed"}
+
+        if widths is None:
+            widths = DEFAULT_BREAKPOINTS
+        if formats is None:
+            formats = ["webp"]
+
+        try:
+            img = Image.open(src_path)
+        except Exception as e:
+            return {"error": str(e)}
+
+        import os
+        base = os.path.splitext(os.path.basename(src_path))[0]
+        out_dir = os.path.join(self.output_dir, "optimized")
+        os.makedirs(out_dir, exist_ok=True)
+
+        variants = {}
+        for w in widths:
+            if img.width < w:
+                continue
+            ratio = w / img.width
+            h = int(img.height * ratio)
+            resized = img.resize((w, h), Image.Resampling.LANCZOS)
+            for fmt in formats:
+                ext = "webp" if fmt == "webp" else fmt
+                out_name = base + "_" + str(w) + "w." + ext
+                out_path = os.path.join(out_dir, out_name)
+                resized.save(out_path, "WEBP" if fmt == "webp" else fmt.upper(), quality=quality)
+                variants.setdefault(w, {})[fmt] = out_name
+
+        self._optimized[src_path] = variants
+        return {"variants": variants, "original_width": img.width, "original_height": img.height}
+
+    def generate_html(self, src: str, alt: str = "", width: str = "100%",
+                       height: str = "auto", loading: str = "lazy", sizes: str = "100vw",
+                       classes: str = "", optimized: dict = None):
+        cls = ' class="' + classes + '"' if classes else ''
+        variants = (optimized or self._optimized.get(src, {}))
+
+        srcset_parts = []
+        for w, fmts in variants.items():
+            for fmt, fname in fmts.items():
+                srcset_parts.append("/optimized/" + fname + " " + str(w) + "w")
+        srcset = ", ".join(srcset_parts)
+
+        parts = ['<img src="' + src + '" alt="' + alt + '"']
+        if srcset:
+            parts.append(' srcset="' + srcset + '"')
+            parts.append(' sizes="' + sizes + '"')
+        parts.append(' width="' + str(width) + '"')
+        parts.append(' height="' + str(height) + '"')
+        parts.append(' loading="' + loading + '"')
+        parts.append(cls)
+        parts.append(' />')
+        return "".join(parts)
+
+    def batch_optimize(self, images=None):
+        import os
+        if images is None:
+            img_dir = os.path.join(self.output_dir, "assets")
+            if not os.path.isdir(img_dir):
+                return []
+            images = [os.path.join(img_dir, f) for f in os.listdir(img_dir)
+                       if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))]
+        results = []
+        for img_path in images:
+            r = self.optimize(img_path)
+            results.append({"src": img_path, "result": r})
+        return results
+
+
+_image_optimizer_instance = None
+
+def get_image_optimizer(output_dir: str = "dist"):
+    global _image_optimizer_instance
+    if _image_optimizer_instance is None:
+        _image_optimizer_instance = ImageOptimizer(output_dir)
+    return _image_optimizer_instance

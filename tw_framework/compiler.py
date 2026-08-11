@@ -3795,11 +3795,11 @@ def parse_page_block(tokens, i, page) -> Any:
             continue
         if key == "render":
             render_mode = str(value).lower()
-            if render_mode not in {"static", "server", "edge", "interactive", "dynamic"}:
+            if render_mode not in {"static", "server", "edge", "interactive", "dynamic", "csr"}:
                 raise CompilerError(
                     f"Unsupported render mode: `{render_mode}`",
                     token=token,
-                    suggestion="Use `static`, `server`, or `edge`.",
+                    suggestion="Use `static`, `interactive` (VDOM), `csr` (React), `server`, or `edge`.",
                 )
             page.render_mode = render_mode
             continue
@@ -5316,7 +5316,7 @@ def _inject_react_integration(html_doc: str, page, raw_source: str, context: dic
                     continue
 
         # render interactive mode implies React usage
-        if not uses_react and getattr(page, "render_mode", "") == "interactive":
+        if not uses_react and getattr(page, "render_mode", "") in ("interactive", "csr"):
             uses_react = True
 
         if not uses_react:
@@ -5566,6 +5566,21 @@ def render_html(page, context, css_href) -> Any:
         final_doc = _inject_on_load_inits(final_doc, getattr(page, "on_load_inits", []) or [])
 
     final_doc = _inject_react_integration(final_doc, page, raw_source, context)
+
+    # v0.9.08: CSR mode — inject full React CSR runtime
+    if getattr(page, "render_mode", "") == "csr":
+        try:
+            from .csr_mode import inject_csr_runtime
+            use_dev = bool(context.get("_tw_dev_mode", False))
+            use_cdn = True
+            if isinstance(context, dict):
+                cfg = context.get("config", {})
+                if isinstance(cfg, dict):
+                    use_cdn = bool(cfg.get("react_cdn", cfg.get("reactCdn", True)))
+            final_doc = inject_csr_runtime(final_doc, use_dev=use_dev, use_cdn=use_cdn)
+        except Exception:
+            logger.debug("CSR runtime injection skipped", exc_info=True)
+
     return final_doc
 
 

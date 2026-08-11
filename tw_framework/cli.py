@@ -1296,6 +1296,64 @@ def command_deploy(args) -> int:
     return 0
 
 
+def command_plugin(args) -> int:
+    """v0.9.08: Plugin management."""
+    from . import plugin_manager
+
+    action = getattr(args, "plugin_action", None)
+    name = getattr(args, "plugin_name", None)
+
+    if action == "add" and name:
+        log("Installing plugin: " + name + "...")
+        result = plugin_manager.install_plugin(name)
+        if result.get("success"):
+            log("  Installed: " + result.get("plugin", name) + " v" + str(result.get("version", "?")))
+            return 0
+        else:
+            log("  Error: " + str(result.get("error")), level="error")
+            return 1
+
+    elif action == "remove" and name:
+        result = plugin_manager.remove_plugin(name)
+        if result.get("success"):
+            log("  Removed: " + name)
+            return 0
+        else:
+            log("  Error: " + str(result.get("error")), level="error")
+            return 1
+
+    elif action == "list":
+        pm = plugin_manager.PluginManager()
+        pm.load_all()
+        plugins = pm.list_plugins()
+        if not plugins:
+            log("No plugins installed")
+            return 0
+        for p in plugins:
+            status = "enabled" if p["enabled"] else "disabled"
+            hooks = ", ".join(p["hooks"]) or "none"
+            log("  " + p["name"] + " v" + p["version"] + " [" + status + "] hooks: " + hooks)
+        return 0
+
+    elif action == "search":
+        registry = plugin_manager.fetch_registry()
+        if "error" in registry:
+            log("  Error: " + registry["error"], level="error")
+            return 1
+        plugins = registry.get("plugins", [])
+        if not plugins:
+            log("No plugins available in registry")
+            return 0
+        log("Available plugins:")
+        for p in plugins:
+            log("  " + p["name"] + " v" + p.get("version", "?") + " - " + p.get("description", ""))
+        return 0
+
+    else:
+        log("Usage: tw plugin <add|remove|list|search> [name]")
+        return 1
+
+
 def command_serve(args) -> int:
     """Start the TW production server."""
     from .server import run_production_server
@@ -1529,6 +1587,17 @@ def build_parser() -> Any:
     deploy_parser.add_argument("--prod", action="store_true", help="Production deploy flag")
     deploy_parser.add_argument("--dry-run", action="store_true", help="Validate config + build, but do not deploy")
     deploy_parser.set_defaults(func=command_deploy)
+
+    # v0.9.08: Plugin management
+    plugin_parser = subparsers.add_parser("plugin", aliases=["plugins"], help="Manage TW plugins")
+    plugin_sub = plugin_parser.add_subparsers(dest="plugin_action")
+    add_p = plugin_sub.add_parser("add", aliases=["install"])
+    add_p.add_argument("plugin_name", help="Plugin name to install")
+    rm_p = plugin_sub.add_parser("remove", aliases=["rm"])
+    rm_p.add_argument("plugin_name", help="Plugin name to remove")
+    plugin_sub.add_parser("list", aliases=["ls"])
+    plugin_sub.add_parser("search")
+    plugin_parser.set_defaults(func=command_plugin)
 
     # ── NPM Package Management (v0.8.1) ──────────────────────────────────────
     install_parser = subparsers.add_parser("install", help="Install npm packages (like Next.js)")

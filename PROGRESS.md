@@ -2,8 +2,8 @@
 
 > **Purpose:** Ye file batati hai ki TW Framework me kya kya kaam ho chuka hai, kya baki hai, aur kya plan hai. Agar kabhi work restart karna ho toh is file se poora context mil jayega.
 
-**Last Updated:** v0.9.07 (2026-08-11)
-**Current Version:** 0.9.07
+**Last Updated:** v0.9.08 (2026-08-11)
+**Current Version:** 0.9.08
 **Working Directory:** `/scratch/repos/twlang-main/`
 **GitHub Repo:** `ffakraj-ui/twlang`
 **Developer:** ffakraj-ui
@@ -25,6 +25,8 @@
 | v0.9.04 | 2026-08-11 | Edge V8 pure JS — SHA-256, HMAC, fetch, env vars |
 | v0.9.05 | 2026-08-11 | Edge = V8 based (Python se V8 me badla) |
 | v0.9.06 | 2026-08-11 | QuickJS removed — pure V8 only, README cleaned |
+| v0.9.07 | 2026-08-11 | Credits cleanup, PyPI republish |
+| v0.9.08 | 2026-08-11 | Plugin System + HMR + Image Opt + Prefetch + Streaming SSR + ISR + Edge DB + Zero-Config Deploy |
 
 ---
 

@@ -1,5 +1,82 @@
 # Changelog
 
+## v0.9.08 (2026-08-11)
+
+### Major Feature Release — 7 Improvements + Plugin System
+
+**1. Plugin System (WordPress-inspired)**
+- `.twp` plugin format with `plugin.register()`, `ctx`, `tw` APIs
+- 5 lifecycle hooks: `beforeBuild`, `afterBuild`, `beforeRequest`, `afterRequest`, `onRouteMatch`
+- Plugin registry at `ffakraj-ui/tw-plugin` GitHub repo
+- CLI commands: `tw plugin add/remove/list/search`
+- Auto-yes permissions (no yes/no prompts)
+- Sandbox execution with path traversal protection
+- `.tw/plugins/` storage (auto-gitignored)
+- Plugin dependencies support (`requires` field)
+- Full documentation in `PLUGINS.md`
+
+**2. Hot Module Replacement (HMR)**
+- WebSocket-based HMR at `/__tw/hmr` endpoint
+- `HMRManager` tracks file changes and broadcasts updates
+- Client script auto-injects for dev server
+- Like Next.js Fast Refresh
+
+**3. Build-time Image Optimization**
+- `ImageOptimizer` class with WebP variant generation
+- Responsive `srcset` generation with breakpoints (640, 750, 828, 1080, 1200, 1920)
+- `batch_optimize()` for entire directories
+- Uses Pillow (graceful fallback if not installed)
+
+**4. Client-side Prefetching**
+- Hover-based prefetch (like Next.js `next/link`)
+- IntersectionObserver for viewport-based prefetch
+- `PREFETCH_LIMIT=10` to prevent over-prefetching
+
+**5. Streaming SSR (SSE)**
+- Server-Sent Events streaming at `/__tw/stream`
+- `StreamChunk`, `StreamDone`, `StreamError` classes with `.to_sse()`
+- `generate_skeleton()` loader UI
+- Client script with EventSource
+
+**6. On-demand ISR**
+- `POST /__tw/revalidate` endpoint for on-demand revalidation
+- Secret-based authentication (`TW_REVALIDATE_SECRET`)
+- `should_revalidate()`, `mark_revalidated()`, `request_revalidation()`
+
+**7. Edge DB Proxy**
+- `EdgeDBProxy` class for Edge runtime database access
+- `POST /__tw/db` endpoint with sqlite3 backend
+- `query()`, `query_one()`, `execute()`, `transaction()` methods
+- Like Next.js Edge DB but with real DB support
+
+**8. Zero-Config Deployment**
+- `detect_deploy_target()` auto-detects from project files
+- `deploy()` generates config for Vercel, Netlify, Cloudflare, GitHub Pages, Docker, Static
+- Generates appropriate config files (`vercel.json`, `netlify.toml`, `wrangler.toml`, `Dockerfile`, etc.)
+
+**9. VDOM + CSR Dual Rendering Mode**
+- `render interactive` — TW native VDOM (~3KB), Zero-JS compatible, SEO perfect (default)
+- `render csr` — Full React CSR, React ecosystem, for complex UI
+- `csr_mode.py` module with `inject_csr_runtime()` — injects React 18 CDN + bootstrap
+- Auto-creates `<div id="root">` mount point
+- `window.__twCSRRender` / `window.__twCSRComponent` API for custom mounting
+- Compiler accepts `csr` as valid render mode alongside `static`, `interactive`, `server`, `edge`
+
+### Framework Integration
+- 8 new module-level imports in `framework.py`
+- 3 new dev server endpoints (`/__tw/revalidate`, `/__tw/db`, `/__tw/hmr`)
+- `handle_hmr_websocket()` method in `TWDevHandler`
+- Plugin `beforeBuild`/`afterBuild` hooks in `build_hidden_site()`
+- `command_plugin` and plugin subparser in `cli.py`
+
+### Files Added/Modified
+- **New**: `plugin_manager.py`, `hmr.py`, `prefetch.py`, `isr.py`, `edge_db.py`
+- **Modified**: `deploy.py` (full rewrite), `streaming.py` (merged), `image_optimizer.py` (merged)
+- **Modified**: `framework.py`, `cli.py`, `pyproject.toml`, `package.json`
+- **New**: `PLUGINS.md` documentation
+
+---
+
 ## v0.9.07 (2026-08-11)
 
 ### Credits Cleanup + PyPI Republish

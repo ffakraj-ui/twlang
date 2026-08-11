@@ -2,7 +2,7 @@
 
 A high-performance, HTML-first web framework with Virtual DOM, App Router, Zero-JS static sites, and **Multi-Runtime Architecture** (V8 Edge, Python, Node.js, WASM).
 
-**v0.9.06** — Pure V8 Edge Runtime, Multi-Runtime Architecture, Common API Layer
+**v0.9.08** — Plugin System, HMR, Image Optimization, Prefetching, Streaming SSR, ISR, Edge DB, Zero-Config Deploy, VDOM + CSR Dual Rendering
 
 ---
 
@@ -16,6 +16,52 @@ tw build
 ```
 
 That's it. Your static site is in `dist/` — deploy it anywhere.
+
+---
+
+## v0.9.08 Features
+
+### Plugin System
+WordPress-inspired plugin system with `.twp` format, 5 lifecycle hooks, and auto-yes permissions.
+```bash
+tw plugin add seo-booster    # Install plugin
+tw plugin list               # List installed plugins
+tw plugin search             # Search registry
+```
+See [PLUGINS.md](PLUGINS.md) for full documentation.
+
+### Hot Module Replacement (HMR)
+Save `.tw` file → browser updates instantly. WebSocket-based, like Next.js Fast Refresh.
+
+### Build-time Image Optimization
+Automatic WebP variants, responsive `srcset`, and lazy loading.
+
+### Client-side Prefetching
+Hover and viewport-based link prefetching for instant navigation.
+
+### Streaming SSR
+Server-Sent Events streaming with skeleton loaders for faster TTFB.
+
+### On-demand ISR
+Incremental Static Regeneration with `POST /__tw/revalidate` endpoint.
+
+### Edge DB Proxy
+Database access from Edge runtime via `POST /__tw/db` — real SQL support.
+
+### Zero-Config Deployment
+Auto-detects target (Vercel, Netlify, Cloudflare, GitHub Pages, Docker) and generates config.
+
+### VDOM + CSR Dual Rendering
+Choose between two rendering modes:
+- `render interactive` — TW native VDOM (~3KB), Zero-JS, SEO perfect (default)
+- `render csr` — Full React CSR, React ecosystem, for complex UI
+
+```tw
+page {
+  title "My App"
+  render csr
+}
+```
 
 ---
 

@@ -133,3 +133,87 @@ def render_program_streaming(program: IRProgram, context: Optional[Dict] = None)
 
 
 __all__ = ["render_program_streaming", "render_node_streaming"]
+
+
+# === v0.9.08: SSE Streaming + Skeleton ===
+
+STREAMING_CLIENT_SCRIPT = """
+<script>
+(function() {
+    var eventSource = new EventSource("/__tw/stream?url=" + encodeURIComponent(window.location.pathname));
+    var skeleton = document.getElementById("tw-skeleton");
+    var root = document.getElementById("tw-root");
+    var receivedChunks = false;
+
+    eventSource.addEventListener("chunk", function(e) {
+        if (!receivedChunks) {
+            receivedChunks = true;
+            if (skeleton) skeleton.style.display = "none";
+            if (root) root.style.display = "block";
+        }
+        var data = JSON.parse(e.data);
+        if (root) root.insertAdjacentHTML("beforeend", data.html || "");
+    });
+
+    eventSource.addEventListener("done", function(e) {
+        eventSource.close();
+    });
+
+    eventSource.addEventListener("error", function(e) {
+        eventSource.close();
+    });
+})();
+</script>
+"""
+
+
+def get_streaming_script() -> str:
+    return STREAMING_CLIENT_SCRIPT
+
+
+def generate_skeleton(loader_text: str = "Loading...") -> str:
+    css_parts = [
+        '<style id="tw-skeleton-style">',
+        '#tw-skeleton{display:flex;align-items:center;justify-content:center;',
+        'min-height:100vh;background:#f8f9fa;}',
+        '#tw-skeleton .tw-loader{text-align:center;font-family:system-ui,sans-serif;color:#6c757d;}',
+        '#tw-skeleton .tw-spinner{width:40px;height:40px;border:4px solid #e9ecef;',
+        'border-top:4px solid #007bff;border-radius:50%;animation:tw-spin 1s linear infinite;',
+        'margin:0 auto 16px;}',
+        '@keyframes tw-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}',
+        '#tw-root{display:none}',
+        '</style>',
+    ]
+    css = "".join(css_parts)
+    html_parts = [
+        '<div id="tw-skeleton">',
+        '<div class="tw-loader">',
+        '<div class="tw-spinner"></div>',
+        '<p>' + loader_text + '</p>',
+        '</div></div>',
+        '<div id="tw-root"></div>',
+    ]
+    return css + "".join(html_parts)
+
+
+class StreamChunk:
+    def __init__(self, html: str):
+        self.html = html
+
+    def to_sse(self) -> str:
+        import json as _json
+        return "event: chunk\ndata: " + _json.dumps({"html": self.html}) + "\n\n"
+
+
+class StreamDone:
+    def to_sse(self) -> str:
+        return "event: done\ndata: {}\n\n"
+
+
+class StreamError:
+    def __init__(self, message: str):
+        self.message = message
+
+    def to_sse(self) -> str:
+        import json as _json
+        return "event: error\ndata: " + _json.dumps({"error": self.message}) + "\n\n"

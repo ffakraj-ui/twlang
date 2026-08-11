@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tw-framework"
-version = "0.9.07"
+version = "0.9.08"
 description = "TW framework CLI with create, dev, build, and deploy commands"
 readme = "README.md"
 requires-python = ">=3.9"

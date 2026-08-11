@@ -56,6 +56,16 @@ from .static_dynamic_auto import determine_render_mode
 from .hydration import wrap_interactive_nodes
 from .streaming import render_program_streaming
 
+# v0.9.08: New feature imports (module-level)
+from .plugin_manager import PluginManager
+from .hmr import hmr_manager
+from .prefetch import get_prefetch_script
+from .streaming import get_streaming_script, generate_skeleton
+from .image_optimizer import get_image_optimizer
+from . import isr as isr_module
+from . import edge_db as edge_db_module
+from . import deploy as deploy_module
+
 logger = logging.getLogger(__name__)
 
 
@@ -3106,6 +3116,27 @@ def make_dev_handler(state: TWDevState) -> Any:
                 self.handle_events()
                 return
 
+            # v0.9.08: ISR revalidation endpoint
+            if path == "/__tw/revalidate" and method == "POST":
+                body_data = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                req = json.loads(body_data)
+                result = isr_module.request_revalidation(req.get("paths", []), req.get("secret"))
+                self.respond_bytes(200, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+                return
+
+            # v0.9.08: Edge DB proxy endpoint
+            if path == "/__tw/db" and method == "POST":
+                body_data = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                req = json.loads(body_data)
+                result = edge_db_module.handle_db_proxy_request(req)
+                self.respond_bytes(200, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+                return
+
+            # v0.9.08: HMR WebSocket endpoint
+            if path == "/__tw/hmr":
+                self.handle_hmr_websocket()
+                return
+
             if path == "/__tw/health":
                 self.respond_bytes(200, b"ok", "text/plain; charset=utf-8")
                 return
@@ -3318,6 +3349,28 @@ def make_dev_handler(state: TWDevState) -> Any:
                 logger.exception("WebSocket handler raised an exception: %s", handler_path)
             finally:
                 conn.close()
+
+        def handle_hmr_websocket(self) -> None:
+            """v0.9.08: HMR WebSocket handler."""
+            try:
+                if not tw_websocket.perform_handshake(self):
+                    return
+                conn = tw_websocket.WebSocketConnection(
+                    self.connection, "/__tw/hmr",
+                    headers={key: value for key, value in self.headers.items()},
+                )
+                hmr_manager.connections.add(conn)
+                conn.send('{"type": "connected", "watching": "*.tw"}')
+                while not state.stop_event.is_set():
+                    time.sleep(1)
+                hmr_manager.connections.discard(conn)
+            except Exception:
+                pass
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         def handle_events(self) -> None:
             self.send_response(200)
@@ -4102,6 +4155,13 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
             compiler.copy_public_folder()
             compiler.verify_api_isolated()
 
+            # v0.9.08: Plugin system - beforeBuild hook
+            _plugin_mgr = PluginManager(plugins_dir=os.path.join(project_root, '.tw', 'plugins'), project_root=project_root)
+            _plugin_mgr.load_all()
+            if _plugin_mgr.has_plugins():
+                log('  Plugins loaded: ' + str(len(_plugin_mgr.list_plugins())), level='info')
+                _plugin_mgr.trigger('beforeBuild', {'project_root': project_root, 'output_dir': output_dir})
+
             # v0.9.0: Build-time runtime compatibility validation
             # Scan all .twm API routes for runtime-incompatible API usage
             for route in discover_twm_api_handlers():
@@ -4424,6 +4484,13 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
                 log(f"  ✅ Code splitting generated {len(chunk_map)} chunk(s)")
         except Exception as e:
             log(f"  ⚠️  Code splitting failed: {e}", level="warning")
+
+        # v0.9.08: Plugin afterBuild hook
+        try:
+            if _plugin_mgr.has_plugins():
+                _plugin_mgr.trigger('afterBuild', {'project_root': project_root, 'output_dir': output_dir})
+        except Exception:
+            pass
 
         return BuildSummary(
             built=built,
