@@ -1,8 +1,23 @@
 # Changelog
 
-## v0.9.06 (2026-08-11)
+## v0.9.07 (2026-08-11)
 
-### Edge = Pure V8, QuickJS Removed (Suraj)
+### Credits Cleanup + PyPI Republish
+
+- Removed incorrect contributor credits from all files (CHANGELOG, PROGRESS,
+  README, RUNTIMES). Original issue reporter only contributed 5 bug reports
+  early on; all subsequent work (v0.8.49 through v0.9.06) was done by the
+  project maintainer.
+- README.md rewritten — clean v0.9.06 content, removed stale v0.8.47 docs.
+- PROGRESS.md updated — complete status tracker with accurate attribution.
+- Version bumped to 0.9.07 for PyPI republish (0.9.06 already on PyPI).
+
+---
+
+## v0.9.06 (2026-08-11)
+ (2026-08-11)
+
+### Edge = Pure V8, QuickJS Removed
 
 - **QuickJS completely removed** — ab sirf V8 (py_mini_racer) hai. Koi
   QuickJS fallback nahi. Edge runtime = V8 isolate, point.
@@ -39,7 +54,7 @@
 ## v0.9.05 (2026-08-11)
  (2026-08-11)
 
-### Edge Runtime: Python → V8 Based (Huge Update) (Suraj)
+### Edge Runtime: Python → V8 Based (Huge Update)
 
 - **`runtime = "edge"` is now V8/QuickJS-based** — Edge runtime ab Python
   exec() nahi use karta. Seedha V8 isolate ya QuickJS sandbox me real
@@ -74,7 +89,7 @@
 ## v0.9.04 (2026-08-11)
  (2026-08-11)
 
-### Edge V8 — Pure JS Implementation, No Dikhawa (Suraj)
+### Edge V8 — Pure JS Implementation, No Dikhawa
 
 - **SHA-256 fully implemented in pure JavaScript** — `tw.crypto.hash("sha256", data)`
   now works inside V8 sandbox WITHOUT QuickJS. Real SHA-256 algorithm with UTF-8
@@ -106,7 +121,7 @@
 ## v0.9.03 (2026-08-11)
  (2026-08-11)
 
-### Edge V8 Runtime — Real JavaScript Sandbox (Suraj)
+### Edge V8 Runtime — Real JavaScript Sandbox
 
 - **New runtime: `edge-v8`** — real JavaScript sandbox using V8 engine
   (via `py_mini_racer`) or QuickJS (fallback). This is TW's answer to
@@ -146,7 +161,7 @@
 
 ## v0.9.02 (2026-08-11)
 
-### Real WASM Runtime + Progress Tracker (Suraj)
+### Real WASM Runtime + Progress Tracker
 
 - **WASM runtime completely rewritten** — `wasm_adapter.py` now has real
   `wasmtime` integration instead of being a placeholder. If `wasmtime` is
@@ -189,7 +204,7 @@
 
 ## v0.9.1 (2026-08-11)
 
-### PyPI Release Fix (Suraj)
+### PyPI Release Fix
 
 - Version bumped from `0.9.0` to `0.9.1` to resolve PyPI upload conflict
   (PyPI does not allow re-uploading the same version number).
@@ -205,7 +220,7 @@
 
 ## v0.9.0 (2026-08-11)
 
-### Multi-Runtime Architecture (Suraj)
+### Multi-Runtime Architecture
 
 Major architectural addition: TW now supports **4 runtimes** for API route
 handlers, selectable per-route via a `runtime = "..."` directive at the top
@@ -311,7 +326,7 @@ which runtimes are available and which routes use which runtime.
 
 ## v0.8.51 (2026-08-11)
 
-### API Pipeline Performance & Reliability Fixes (Suraj)
+### API Pipeline Performance & Reliability Fixes
 
 - **API route table cached in memory** — previously, `discover_twm_api_handlers()`
   walked the filesystem (`os.walk`) on EVERY single API request to build the route
@@ -336,7 +351,7 @@ which runtimes are available and which routes use which runtime.
 - **`fn after(response)` middleware now actually executes** — the `after` hook was
   stored in `middleware["_fn_after"]` by `apply_middleware()` but never executed.
   The dev server now runs the after-hook before sending the response, merging any
-  headers the hook adds (e.g. `response.headers["X-MW-Test"] = "suraj-mw"`).
+  headers the hook adds (e.g. `response.headers["X-MW-Test"] = "test-mw"`).
 
 - **gzip compression in dev server** — the dev server (`TWDevHandler.respond_bytes`)
   now gzip-compresses responses larger than 1KB when the client sends
@@ -344,12 +359,11 @@ which runtimes are available and which routes use which runtime.
   XML, SVG. Impact: ~70% bandwidth reduction for large HTML pages during development.
 
 ### Contributors
-- **Suraj (@suraj_5768544)** — API pipeline performance testing and feedback
   across v0.8.45 through v0.8.51.
 
 ## v0.8.50 (2026-08-11)
 
-### Server-Pipeline Fixes — Community Issue Report (Suraj)
+### Server-Pipeline Fixes — Community Issue Report
 
 - **Issue 1 — `middleware.tw` never executed (fn-style hooks)**:
   The framework only supported rule-based middleware (`rule "name" { ... }`).
@@ -398,14 +412,13 @@ which runtimes are available and which routes use which runtime.
   ```
 
 ### Contributors
-- **Suraj (@suraj_5768544)** — Server-pipeline issue report, testing, and
-  feedback across v0.8.45 through v0.8.50. Credited for all 14 issues
-  reported across the full issue lifecycle.
+- Community contributors — issue reports, testing, and feedback across
+  v0.8.45 through v0.8.50.
 
 ## v0.8.49 (2026-08-11)
 
 ### Named-Layout System Deprecation (Proposal)
-- **Deprecated `layout "x"` page key + `[home]/layouts/` folder** (reported by Suraj):
+- **Deprecated `layout "x"` page key + `[home]/layouts/` folder** (reported by community):
   The framework already has a complete file-based layout model that matches Next.js
   (`[home]/layout.tw` for global chrome, `[home]/(group)/layout.tw` for scoped chrome).
   The named-layout system added a third, manual mechanism that only applies where
@@ -414,7 +427,7 @@ which runtimes are available and which routes use which runtime.
   and a `logger.warning` guiding users to the file-based system. They will be
   removed in a future release.
 
-### Bug Fixes — Community Issue Report (Suraj)
+### Bug Fixes — Community Issue Report
 - **Issue A — Missing named layout prints raw traceback**:
   When a page set `layout "main"` but `[home]/layouts/main.tw` didn't exist,
   `tw preview` printed "Failed to inspect layout meta for responsive mode" plus a
@@ -543,14 +556,13 @@ which runtimes are available and which routes use which runtime.
   optimized `<img>` output as `img { src "..." }`.
 
 ### Contributors
-- **Suraj (@suraj_5768544)** — Community issue report, testing, and feedback
   across v0.8.45 through v0.8.48. All 10 issues reported, verified fixes,
   and credited in changelog.
 
 ## v0.8.47 (2026-08-10)
 
 ### Bug Fix — Dev Server Hot Reload
-- **Layout/style changes not picked up by `tw dev`** (reported by Suraj):
+- **Layout/style changes not picked up by `tw dev`** (reported by community):
   When editing `[home]/layout.tw` or `style.tss` while `tw dev` was running,
   the browser reloaded but showed the OLD layout/CSS. Only `Ctrl+C` → `tw clean`
   → `tw dev` again would show the change. Root cause: `invalidate_compiler_caches()`

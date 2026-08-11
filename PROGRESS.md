@@ -2,11 +2,11 @@
 
 > **Purpose:** Ye file batati hai ki TW Framework me kya kya kaam ho chuka hai, kya baki hai, aur kya plan hai. Agar kabhi work restart karna ho toh is file se poora context mil jayega.
 
-**Last Updated:** v0.9.06 (2026-08-11)
-**Current Version:** 0.9.06
+**Last Updated:** v0.9.07 (2026-08-11)
+**Current Version:** 0.9.07
 **Working Directory:** `/scratch/repos/twlang-main/`
 **GitHub Repo:** `ffakraj-ui/twlang`
-**Developer:** Suraj @suraj_5768544
+**Developer:** ffakraj-ui
 
 ---
 
@@ -236,4 +236,4 @@
 ---
 
 *Last updated: v0.9.06 — 2026-08-11*
-*Maintained by: Suraj @suraj_5768544*
+*Maintained by: ffakraj-ui*

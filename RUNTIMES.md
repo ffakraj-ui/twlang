@@ -257,7 +257,7 @@ response = tw.http.fetch("https://api.example.com/users", {
 // Convenience methods
 get_resp = tw.http.get("https://api.example.com/users")
 post_resp = tw.http.post("https://api.example.com/users", {
-    "name": "Suraj"
+    "name": "User"
 })
 put_resp = tw.http.put("https://api.example.com/users/1", {
     "name": "Updated"
@@ -920,4 +920,4 @@ Info:        tw info               ← shows available runtimes & route assignme
 ---
 
 *TW Framework v0.9.0 — Multi-Runtime Architecture*
-*Feature by Suraj @suraj_5768544*
+*TW Framework v0.9.06*

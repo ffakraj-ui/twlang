@@ -139,8 +139,8 @@ runtime = "edge"
 fn get(request) {
     return {
         "users": [
-            { "id": 1, "name": "Suraj" },
-            { "id": 2, "name": "Rahul" }
+            { "id": 1, "name": "User 1" },
+            { "id": 2, "name": "User 2" }
         ]
     }
 }
