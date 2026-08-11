@@ -1077,6 +1077,19 @@ def command_info(args) -> int:
     print(f"Custom 404: {'yes' if info['has_404'] else 'no'}")
     print(f"Custom 500: {'yes' if info['has_500'] else 'no'}")
     print(f"Modular pipeline: {'yes' if info['modular_pipeline'] else 'no'}")
+    # v0.8.50 (Issue 4): Runtime diagnostics
+    node_status = f"detected ({info['node_path']})" if info.get('node_detected') else "not detected (API routes disabled)"
+    print(f"Node.js: {node_status}")
+    api_count = info.get('api_route_count', 0)
+    if api_count > 0:
+        if info.get('api_routes_disabled'):
+            print(f"API routes: {api_count} found (DISABLED without Node.js)")
+        else:
+            print(f"API routes: {api_count} found (enabled)")
+    else:
+        print(f"API routes: 0 found")
+    mw_status = f"detected ({info['middleware_path']})" if info.get('middleware_detected') else "not found"
+    print(f"Middleware: {mw_status}")
     return 0
 
 

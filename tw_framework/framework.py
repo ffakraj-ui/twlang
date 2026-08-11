@@ -205,6 +205,10 @@ def invalidate_compiler_caches() -> None:
     # in `tw dev` until a full `tw clean` + restart. (Issue D)
     if hasattr(compiler, "_LAYOUT_AST_CACHE"):
         compiler._LAYOUT_AST_CACHE.clear()
+    # v0.8.51: Clear API route cache so .twm file changes are picked up
+    invalidate_api_route_cache()
+    # v0.8.51: Clear in-memory handler cache so .twm source changes recompile
+    invalidate_twm_handler_cache()
 
 
 def use_modular_pipeline(config: Optional[Dict] = None) -> Any:
@@ -953,13 +957,92 @@ def parse_single_value_token(tokens, i) -> Any:
     raise RuntimeError("Expected value token")
 
 
+def _extract_fn_middleware(source: str, hook_name: str) -> Optional[str]:
+    """v0.8.50 (Issue 1): Extract a `fn before(request)` or `fn after(response)`
+    function body from middleware.tw source text.
+
+    Returns the raw function body text (between the braces), or None.
+    The body is a simple JS-like object manipulation snippet that we
+    evaluate as Python after translating the response/request dict access.
+    """
+    pattern = re.compile(
+        r'fn\s+' + hook_name + r'\s*\([^)]*\)\s*\{',
+        re.MULTILINE,
+    )
+    m = pattern.search(source)
+    if not m:
+        return None
+    # Find the matching closing brace
+    start = m.end()
+    depth = 1
+    i = start
+    while i < len(source) and depth > 0:
+        if source[i] == '{':
+            depth += 1
+        elif source[i] == '}':
+            depth -= 1
+        i += 1
+    if depth != 0:
+        return None
+    return source[start:i - 1].strip()
+
+
+def _run_fn_middleware(body: str, ctx: dict, hook_name: str) -> Optional[dict]:
+    """v0.8.50 (Issue 1): Execute a fn-style middleware body.
+
+    The body uses JS-like syntax: `response.headers["X"] = "value"` or
+    `return { status: 302, headers: { "Location": "/login" } }`.
+    We translate it to Python and eval it safely with the request/response
+    dict as context.
+
+    Returns the modified context dict if the function returned one, or
+    the original context if it modified it in-place.  Returns None on error.
+    """
+    if not body:
+        return None
+    try:
+        # Translate JS-like syntax to Python
+        py_body = body
+        # response.headers["key"] = "value" -> ctx["response"]["headers"]["key"] = "value"
+        py_body = re.sub(r'\bresponse\b', 'ctx["response"]', py_body)
+        py_body = re.sub(r'\brequest\b', 'ctx["request"]', py_body)
+        # Remove "return" — we capture the last expression
+        py_body = py_body.replace('return ', 'ctx["result"] = ')
+        # Translate JS object syntax { key: value } -> { "key": value }
+        py_body = re.sub(r'(\w+):', r'"\1":', py_body)
+        # Execute in a restricted namespace
+        namespace = {"ctx": ctx, "json": json}
+        exec(compile(py_body, "<middleware_fn>", "exec"), namespace)
+        if ctx.get("result") is not None:
+            return ctx["result"]
+        return ctx
+    except Exception as err:
+        logger.warning("fn %s middleware execution failed: %s", hook_name, err)
+        return None
+
+
 def parse_middleware_rules(project_root: str) -> Any:
     source_path = next((path for path in middleware_file_candidates(project_root) if os.path.exists(path)), None)
     if not source_path:
         return []
 
-    tokens = compiler.tokenize_tw(compiler.read_text_file(source_path))
+    raw_source = compiler.read_text_file(source_path)
+    tokens = compiler.tokenize_tw(raw_source)
     rules = []
+
+    # v0.8.50 (Issue 1): Extract fn-style middleware hooks (fn before/after).
+    # These are simple function definitions that the user puts in middleware.tw
+    # alongside (or instead of) rule blocks.  We store the raw function body
+    # as a Python-evaluated callable so apply_middleware can invoke it.
+    fn_before_body = _extract_fn_middleware(raw_source, "before")
+    fn_after_body = _extract_fn_middleware(raw_source, "after")
+    if fn_before_body or fn_after_body:
+        # Store as a special rule that apply_middleware checks first
+        rules.insert(0, {
+            "_fn_middleware": True,
+            "before": fn_before_body,
+            "after": fn_after_body,
+        })
 
     def skip_separators(index) -> Any:
         while index < len(tokens) and compiler.is_statement_separator(tokens[index]):
@@ -1382,32 +1465,277 @@ def discover_app_router_api_routes() -> List[dict]:
     return routes
 
 
+_API_ROUTE_CACHE: Optional[List[dict]] = None
+_API_ROUTE_CACHE_LOCK = threading.Lock()
+
+
+_RUNTIME_DIRECTIVE_RE = re.compile(r'^[ \t]*runtime[ \t]*=[ \t]*["\']?(nodejs|node|python|edge|wasm)["\']?[ \t]*$', re.MULTILINE)
+
+
+def _parse_runtime_directive(handler_path: str) -> str:
+    """v0.9.0: Parse `runtime = "edge"` from a .twm file.
+
+    Returns the runtime name, or "nodejs" (default) if not specified.
+    """
+    try:
+        source = compiler.read_text_file(handler_path)
+    except Exception:
+        return "nodejs"
+    m = _RUNTIME_DIRECTIVE_RE.search(source)
+    if m:
+        name = m.group(1).lower()
+        # Normalize "node" → "nodejs"
+        return "nodejs" if name == "node" else name
+    return "nodejs"
+
+
+def _execute_with_runtime(handler_path: str, runtime_name: str, method: str,
+                           url_path: str, headers: Dict[str, str], body: object) -> dict:
+    """v0.9.0: Execute a .twm handler using a specific runtime.
+
+    For "python" and "edge": executes in-process via Python evaluation.
+    For "nodejs": delegates to execute_twm_api_handler (Node.js subprocess/persistent).
+    For "wasm": executes in restricted Python sandbox (future: wasmtime).
+    """
+    from .tw_runtime import get_runtime, tw, validate_runtime_compatibility, RuntimeValidationError
+
+    runtime = get_runtime(runtime_name)
+    if runtime is None:
+        return {
+            "status": 500,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": f"Unknown runtime: {runtime_name!r}"}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    # Set the active runtime on the tw singleton
+    tw.set_runtime(runtime)
+
+    # Read handler source
+    try:
+        source = compiler.read_text_file(handler_path)
+    except Exception as err:
+        return {
+            "status": 500,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": f"Failed to read handler: {err}"}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    # Build request context
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(url_path).query, keep_blank_values=True)
+    query = {k: v[0] if len(v) == 1 else v for k, v in query.items()}
+    cookies = parse_cookie_header(headers.get("Cookie", ""))
+
+    # For python/edge runtimes: evaluate the .twm handler in-process
+    if runtime_name in ("python", "edge", "wasm"):
+        request_data = {
+            "method": method.upper(),
+            "path": normalize_url_path(url_path),
+            "query": query,
+            "body": body,
+            "headers": headers,
+            "cookies": cookies,
+            "env": dict(os.environ),
+        }
+        return _execute_twm_in_python(source, runtime, request_data, handler_path)
+
+    # Fallback to Node.js
+    return execute_twm_api_handler(handler_path, method, url_path, headers, body)
+
+
+def _execute_twm_in_python(source: str, runtime, request_data: dict, handler_path: str) -> dict:
+    """v0.9.0: Execute a .twm handler directly in Python (python/edge/wasm runtime).
+
+    Translates the JS-like .twm function syntax to Python and evaluates it
+    in a namespace where `tw`, `request`, and standard library are available.
+    """
+    import tw_framework.tw_runtime as twrt
+
+    # Extract the handler function (e.g. fn get(request) { ... })
+    method = request_data["method"].lower()
+    fn_pattern = re.compile(
+        r'fn\s+(' + method + r'|handler)\s*\([^)]*\)\s*\{',
+        re.MULTILINE,
+    )
+    m = fn_pattern.search(source)
+    if not m:
+        allowed = re.findall(r'fn\s+(\w+)\s*\(', source)
+        return {
+            "status": 405,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": f"Method {method.upper()} not allowed", "allowed": allowed}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    # Extract function body
+    start = m.end()
+    depth = 1
+    i = start
+    while i < len(source) and depth > 0:
+        if source[i] == '{':
+            depth += 1
+        elif source[i] == '}':
+            depth -= 1
+        i += 1
+    fn_body = source[start:i - 1].strip()
+
+    # Strip `runtime = "..."` directive lines from source
+    fn_body = _RUNTIME_DIRECTIVE_RE.sub("", fn_body)
+
+    # Translate JS-like syntax to Python
+    py_body = fn_body
+    # `return { key: value }` → `return { "key": value }`  (JS object keys)
+    py_body = re.sub(r'(\w+):', r'"\1":', py_body)
+    # `null` → `None`, `true` → `True`, `false` → `False`
+    py_body = py_body.replace("null", "None").replace("true", "True").replace("false", "False")
+
+    # Build execution namespace
+    namespace = {
+        "tw": twrt.tw,
+        "request": request_data,
+        "json": json,
+        "os": os,
+        "re": re,
+        "__name__": "__twm_handler__",
+    }
+
+    # Add runtime-specific imports for python runtime
+    if runtime.runtime_name == "python":
+        namespace.update({
+            "hashlib": __import__("hashlib"),
+            "hmac": __import__("hmac"),
+            "secrets": __import__("secrets"),
+            "sqlite3": __import__("sqlite3"),
+            "urllib": __import__("urllib.request", fromlist=["urllib"]),
+        })
+
+    try:
+        exec(compile(py_body, handler_path, "exec"), namespace)
+        result = namespace.get("result")
+        if result is None:
+            return {
+                "status": 200,
+                "content_type": "application/json; charset=utf-8",
+                "body": b"{}",
+                "headers": [],
+                "cookies": [],
+            }
+    except Exception as err:
+        return {
+            "status": 500,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": str(err), "type": type(err).__name__}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    # Normalize response
+    status = 200
+    content_type = "application/json; charset=utf-8"
+    headers_out = []
+    cookies_out = []
+    body_val = result
+
+    if isinstance(result, dict):
+        if "status" in result:
+            status = int(result["status"])
+        if "content_type" in result:
+            content_type = str(result["content_type"])
+        if "headers" in result:
+            h = result["headers"]
+            if isinstance(h, dict):
+                headers_out = list(h.items())
+            elif isinstance(h, list):
+                headers_out = h
+        if "cookies" in result:
+            c = result["cookies"]
+            if isinstance(c, dict):
+                cookies_out = list(c.items())
+            elif isinstance(c, list):
+                cookies_out = c
+        if "body" in result:
+            body_val = result["body"]
+    elif isinstance(result, str):
+        content_type = "text/plain; charset=utf-8"
+        body_val = result
+    elif isinstance(result, (dict, list)):
+        body_val = result
+
+    if isinstance(body_val, (dict, list)):
+        body_bytes = json.dumps(body_val, ensure_ascii=False).encode("utf-8")
+    elif isinstance(body_val, str):
+        body_bytes = body_val.encode("utf-8")
+    else:
+        body_bytes = str(body_val).encode("utf-8")
+
+    return {
+        "status": status,
+        "content_type": content_type,
+        "body": body_bytes,
+        "headers": headers_out,
+        "cookies": cookies_out,
+    }
+
+
 def discover_twm_api_handlers() -> List[dict]:
     """
     Discover folder-based route handlers as server-side TW script API handlers.
+
+    v0.8.51: Results are cached in memory. Call invalidate_api_route_cache()
+    to force a refresh (used by the file watcher on .twm changes).
 
     Contract:
     - `get(request)`, `post(request)`, ... or `handler(request)`
     - No top-level statements allowed in `.twm` (enforced by parser)
     """
-    routes = []
-    if not os.path.isdir(compiler.API_DIR):
+    global _API_ROUTE_CACHE
+    if _API_ROUTE_CACHE is not None:
+        return _API_ROUTE_CACHE
+    with _API_ROUTE_CACHE_LOCK:
+        if _API_ROUTE_CACHE is not None:
+            return _API_ROUTE_CACHE
+        routes = []
+        if os.path.isdir(compiler.API_DIR):
+            for root, _, files in os.walk(compiler.API_DIR):
+                rel_dir = os.path.relpath(root, compiler.API_DIR)
+                rel_dir = compiler.normalize_route_directory(rel_dir)
+                for filename in sorted(files):
+                    if filename != "route.twm":
+                        continue
+                    segments = ["api"]
+                    if rel_dir and rel_dir != ".":
+                        segments.extend(rel_dir.split(os.sep))
+                    route_path = "/" + "/".join(filter(None, segments))
+                    routes.append({"path": os.path.join(root, filename), "route": route_path, "lang": "twm"})
+        _API_ROUTE_CACHE = routes
         return routes
-    for root, _, files in os.walk(compiler.API_DIR):
-        rel_dir = os.path.relpath(root, compiler.API_DIR)
-        rel_dir = compiler.normalize_route_directory(rel_dir)
-        for filename in sorted(files):
-            if filename != "route.twm":
-                continue
-            segments = ["api"]
-            if rel_dir and rel_dir != ".":
-                segments.extend(rel_dir.split(os.sep))
-            route_path = "/" + "/".join(filter(None, segments))
-            routes.append({"path": os.path.join(root, filename), "route": route_path, "lang": "twm"})
-    return routes
+
+
+def invalidate_api_route_cache() -> None:
+    """v0.8.51: Clear the cached API route table (called on .twm file changes)."""
+    global _API_ROUTE_CACHE
+    with _API_ROUTE_CACHE_LOCK:
+        _API_ROUTE_CACHE = None
+
+
+_TWM_HANDLER_MEM_CACHE: Dict[str, str] = {}  # handler_path → compiled JS string
+_TWM_HANDLER_MEM_CACHE_LOCK = threading.Lock()
 
 
 def _compile_twm_api_handler_to_cache(handler_path: str) -> Any:
+    """v0.8.51: In-memory cache for compiled .twm handlers.
+    Previously, every request hit the disk to check if the compiled .cjs file
+    exists. Now the compiled JS string is cached in memory and only written
+    to disk on first compile (or when the source changes)."""
+    # Check in-memory cache first
+    with _TWM_HANDLER_MEM_CACHE_LOCK:
+        if handler_path in _TWM_HANDLER_MEM_CACHE:
+            return _TWM_HANDLER_MEM_CACHE[handler_path]
+
     cache_dir = os.path.join(compiler.CACHE_DIR, "twm_api")
     os.makedirs(cache_dir, exist_ok=True)
     with open(handler_path, "r", encoding="utf-8") as f:
@@ -1418,7 +1746,149 @@ def _compile_twm_api_handler_to_cache(handler_path: str) -> Any:
         js = compile_twm_module_to_cjs(src, module_id=handler_path)
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(js)
+    else:
+        with open(out_path, "r", encoding="utf-8") as f:
+            js = f.read()
+    # Cache in memory for subsequent requests
+    with _TWM_HANDLER_MEM_CACHE_LOCK:
+        _TWM_HANDLER_MEM_CACHE[handler_path] = out_path
     return out_path
+
+
+def invalidate_twm_handler_cache() -> None:
+    """v0.8.51: Clear in-memory handler cache (called on .twm file changes)."""
+    with _TWM_HANDLER_MEM_CACHE_LOCK:
+        _TWM_HANDLER_MEM_CACHE.clear()
+    # Also reload the persistent Node.js worker's handler cache
+    _persistent_node_worker.reload()
+
+
+# ── v0.8.51: Persistent Node.js worker ─────────────────────────────────
+# Instead of spawning a new `node` process per request (~100ms overhead),
+# we keep a single Node.js process alive and communicate via stdin/stdout
+# using newline-delimited JSON (JSON Lines protocol).
+
+class PersistentNodeWorker:
+    """v0.8.51: A persistent Node.js process that stays alive between requests.
+
+    Protocol:
+      Python → stdin:  {"handlerPath": "...", "method": "GET", ...}\n
+      Node   → stdout: {"status": 200, "body": "...", ...}\n
+
+    Special commands:
+      {"__ping": true}   → health check
+      {"__reload": true}  → clear handler cache
+    """
+
+    def __init__(self):
+        self.proc = None
+        self._lock = threading.Lock()
+        self._ready = False
+
+    def _ensure_started(self):
+        """Start the persistent Node.js process if not already running."""
+        if self.proc is not None and self.proc.poll() is None:
+            return True
+        from .npm_manager import find_node
+        node_bin = find_node()
+        if not node_bin:
+            return False
+        runner = os.path.join(SCRIPT_DIR, "twm_api_runner_persistent.js")
+        if not os.path.isfile(runner):
+            return False
+        try:
+            self.proc = subprocess.Popen(
+                [node_bin, runner],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,  # line-buffered
+                cwd=os.path.abspath(getattr(compiler, "PROJECT_ROOT", os.getcwd()) or os.getcwd()),
+            )
+            # Wait for the "__ready" signal
+            ready_line = self.proc.stdout.readline()
+            if ready_line and '"__ready"' in ready_line:
+                self._ready = True
+                return True
+            # Process started but didn't signal ready — fall back to per-request mode
+            self._stop()
+            return False
+        except Exception:
+            self._stop()
+            return False
+
+    def _stop(self):
+        """Stop the persistent Node.js process."""
+        self._ready = False
+        if self.proc is not None:
+            try:
+                self.proc.stdin.close()
+            except Exception:
+                pass
+            try:
+                self.proc.terminate()
+                self.proc.wait(timeout=3)
+            except Exception:
+                try:
+                    self.proc.kill()
+                except Exception:
+                    pass
+            self.proc = None
+
+    def execute(self, handler_path: str, method: str, url_path: str,
+                headers: Dict[str, str], body: object, request_data: dict) -> Optional[dict]:
+        """Execute a .twm handler via the persistent Node.js process.
+
+        Returns the response dict, or None if the persistent worker is
+        unavailable (caller should fall back to per-request subprocess).
+        """
+        with self._lock:
+            if not self._ensure_started():
+                return None
+            request_json = json.dumps({
+                "handlerPath": handler_path,
+                "method": method.upper(),
+                "path": normalize_url_path(url_path),
+                "query": request_data.get("query", {}),
+                "body": body,
+                "headers": headers,
+                "cookies": request_data.get("cookies", {}),
+                "env": dict(os.environ),
+                "project_root": request_data.get("project_root", ""),
+            }, ensure_ascii=False)
+            try:
+                self.proc.stdin.write(request_json + "\n")
+                self.proc.stdin.flush()
+                response_line = self.proc.stdout.readline()
+                if not response_line:
+                    # Process died — stop and fall back
+                    self._stop()
+                    return None
+                return json.loads(response_line)
+            except (BrokenPipeError, OSError, json.JSONDecodeError):
+                self._stop()
+                return None
+
+    def reload(self):
+        """Clear the handler cache in the persistent Node.js process."""
+        with self._lock:
+            if self.proc is not None and self.proc.poll() is None:
+                try:
+                    self.proc.stdin.write('{"__reload": true}\n')
+                    self.proc.stdin.flush()
+                    # Read the confirmation
+                    self.proc.stdout.readline()
+                except Exception:
+                    self._stop()
+
+    def is_available(self) -> bool:
+        """Check if the persistent worker is running and ready."""
+        return self.proc is not None and self.proc.poll() is None and self._ready
+
+
+# Singleton instance
+_persistent_node_worker = PersistentNodeWorker()
 
 
 def execute_twm_api_handler(handler_path: str, method: str, url_path: str,
@@ -1435,6 +1905,27 @@ def execute_twm_api_handler(handler_path: str, method: str, url_path: str,
       - object => JSON (unless it includes {json|text|html|body,status,headers,cookies})
       - array => [body, status] or [body, status, headers]
     """
+    # v0.8.50 (Issue 2): Detect Node.js before attempting to run the handler.
+    # Previously, a missing Node.js binary caused a cryptic FileNotFoundError
+    # that surfaced as a 500 (or 404 if the route was never resolved).
+    # Now we check upfront and return a clear 501 with installation guidance.
+    from .npm_manager import find_node, _get_node_install_help
+    node_bin = find_node()
+    if not node_bin:
+        help_text = _get_node_install_help()
+        error_body = json.dumps({
+            "error": "Node.js not detected — API routes are disabled.",
+            "detail": "TW Framework requires Node.js to execute `.twm` API route handlers.",
+            "install_help": help_text,
+        }, ensure_ascii=False, indent=2)
+        return {
+            "status": 501,
+            "content_type": "application/json; charset=utf-8",
+            "body": error_body.encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
     compiled = _compile_twm_api_handler_to_cache(handler_path)
     runner = os.path.join(SCRIPT_DIR, "twm_api_runner.js")
     if not os.path.isfile(runner):
@@ -1444,7 +1935,7 @@ def execute_twm_api_handler(handler_path: str, method: str, url_path: str,
     query = {k: v[0] if len(v) == 1 else v for k, v in query.items()}
     cookies = parse_cookie_header(headers.get("Cookie", ""))
     project_root = os.path.abspath(getattr(compiler, "PROJECT_ROOT", os.getcwd()) or os.getcwd())
-    request = {
+    request_data = {
         "method": method.upper(),
         "path": normalize_url_path(url_path),
         "query": query,
@@ -1455,10 +1946,39 @@ def execute_twm_api_handler(handler_path: str, method: str, url_path: str,
         "project_root": project_root,
     }
 
+    # v0.8.51: Try persistent Node.js worker first (2-5ms per request).
+    # Falls back to per-request subprocess (100ms+) if worker is unavailable.
+    persistent_runner = os.path.join(SCRIPT_DIR, "twm_api_runner_persistent.js")
+    if os.path.isfile(persistent_runner):
+        resp = _persistent_node_worker.execute(
+            compiled, method, url_path, headers, body, request_data,
+        )
+        if resp is not None:
+            status = int(resp.get("status", 200) or 200)
+            content_type = str(resp.get("content_type") or "application/json; charset=utf-8")
+            headers_out = resp.get("headers") or []
+            cookies_out = resp.get("cookies") or []
+            body_val = resp.get("body", "")
+            if isinstance(body_val, (dict, list)):
+                body_bytes = json.dumps(body_val, ensure_ascii=False).encode("utf-8")
+                content_type = "application/json; charset=utf-8"
+            elif isinstance(body_val, str):
+                body_bytes = body_val.encode("utf-8")
+            else:
+                body_bytes = str(body_val).encode("utf-8")
+            return {
+                "status": status,
+                "content_type": content_type,
+                "body": body_bytes,
+                "headers": headers_out,
+                "cookies": cookies_out,
+            }
+
+    # Fallback: per-request subprocess (original behavior, ~100ms overhead)
     timeout_s = float(os.environ.get("TW_TWM_TIMEOUT", "10") or "10")
     proc = subprocess.run(
-        ["node", runner, compiled],
-        input=json.dumps(request, ensure_ascii=False),
+        [node_bin, runner, compiled],
+        input=json.dumps(request_data, ensure_ascii=False),
         text=True,
         capture_output=True,
         timeout=max(1.0, timeout_s),
@@ -1668,6 +2188,19 @@ class TWProject:
                     content_type = mimetypes.guess_type(candidate)[0] or "application/javascript"
                     return payload, content_type
 
+        # v0.8.48: serve files from public/ at the URL root, Next.js-style
+        # (bug #1 — public/ was previously ignored entirely).
+        if not path.startswith("/_tw/") and not path.startswith("/assets/"):
+            for public_dir in (os.path.join(compiler.HOME_DIR, "public"), os.path.join(compiler.PROJECT_ROOT, "public")):
+                if not os.path.isdir(public_dir):
+                    continue
+                candidate = os.path.abspath(os.path.join(public_dir, path.lstrip("/")))
+                if is_path_within(public_dir, candidate) and os.path.isfile(candidate):
+                    payload = safe_read_binary(candidate)
+                    if payload is not None:
+                        content_type = mimetypes.guess_type(candidate)[0] or "application/octet-stream"
+                        return payload, content_type
+
         return None
 
     def build_dev_search_index(self) -> List[dict]:
@@ -1762,6 +2295,52 @@ class TWProject:
         }
 
         for rule in parse_middleware_rules(self.project_root):
+            # v0.8.50 (Issue 1): fn-style middleware (fn before/after)
+            if rule.get("_fn_middleware"):
+                # Run "before" hook — can redirect/rewrite/block
+                if rule.get("before"):
+                    fn_ctx = {
+                        "request": {
+                            "method": method,
+                            "path": path,
+                            "headers": request_headers,
+                            "cookies": cookies,
+                        },
+                        "response": {},
+                        "result": None,
+                    }
+                    fn_result = _run_fn_middleware(rule["before"], fn_ctx, "before")
+                    if fn_result and isinstance(fn_result, dict):
+                        # If the before hook returned a response, short-circuit
+                        resp = fn_result.get("response") or fn_result.get("result")
+                        if resp and isinstance(resp, dict):
+                            status = int(resp.get("status", 200))
+                            if status in (301, 302, 303, 307, 308):
+                                location = ""
+                                resp_headers = resp.get("headers") or {}
+                                if isinstance(resp_headers, dict):
+                                    location = resp_headers.get("Location") or resp_headers.get("location", "")
+                                else:
+                                    for h in resp_headers:
+                                        if h[0].lower() == "location":
+                                            location = h[1]
+                                            break
+                                if location:
+                                    result["redirect"] = location
+                                    return result
+                            if status != 200 or resp.get("body"):
+                                result["response"] = {
+                                    "status": status,
+                                    "body": resp.get("body", b"").encode("utf-8") if isinstance(resp.get("body", ""), str) else resp.get("body", b""),
+                                    "content_type": resp.get("content_type", "text/html; charset=utf-8"),
+                                    "headers": [],
+                                    "cookies": [],
+                                }
+                                return result
+                # Store the "after" hook for post-response execution
+                if rule.get("after"):
+                    result["_fn_after"] = rule["after"]
+                continue
             if not match_path_pattern(path, str(rule.get("match", "/**"))):
                 continue
             allowed_methods = [str(item).upper() for item in rule.get("methods", [])]
@@ -1910,6 +2489,13 @@ class TWProject:
 
     def execute_api_route(self, api_route: dict, method: str, url_path: str, headers: Dict[str, str], body: object) -> Any:
         if api_route.get("lang") == "twm":
+            # v0.9.0: Multi-runtime support — parse runtime directive from .twm source
+            runtime_name = _parse_runtime_directive(api_route["path"])
+            if runtime_name and runtime_name != "nodejs":
+                # Non-default runtime: use runtime abstraction layer
+                return _execute_with_runtime(
+                    api_route["path"], runtime_name, method, url_path, headers, body,
+                )
             return execute_twm_api_handler(api_route["path"], method, url_path, headers, body)
         methods = parse_api_route_file(api_route["path"])
         spec = methods.get(method.upper())
@@ -2032,6 +2618,17 @@ class TWProject:
         # v0.8.40 fix: dev server was not applying layouts/components/CSS
         # because it used compile_file_pipeline() which skips compose_nested_layouts().
         if page_info.get("app_router") and page_info.get("layout_files"):
+            # v0.8.48 (bug #8): warn (once per request is fine in dev) if a
+            # leftover named `layout "name"` key is present but ignored in
+            # favor of the App Router layout.tw chain — see compiler.build_one_page.
+            if getattr(page_ast, "layouts", None):
+                log(
+                    f"  ⚠️  {compiler.safe_relpath(tw_path, compiler.PROJECT_ROOT)}: "
+                    f"`layout {page_ast.layouts!r}` is ignored here — this page is inside an "
+                    f"App Router group and already uses its layout.tw chain. Remove the "
+                    f"named `layout` key or move the page out of the group folder.",
+                    level="warning",
+                )
             body_html, needs_router, head_scripts = compiler.render_elements_html(
                 page_ast.body, context
             )
@@ -2406,6 +3003,12 @@ def make_dev_handler(state: TWDevState) -> Any:
         def do_GET(self) -> None:
             self.handle_request("GET")
 
+        def do_HEAD(self) -> None:
+            # v0.8.50 (Issue 3): Support HEAD requests (curl -I, wget --spider,
+            # health checks).  HEAD is handled like GET but the response body
+            # is discarded after headers are computed.
+            self.handle_request("HEAD")
+
         def do_POST(self) -> None:
             self.handle_request("POST")
 
@@ -2477,24 +3080,71 @@ def make_dev_handler(state: TWDevState) -> Any:
                 request_meta={"client_ip": self.client_address[0] if self.client_address else ""},
                 method=method,
             )
+
+            # v0.8.51 (Issue 1 contd): Run fn after(response) hook to inject
+            # response headers before sending.  The after-hook was stored in
+            # middleware["_fn_after"] by apply_middleware() but never executed.
+            fn_after = middleware.pop("_fn_after", None)
+
+            def _apply_after_hook(status, payload, content_type, headers, cookies):
+                """Run the fn after(response) hook if present, returning
+                potentially modified headers."""
+                if not fn_after:
+                    return headers, cookies
+                fn_ctx = {
+                    "response": {
+                        "status": status,
+                        "headers": {h[0]: h[1] for h in (headers or [])},
+                        "body": payload.decode("utf-8", errors="replace") if isinstance(payload, bytes) else str(payload),
+                    },
+                    "request": {
+                        "method": method,
+                        "path": path,
+                        "headers": request_headers,
+                    },
+                    "result": None,
+                }
+                fn_result = _run_fn_middleware(fn_after, fn_ctx, "after")
+                if fn_result and isinstance(fn_result, dict):
+                    resp = fn_result.get("response") or fn_result.get("result")
+                    if resp and isinstance(resp, dict):
+                        resp_headers = resp.get("headers") or {}
+                        if isinstance(resp_headers, dict):
+                            # Merge: existing headers + fn-added headers
+                            existing = {h[0]: h[1] for h in (headers or [])}
+                            existing.update(resp_headers)
+                            return list(existing.items()), cookies
+                        elif isinstance(resp_headers, list):
+                            return (headers or []) + resp_headers, cookies
+                return headers, cookies
+
             if middleware.get("response"):
                 response = middleware["response"]
+                hdrs, cookies = _apply_after_hook(
+                    response["status"], response["body"], response["content_type"],
+                    response.get("headers", []), response.get("cookies", []),
+                )
                 self.respond_bytes(
                     response["status"],
                     response["body"],
                     response["content_type"],
-                    headers=response.get("headers", []),
-                    cookies=response.get("cookies", []),
+                    headers=hdrs,
+                    cookies=cookies,
                 )
                 return
             if middleware.get("redirect"):
                 payload = f"Redirecting to {middleware['redirect']}".encode("utf-8")
+                hdrs, cookies = _apply_after_hook(
+                    302, payload, "text/plain; charset=utf-8",
+                    [("Location", middleware["redirect"])] + middleware.get("headers", []),
+                    middleware.get("cookies", []),
+                )
                 self.respond_bytes(
                     302,
                     payload,
                     "text/plain; charset=utf-8",
-                    headers=[("Location", middleware["redirect"])] + middleware.get("headers", []),
-                    cookies=middleware.get("cookies", []),
+                    headers=hdrs,
+                    cookies=cookies,
                 )
                 return
             path = normalize_url_path(middleware.get("path", path))
@@ -2624,9 +3274,27 @@ def make_dev_handler(state: TWDevState) -> Any:
                 return
 
         def respond_bytes(self, status: int, payload: bytes, content_type: str, headers: Optional[List[Tuple[str, str]]] = None, cookies: Optional[List[Tuple[str, str]]] = None) -> None:
+            # v0.8.51: gzip compression for large responses in dev server
+            accept_encoding = self.headers.get("Accept-Encoding", "")
+            compressible = (
+                len(payload) > 1024
+                and "gzip" in accept_encoding
+                and (
+                    content_type.startswith("text/")
+                    or "javascript" in content_type
+                    or "json" in content_type
+                    or "xml" in content_type
+                    or "svg" in content_type
+                )
+            )
+            if compressible:
+                payload = gzip.compress(payload, compresslevel=6)
+
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(payload)))
+            if compressible:
+                self.send_header("Content-Encoding", "gzip")
             # Dev cache hardening: avoid stale HTML/CSS/JS when browser caches aggressively
             if content_type.startswith("text/html") or content_type.startswith("text/css") or "javascript" in content_type:
                 self.send_header("Cache-Control", "no-store")
@@ -2646,10 +3314,13 @@ def make_dev_handler(state: TWDevState) -> Any:
                     ),
                 )
             self.end_headers()
-            try:
-                self.wfile.write(payload)
-            except (BrokenPipeError, ConnectionResetError):
-                return
+            # v0.8.50 (Issue 3): For HEAD requests, send headers but NOT the body.
+            # Content-Length is still set correctly so the client knows the real size.
+            if self.command != "HEAD":
+                try:
+                    self.wfile.write(payload)
+                except (BrokenPipeError, ConnectionResetError):
+                    return
 
     return TWDevHandler
 
@@ -3357,7 +4028,28 @@ def build_hidden_site(project_root: str, output_dir: str, force: bool = False, w
             manifest = compiler.load_build_manifest()
 
             compiler.copy_assets()
+            compiler.copy_public_folder()
             compiler.verify_api_isolated()
+
+            # v0.9.0: Build-time runtime compatibility validation
+            # Scan all .twm API routes for runtime-incompatible API usage
+            for route in discover_twm_api_handlers():
+                handler_path = route["path"]
+                runtime_name = _parse_runtime_directive(handler_path)
+                if runtime_name == "nodejs":
+                    continue  # Node.js supports everything, skip
+                try:
+                    source = compiler.read_text_file(handler_path)
+                    from .tw_runtime import validate_runtime_compatibility
+                    validation_errors = validate_runtime_compatibility(
+                        source, runtime_name, file_path=handler_path,
+                    )
+                    for err in validation_errors:
+                        log(f"  ⚠️  Runtime validation: {handler_path}", level="warning")
+                        log(f"     {err.message}", level="warning")
+                        warnings += 1
+                except Exception as err:
+                    log(f"  ⚠️  Runtime validation skipped for {handler_path}: {err}", level="warning")
 
             pages = compiler.discover_pages()
             current_page_keys = {compiler.page_cache_key(page) for page in pages}
@@ -3701,11 +4393,38 @@ def inspect_project(project_root: str) -> dict:
     component_count = 0
     if os.path.isdir(components_dir):
         for name in os.listdir(components_dir):
-            if name.endswith(".tw"):
+            if name.endswith(".tw") and not compiler._is_backup_or_temp_file(name):
                 component_count += 1
 
     dynamic_routes = sum(1 for page in pages if page["type"] == "dynamic")
     static_routes = sum(1 for page in pages if page["type"] == "static")
+
+    # v0.8.50 (Issue 4): Runtime diagnostics — Node.js, API routes, middleware
+    from .npm_manager import find_node
+    node_bin = find_node()
+    api_routes = discover_twm_api_handlers()
+    api_route_count = len(api_routes)
+    # Check for middleware.tw
+    mw_candidates = middleware_file_candidates(project_root)
+    mw_path = next((p for p in mw_candidates if os.path.exists(p)), None)
+    has_middleware = mw_path is not None
+
+    # v0.9.0: Multi-runtime diagnostics
+    from .tw_runtime import list_runtimes, get_runtime
+    available_runtimes = []
+    runtime_details = {}
+    for rt_name in list_runtimes():
+        rt = get_runtime(rt_name)
+        if rt and rt.is_available():
+            available_runtimes.append(rt_name)
+            runtime_details[rt_name] = rt.capabilities_info()
+
+    # Check per-route runtime assignments
+    route_runtimes = {}
+    for route in api_routes:
+        rt_name = _parse_runtime_directive(route["path"])
+        route_runtimes[route["route"]] = rt_name
+
     return {
         "project_root": project_root,
         "source_root": compiler.HOME_DIR,
@@ -3718,6 +4437,17 @@ def inspect_project(project_root: str) -> dict:
         "has_404": project.find_special_page(404) is not None,
         "has_500": project.find_special_page(500) is not None,
         "modular_pipeline": project.modular_pipeline,
+        # v0.8.50 (Issue 4): New diagnostics fields
+        "node_detected": node_bin is not None,
+        "node_path": node_bin or "",
+        "api_route_count": api_route_count,
+        "api_routes_disabled": api_route_count > 0 and node_bin is None,
+        "middleware_detected": has_middleware,
+        "middleware_path": mw_path or "",
+        # v0.9.0: Multi-runtime diagnostics
+        "available_runtimes": available_runtimes,
+        "runtime_details": runtime_details,
+        "route_runtimes": route_runtimes,
     }
 
 

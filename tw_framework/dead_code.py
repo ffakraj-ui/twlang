@@ -32,7 +32,7 @@ def detect_dead_code(project_root: str) -> Dict[str, List[str]]:
     if os.path.isdir(pages_dir):
         for root, _, files in os.walk(pages_dir):
             for fname in files:
-                if fname.endswith(".tw"):
+                if fname.endswith(".tw") and not compiler._is_backup_or_temp_file(fname):
                     full_path = os.path.join(root, fname)
                     if full_path not in page_paths:
                         dead["pages"].append(full_path)

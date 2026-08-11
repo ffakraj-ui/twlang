@@ -491,11 +491,55 @@ When `auto_image_alt: true`, images without an `alt` attribute get auto-generate
 
 ## 15. IMAGE OPTIMIZATION (v0.8.37+)
 
-Two image tags:
-- `image { src "..." alt "..." width 800 height 600 }` → optimized (lazy loading, srcset, responsive, decoding async)
-- `img { src "..." alt "..." }` → normal (no optimization)
+Built-in optimized image component. Component name is `Image` (capitalized —
+this is a component tag, not an HTML element, so it follows TW's
+Capitalized-tag convention). `tw/image` is accepted as an alias of the same
+name if you prefer writing an explicit import.
 
-Developer chooses which to use.
+```tw
+Image { src "/photos/hero.jpg" width 800 height 600 alt "Team photo" }
+```
+
+No `import` is required — `Image` is always available. If you want one for
+clarity/tooling, both forms work (fixed in v0.8.48 — the `from` form used to
+throw `Expected component name after import`):
+
+```tw
+import "tw/image"                 // bare-string form
+import Image from "tw/image"      // ES6-style default-import form
+```
+
+**Props:**
+
+| Prop            | Type    | Default | Notes                                                            |
+|-----------------|---------|---------|-------------------------------------------------------------------|
+| `src`           | string  | —       | required                                                          |
+| `width`         | number  | —       | in pixels; also used to prevent layout shift                     |
+| `height`        | number  | —       | in pixels                                                         |
+| `alt`           | string  | `""`    | always rendered, even if empty                                   |
+| `quality`       | number  | `75`    | 1–100, passed to the image encoder                                |
+| `unoptimized`   | boolean | `false` | `true` skips optimization entirely and uses `src` as-is           |
+| `priority`      | boolean | `false` | `true` → `loading="eager" fetchpriority="high"` (above-the-fold)  |
+| `originalFormat`| boolean | `false` | `true` keeps the source format instead of converting to WebP/AVIF |
+| `sizes`         | string  | —       | passed through to the `sizes` attribute for responsive `srcset`   |
+| `class`         | string  | —       | CSS class on the rendered `<img>`                                 |
+| `loading`       | string  | —       | override `"lazy"`/`"eager"` directly (ignored when `priority true`)|
+
+When `unoptimized` is not set and the source file can be resolved on disk,
+`Image` also auto-generates a `srcset` for responsive delivery. If the file
+can't be resolved (external URL, missing file, etc.) it falls back to a plain
+`src` with no `srcset`.
+
+Plain `img { src "..." alt "..." }` is still supported and always renders with
+`loading="lazy" decoding="async"` automatically — it just skips format
+conversion, `srcset` generation, and layout-shift-safe width/height. Use
+`Image` when you want TW to optimize the file; use `img` for a raw passthrough
+(e.g. remote/CDN images you don't want TW to touch).
+
+There is no separate lowercase `image { ... }` tag — `<image>` is not a real
+HTML element, so writing `image { ... }` compiles it as a literal (and
+non-functional) `<image>` tag rather than the optimized component. Use
+`Image` (capitalized) for the component.
 
 ---
 

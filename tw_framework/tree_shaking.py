@@ -66,7 +66,7 @@ def shake_project(project_root: str) -> Dict[str, List[str]]:
     home_dir = compiler.HOME_DIR
     if os.path.isdir(home_dir):
         for fname in os.listdir(home_dir):
-            if fname.endswith(".tw") and fname != "page.tw":
+            if fname.endswith(".tw") and fname != "page.tw" and not compiler._is_backup_or_temp_file(fname):
                 layout_path = os.path.join(home_dir, fname)
                 try:
                     raw = compiler.read_text_file(layout_path)
@@ -78,7 +78,7 @@ def shake_project(project_root: str) -> Dict[str, List[str]]:
     components_dir = compiler.COMPONENTS_DIR
     if os.path.isdir(components_dir):
         for fname in os.listdir(components_dir):
-            if fname.endswith(".tw"):
+            if fname.endswith(".tw") and not compiler._is_backup_or_temp_file(fname):
                 comp_name = fname[:-3]
                 if comp_name not in used_components:
                     # Double-check: scan all page sources for this component name

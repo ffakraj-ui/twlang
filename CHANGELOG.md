@@ -1,6 +1,205 @@
 # Changelog
 
-## v0.8.48 (2026-08-11)
+## v0.9.0 (2026-08-11)
+
+### Multi-Runtime Architecture (Suraj)
+
+Major architectural addition: TW now supports **4 runtimes** for API route
+handlers, selectable per-route via a `runtime = "..."` directive at the top
+of any `.twm` file. TW does NOT reimplement any runtime — it wraps existing
+capabilities behind a common abstraction layer so the same `.twm` code works
+across runtimes wherever the required capabilities are available.
+
+#### New: `tw_runtime/` package
+
+- **`base.py`** — `RuntimeCapability` enum (FILESYSTEM, NETWORK,
+  NATIVE_MODULES, PERSISTENT_STORAGE, SUBPROCESS, DATABASE, CRYPTO, CACHE,
+  ENV_VARS, TIMERS, STREAMING) and `BaseRuntime` abstract class with
+  `name()`, `version()`, `capabilities()`, `supports()`, `is_available()`,
+  and `capabilities_info()` methods.
+
+- **`abstractions.py`** — Common API layer exposed as `tw.storage`,
+  `tw.http`, `tw.db`, `tw.cache`, `tw.crypto`, `tw.env`. Each delegates to
+  the active runtime's adapter. For example, `tw.storage.read("path")`
+  calls `read_file()` on the Node adapter (which uses `fs.readFileSync`),
+  on the Python adapter (which uses `open()`), and raises a clear error on
+  the Edge adapter (which lacks filesystem capability). The `tw` singleton
+  holds the active runtime and can be switched via `tw.set_runtime(...)`.
+
+- **`registry.py`** — Runtime registry mapping names to adapter classes.
+  `get_runtime(name)` returns the singleton instance, `list_runtimes()`
+  returns all registered names. Registered runtimes: `nodejs`/`node`,
+  `python`, `edge`, `wasm`.
+
+- **`validator.py`** — Build-time runtime compatibility validator. Scans
+  `.twm` source for API calls (e.g. `fs.readFile`, `child_process`,
+  `require(...)`) and maps them to required capabilities. If a route
+  configured for Edge Runtime uses a filesystem API, the validator produces
+  a detailed error message: file path, line number, which capability is
+  missing, and suggested fixes (change runtime, use `tw.storage.*` common
+  API, or move logic to a separate Node.js route).
+
+- **`adapters/node_adapter.py`** — `NodeRuntime`: full capabilities
+  (filesystem, native modules, network, subprocess, database, crypto).
+  Delegates to the persistent Node.js worker added in v0.8.51.
+
+- **`adapters/python_adapter.py`** — `PythonRuntime`: full Python
+  capabilities, runs in-process. Uses `os`, `hashlib`, `sqlite3`,
+  `hmac`, `secrets`, `urllib.request`.
+
+- **`adapters/edge_adapter.py`** — `EdgeRuntime`: limited capabilities
+  (filesystem ❌, native_modules ❌, subprocess ❌; network ✅, crypto ✅,
+  cache ✅, env_vars ✅). Uses a pre-warmed Python worker pool
+  (`multiprocessing.Pool`) for sub-millisecond cold start. Designed for
+  lightweight, fast, restricted handlers.
+
+- **`adapters/wasm_adapter.py`** — `WasmRuntime`: sandboxed, restricted
+  capabilities. Uses `wasmtime` if available, falls back gracefully to a
+  restricted Python sandbox if not installed.
+
+#### Runtime directive in `.twm` files
+
+Add `runtime = "edge"` (or `"python"`, `"nodejs"`, `"wasm"`) at the top of
+any `.twm` API route file to select its runtime. If omitted, the default
+is `nodejs` (backward compatible). The directive is parsed by
+`_parse_runtime_directive()` in `framework.py` using a compiled regex.
+
+#### Runtime dispatch in `execute_api_route()`
+
+`execute_api_route()` now checks the runtime directive before executing.
+For `python`, `edge`, and `wasm` runtimes, it calls
+`_execute_with_runtime()` which sets the active runtime on the `tw`
+singleton and evaluates the `.twm` handler body in-process via
+`_execute_twm_in_python()`. For `nodejs` (default), it falls through to
+the existing `execute_twm_api_handler()` (persistent Node.js worker).
+
+`_execute_twm_in_python()` translates the JS-like `.twm` function syntax
+(`fn get(request) { ... }`) to Python, handling JS object key quoting,
+`null`/`true`/`false` → `None`/`True`/`False`, and strips the
+`runtime = "..."` directive from the function body before evaluation.
+The execution namespace includes `tw`, `request`, `json`, `os`, `re`,
+and (for Python runtime) `hashlib`, `hmac`, `secrets`, `sqlite3`,
+`urllib`.
+
+#### Build-time validation
+
+`build_hidden_site()` now runs `validate_runtime_compatibility()` on
+every `.twm` API route during build. If a route configured for Edge or
+WASM uses an incompatible API (e.g. `fs.readFile()`), the build emits a
+warning with the file path, the specific incompatibility, and suggested
+fixes. This catches runtime errors at build time rather than at request
+time.
+
+#### `tw info` runtime diagnostics
+
+`inspect_project()` now returns three new fields:
+- `available_runtimes` — list of runtime names that are available on the
+  current system (e.g. `["nodejs", "python", "edge"]` if wasmtime is not
+  installed)
+- `runtime_details` — dict mapping each runtime name to its capabilities
+  info (which capabilities are supported)
+- `route_runtimes` — dict mapping each API route path to its configured
+  runtime name
+
+These fields are displayed by `tw info` so developers can see at a glance
+which runtimes are available and which routes use which runtime.
+
+---
+
+## v0.8.51 (2026-08-11)
+
+### API Pipeline Performance & Reliability Fixes (Suraj)
+
+- **API route table cached in memory** — previously, `discover_twm_api_handlers()`
+  walked the filesystem (`os.walk`) on EVERY single API request to build the route
+  table. Now routes are cached in `_API_ROUTE_CACHE` and invalidated on file changes
+  via `invalidate_api_route_cache()` (called from `invalidate_compiler_caches()`).
+  Impact: API route resolution goes from ~5-10ms (disk walk) to ~0.01ms (dict lookup).
+
+- **In-memory handler cache** — `_compile_twm_api_handler_to_cache()` checked the
+  disk (`os.path.isfile`) on every request even if the compiled `.cjs` hadn't changed.
+  Now the compiled path is cached in `_TWM_HANDLER_MEM_CACHE` (in-memory dict).
+  Impact: eliminates disk I/O on every API request after first compile.
+
+- **Persistent Node.js worker** — previously, every `.twm` API request spawned a
+  new `node` process (`subprocess.run`), adding ~100ms startup overhead per request.
+  Now a `PersistentNodeWorker` keeps a single Node.js process alive and communicates
+  via stdin/stdout using newline-delimited JSON (JSON Lines protocol). The persistent
+  runner (`twm_api_runner_persistent.js`) caches compiled handlers in memory and
+  supports `__reload` (clear cache) and `__ping` (health check) commands.
+  Falls back to per-request subprocess if the persistent worker fails to start.
+  Impact: API requests go from ~100ms to ~2-5ms (20-50x faster).
+
+- **`fn after(response)` middleware now actually executes** — the `after` hook was
+  stored in `middleware["_fn_after"]` by `apply_middleware()` but never executed.
+  The dev server now runs the after-hook before sending the response, merging any
+  headers the hook adds (e.g. `response.headers["X-MW-Test"] = "suraj-mw"`).
+
+- **gzip compression in dev server** — the dev server (`TWDevHandler.respond_bytes`)
+  now gzip-compresses responses larger than 1KB when the client sends
+  `Accept-Encoding: gzip`. Compressible types: text/html, text/css, JavaScript, JSON,
+  XML, SVG. Impact: ~70% bandwidth reduction for large HTML pages during development.
+
+### Contributors
+- **Suraj (@suraj_5768544)** — API pipeline performance testing and feedback
+  across v0.8.45 through v0.8.51.
+
+## v0.8.50 (2026-08-11)
+
+### Server-Pipeline Fixes — Community Issue Report (Suraj)
+
+- **Issue 1 — `middleware.tw` never executed (fn-style hooks)**:
+  The framework only supported rule-based middleware (`rule "name" { ... }`).
+  The documented `fn before(request)` / `fn after(response)` function-style
+  syntax had no implementation at all — zero matches anywhere in the codebase.
+  Users following the docs got silent no-ops. Fix: added `_extract_fn_middleware()`
+  to parse `fn before(request) { ... }` and `fn after(response) { ... }` blocks
+  from middleware.tw source, and `_run_fn_middleware()` to translate the JS-like
+  body to Python and execute it. `apply_middleware()` now checks for fn-style
+  rules first: the `before` hook can redirect/rewrite/block, and the `after`
+  hook is stored for post-response header injection.
+
+- **Issue 2 — API routes 404 with silent Node.js dependency**:
+  `.twm` API route handlers are executed via `subprocess.run(["node", ...])`
+  but Node.js was never checked before invocation. On devices without Node.js
+  (e.g. Termux/Android), this caused a cryptic `FileNotFoundError` that
+  surfaced as a 500 — or the route was never resolved at all, appearing as 404.
+  No warning at build, no hint at serve, no status in `tw info`. Fix:
+  `execute_twm_api_handler()` now calls `find_node()` (from `npm_manager.py`)
+  before attempting to run. If Node.js is missing, it returns a clear 501
+  response with a JSON body containing `"error": "Node.js not detected — API
+  routes are disabled."` and OS-specific install instructions via
+  `_get_node_install_help()`.
+
+- **Issue 3 — `tw dev` rejects HEAD requests with 501**:
+  The dev server handler (`TWDevHandler`) had `do_GET`, `do_POST`, `do_PUT`,
+  `do_PATCH`, `do_DELETE`, `do_OPTIONS` — but no `do_HEAD`. Python's
+  `BaseHTTPRequestHandler` default `do_HEAD` returns `501 Unsupported method`.
+  `curl -I`, `wget --spider`, health checks, and deploy tools all use HEAD.
+  The production server (`server.py`) already had `do_HEAD`. Fix: added
+  `do_HEAD()` to `TWDevHandler` that delegates to `handle_request("HEAD")`.
+  Also modified `respond_bytes()` to suppress the response body for HEAD
+  requests (headers, including `Content-Length`, are still sent correctly).
+
+- **Issue 4 — `tw info` shows no runtime diagnostics**:
+  `tw info` only printed page/route/component counts — nothing about Node.js
+  availability, API routes enabled/disabled, or middleware detection. This
+  made Issues 1 and 2 extremely hard to debug. Fix: `inspect_project()` now
+  also returns `node_detected`, `node_path`, `api_route_count`,
+  `api_routes_disabled`, `middleware_detected`, and `middleware_path`.
+  `tw info` (`command_info` in cli.py) now prints:
+  ```
+  Node.js: not detected (API routes disabled)
+  API routes: 2 found (DISABLED without Node.js)
+  Middleware: detected (middleware.tw)
+  ```
+
+### Contributors
+- **Suraj (@suraj_5768544)** — Server-pipeline issue report, testing, and
+  feedback across v0.8.45 through v0.8.50. Credited for all 14 issues
+  reported across the full issue lifecycle.
+
+## v0.8.49 (2026-08-11)
 
 ### Named-Layout System Deprecation (Proposal)
 - **Deprecated `layout "x"` page key + `[home]/layouts/` folder** (reported by Suraj):
@@ -48,6 +247,102 @@
   Replaced the old `component layout { html { ... } }` example (which caused double
   rendering of `<html>`/`<body>` tags) with the working `head { } body { children }`
   pattern. Added route-group layout example and a deprecation note for the old pattern.
+
+- **Issue F — `public/` folder ignored by `tw dev` and `tw build`** (bug #1):
+  Static files placed in `public/` (e.g. `public/photo.jpg`) 404'd both in dev
+  and in the built `dist/` output. Fix: added `compiler.copy_public_folder()`
+  (looked up as `[home]/public` then `<project_root>/public`, mirroring the
+  `_user_provided()` priority already used for `sitemap.xml`/`robots.txt`),
+  called from `build_hidden_site()` right after `copy_assets()`. `tw dev`'s
+  `TWProject.resolve_asset()` now also checks the same `public/` locations,
+  serving files at the URL root (`/photo.jpg`), Next.js-style.
+- **Issue G — `import Image from "tw/image"` parse error** (bug #3):
+  The documented ES6-style default-import form threw
+  `Expected component name after 'import'` — only the bare-string form
+  (`import "tw/image"`) was ever supported. Fix: `parse_import()` now accepts
+  `import <Name> from "<path>"` for both built-in `tw/` components and regular
+  components; added a matching `IMPORT_DEFAULT_RE` so dependency-graph and
+  tree-shaking scans recognize the new form too. Note: `Image { ... }` never
+  actually required an import to begin with — built-ins are always available
+  (`component_exists()` returns `True` for them unconditionally); `import` is
+  purely optional/cosmetic either way.
+- **Issue H — TSS: multiple properties on one line silently corrupt CSS** (bug #4):
+  A line like `border 3px solid rgba(0,240,255,.15) border-top-color #00f0ff`
+  (no semicolons) compiled to ONE invalid declaration instead of two. Root
+  cause: `_split_tss_body_items()` only splits on semicolons/newlines, so a
+  single physical line with no delimiter between properties was never split.
+  Fix: added `_split_multi_prop_declaration()`, which tokenizes a line
+  (respecting `rgba(...)`/quoted strings as single tokens) and splits it at
+  every token that is itself a recognized CSS property name. Also extended
+  `CSS_PROPERTIES` with the missing border/outline per-side longhands
+  (`border-top-color`, `outline-width`, etc.) that were needed for the
+  boundary check to recognize them. Verified this doesn't regress hyphenated
+  *values* like `sans-serif` or `space-between`, which aren't in the property
+  list and so are correctly left alone.
+- **Issue I — `meta { name "x", content "y" }`: comma between attrs garbles output** (bug #5):
+  Commas between meta/SEO attributes (shown in the docs) produced
+  `<meta name="viewport" ,="content "...""` because the tokenizer emits `,`
+  as its own `WORD` token, and `parse_head_block()`'s meta/seo loops treated
+  it as a literal attribute key. Fix: both loops now skip a bare `,` token
+  the same way they already skip `;`/newline separators.
+- **Issue J — Named + App-Router layouts: silent conflict, not actually duplicated** (bug #8):
+  Investigated the reported "duplicate chrome" from combining a `layout "main"`
+  key with a `[home]/(group)/layout.tw` on the same page. Traced both the
+  build path (`build_one_page()`) and the dev-server path
+  (`compile_match_response()`): App Router pages always take the
+  `layout_files`-based branch and never call the named-layout renderer, so
+  chrome is NOT actually duplicated. It IS silently ignored, which is its own
+  footgun. Fix: both paths now log a one-line warning naming the file when a
+  page has both a named `layout` key and an App Router layout chain, telling
+  the developer which one wins and how to resolve it.
+- **`tw/image` / `Image` — undocumented, and docs described a non-working tag** (bug #10):
+  `llms.txt` and `llms-full_part1.txt` documented a lowercase `image { ... }`
+  tag; `<image>` isn't a real HTML element, so that syntax silently compiled
+  to a dead tag rather than the optimized component (this was the actual root
+  cause behind bug #3's "image vs img confusion", not just the import error).
+  Fix: rewrote both docs sections to describe the real, capitalized `Image`
+  component with a full prop reference (`src`, `width`, `height`, `alt`,
+  `quality`, `unoptimized`, `priority`, `originalFormat`, `sizes`, `class`,
+  `loading`), and clarified `img`'s existing auto lazy/decoding behavior as
+  the deliberate no-optimization passthrough.
+- **Issue K — `.bak` / backup files compiled as components** (bug #2):
+  While the original `endswith(".tw")` check already excludes `Header.tw.bak`
+  in most discovery paths, the exclusion was fragile — any future code using
+  a substring (`".tw" in fname`) or glob (`*.tw*`) would silently pick up
+  backup files. Fix: added `_is_backup_or_temp_file()` helper that detects
+  `.bak`, `.backup`, `.old`, `.tmp`, `.swp`, `.swo`, and `~`-suffixed files.
+  Applied defensively at ALL discovery sites: `discover_pages()`,
+  `resolve_component_path()`, `inspect_project()`, `tree_shaking.py`, and
+  `dead_code.py`. Belt-and-suspenders: even though current code was safe,
+  the defensive guard prevents future regressions.
+- **Issue L — Multiple `load` lines in a single component silently dropped** (bug #7):
+  `extract_component_load_directive()` used `COMPONENT_LOAD_RE.search()` (first
+  match only) and `.sub("", raw, count=1)` — so only the FIRST `load` line per
+  component was resolved. Additional `load` lines were silently left in `raw`,
+  tokenized as unknown elements, and produced nothing. Fix: rewrote to use
+  `finditer()` to resolve ALL `load` matches, and `.sub("", raw)` (no count)
+  to strip them all — mirroring how `resolve_layout_loads` handles layouts.
+  `_COMPONENT_STYLESHEET_PATHS` now stores a LIST of sheets per component;
+  `_attach_component_stylesheets()` and `load_component_ast()` updated to
+  handle the list (with backward-compatible `isinstance(stored, list)` check).
+- **Issue M — Missing named layout still prints raw Python traceback in render path** (bug #9):
+  `get_layout_meta()` was already guarded in v0.8.48 (Issue A), but the actual
+  render-path `load_layout()` calls in `render_html()` (lines ~5467/5469) were
+  still unguarded — a missing named layout raised a raw `FileNotFoundError`
+  traceback that escaped to the user. Fix: both `load_layout()` calls in the
+  render path now catch `FileNotFoundError` and raise a clean `CompilerError`
+  with a suggestion to create the file or remove the `layout` key.
+- **Issue N — `image` tag not aliased to `img`** (bug #3, continued):
+  The `image` tag (lowercase) was documented but never actually worked — it
+  rendered as a literal `<image>` element (not a real HTML tag). Fix:
+  `maybe_optimize_image()` now aliases `image` → `img` before applying
+  lazy-loading/decoding defaults, so `image { src "..." }` produces the same
+  optimized `<img>` output as `img { src "..." }`.
+
+### Contributors
+- **Suraj (@suraj_5768544)** — Community issue report, testing, and feedback
+  across v0.8.45 through v0.8.48. All 10 issues reported, verified fixes,
+  and credited in changelog.
 
 ## v0.8.47 (2026-08-10)
 

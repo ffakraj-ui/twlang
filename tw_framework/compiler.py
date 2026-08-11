@@ -106,6 +106,22 @@ CACHE_DIR = os.path.join(INTERNAL_DIR, "cache")
 MANIFEST_DIR = os.path.join(INTERNAL_DIR, "manifest")
 COMPILER_DIR = os.path.join(INTERNAL_DIR, "compiler")
 
+# v0.8.48 (Issue 2): Backup / temporary file extensions that should never be
+# treated as framework source files (.tw / .tss / .twm).  These are produced
+# by editors (`*.bak`, `*.backup`, `*.old`, `*.tmp`, `*~`) and would otherwise
+# risk being picked up by discovery scans or loose `".tw" in filename` checks.
+BACKUP_EXTENSIONS = {".bak", ".backup", ".old", ".tmp", ".swp", ".swo"}
+
+
+def _is_backup_or_temp_file(filename: str) -> bool:
+    """Return True if *filename* looks like an editor backup / temp file."""
+    name = filename.lower()
+    if name.endswith("~"):
+        return True
+    ext = os.path.splitext(name)[1]
+    return ext in BACKUP_EXTENSIONS
+
+
 PUBLIC_DIR = os.path.join(PROJECT_ROOT, "dist")
 BUILD_DIR = PUBLIC_DIR
 PUBLIC_ASSETS_DIR = os.path.join(PUBLIC_DIR, "assets")
@@ -176,6 +192,15 @@ CSS_PROPERTIES = {
     "clip-path", "-webkit-clip-path", "mask", "-webkit-mask",
     "aspect-ratio", "writing-mode", "text-orientation",
     "scroll-behavior", "overscroll-behavior", "gap",
+    # v0.8.48 (bug #4): border/outline per-side longhands were missing, which
+    # broke multi-property-per-line splitting (`border-top-color` wasn't
+    # recognized as a property, so it got swallowed into the previous value).
+    "border-top-color", "border-right-color", "border-bottom-color", "border-left-color",
+    "border-top-style", "border-right-style", "border-bottom-style", "border-left-style",
+    "border-top-width", "border-right-width", "border-bottom-width", "border-left-width",
+    "border-top-left-radius", "border-top-right-radius",
+    "border-bottom-left-radius", "border-bottom-right-radius",
+    "outline-color", "outline-style", "outline-width", "outline-offset",
 }
 
 CSS_ALIASES = {
@@ -204,6 +229,12 @@ HTML_ATTRIBUTES = {
     "hidden", "open", "spellcheck", "autocomplete", "enctype",
     "min", "max", "step", "pattern", "accept", "loading", "decoding",
     "fetchpriority", "width", "height", "sizes", "srcset",
+    # v0.8.48 (Issue 5): Meta / head attributes that also happen to be CSS
+    # property names.  Without listing them here, `classify_known_prop()`
+    # returns "css" and they get rendered as inline `style="…"` instead of
+    # real HTML attributes — producing garbled output like
+    # `<meta style="content: …">` instead of `<meta content="…">`.
+    "content", "charset", "http-equiv", "property",
 }
 
 EVENTS = {
@@ -252,6 +283,8 @@ LAYOUT_RESPONSIVE_RE = re.compile(
 )
 
 IMPORT_RE = re.compile(r'\bimport\s+"([^"]+)"')
+# v0.8.48: default import form — import Image from "tw/image" (bug #3)
+IMPORT_DEFAULT_RE = re.compile(r'\bimport\s+[A-Za-z_][A-Za-z0-9_]*\s+from\s+"([^"]+)"')
 IMPORT_ES6_RE = re.compile(r'\bimport\s+\{([^}]+)\}\s+from\s+"([^"]+)"')
 _ES6_IMPORTS = []  # v0.8.43
 LAYOUT_RE = re.compile(r'\blayout\s+(?:"([^"]+)"|([^\s{}]+))')
@@ -1431,6 +1464,8 @@ def resolve_component_path(name: str):
     if os.path.isdir(COMPONENTS_DIR):
         target = f"{name}.tw"
         for root, _, files in os.walk(COMPONENTS_DIR):
+            # v0.8.48 (Issue 2): skip editor backup files (.bak, .old, ~, etc.)
+            files = [f for f in files if not _is_backup_or_temp_file(f)]
             if target in files:
                 found = os.path.join(root, target)
                 break
@@ -1539,6 +1574,9 @@ def resolve_load_target(raw_path, base_dir, *, token=None, location="load") -> D
 
 def extract_directives_from_source(raw, base_dir) -> Dict[str, Any]:
     imports = IMPORT_RE.findall(raw)
+    for default_path in IMPORT_DEFAULT_RE.findall(raw):
+        if default_path not in imports:
+            imports.append(default_path)
     es6_imports = IMPORT_ES6_RE.findall(raw)
     layouts = []
     for quoted, bare in LAYOUT_RE.findall(raw):
@@ -2514,23 +2552,31 @@ def looks_like_child_start(tokens, i) -> bool:
 
 
 def extract_component_load_directive(raw, base_dir) -> Any:
-    """Scans a component/.tw source for a top-level `load "x.tss"` / `load @x.tss`
-    line, strips it out (so the main element parser never sees it), and returns
-    the parsed stylesheet (or None if nothing was loaded)."""
-    m = COMPONENT_LOAD_RE.search(raw)
-    if not m:
+    """Scans a component/.tw source for top-level `load "x.tss"` / `load @x.tss`
+    lines, strips them ALL out (so the main element parser never sees them),
+    and returns the parsed stylesheets (or None if nothing was loaded).
+
+    v0.8.48 (Issue 7): Previously only the FIRST `load` line was resolved and
+    stripped — additional `load` lines were silently left in `raw`, tokenized as
+    regular elements, and produced nothing.  Now every match is resolved and
+    stripped, mirroring how `resolve_layout_loads` handles layouts."""
+    matches = list(COMPONENT_LOAD_RE.finditer(raw))
+    if not matches:
         return raw, None
-    quoted, atpath = m.group(1), m.group(2)
-    load_info = resolve_load_target(quoted or atpath, base_dir, location="component load")
-    if load_info["kind"] != "stylesheet":
-        raise CompilerError(
-            f"component load: expected a stylesheet but found `{load_info['full_path']}`",
-            suggestion="Inside a component file, `load` currently supports `.tss` stylesheets.",
-        )
-    full_path = load_info["full_path"]
-    sheet = build_tss_ast_from_text(read_text_file(full_path))
-    raw = COMPONENT_LOAD_RE.sub("", raw, count=1)
-    return raw, sheet
+    sheets = []
+    for m in matches:
+        quoted, atpath = m.group(1), m.group(2)
+        load_info = resolve_load_target(quoted or atpath, base_dir, location="component load")
+        if load_info["kind"] != "stylesheet":
+            raise CompilerError(
+                f"component load: expected a stylesheet but found `{load_info['full_path']}`",
+                suggestion="Inside a component file, `load` currently supports `.tss` stylesheets.",
+            )
+        full_path = load_info["full_path"]
+        sheets.append(build_tss_ast_from_text(read_text_file(full_path)))
+    # Strip ALL load lines so the element parser never sees them
+    raw = COMPONENT_LOAD_RE.sub("", raw)
+    return raw, sheets
 
 
 def load_component_ast(name) -> Any:
@@ -2545,10 +2591,10 @@ def load_component_ast(name) -> Any:
     if not os.path.exists(path):
         raise FileNotFoundError(f"Component not found: {path}")
     raw = read_text_file(path)
-    raw, comp_sheet = extract_component_load_directive(raw, os.path.dirname(path))
-    if comp_sheet is not None:
+    raw, comp_sheets = extract_component_load_directive(raw, os.path.dirname(path))
+    if comp_sheets:
         with _CACHE_LOCK:
-            _COMPONENT_STYLESHEET_PATHS[normalize_path(path)] = comp_sheet
+            _COMPONENT_STYLESHEET_PATHS[normalize_path(path)] = comp_sheets
     tokens = tokenize_tw(raw)
     nodes, _ = build_elements(tokens, 0, path, raw)
     with _CACHE_LOCK:
@@ -2961,6 +3007,28 @@ def parse_import(tokens, i) -> Any:
     # v0.8.43: ES6 import { fn } from "path"
     if token and token.type == "BRACE" and token.value == "{":
         return _parse_es6_import(tokens, i)
+    # v0.8.48: ES6-style default import: import Image from "tw/image"
+    # (previously only the bare-string form `import "tw/image"` worked, but
+    #  docs/examples show the `from` form — see bug #3).
+    if token and token.type == "WORD" and token.value not in {"let", "if", "for", "each", "import", "children"}:
+        next_tok = peek(tokens, i + 1)
+        if next_tok and next_tok.type == "WORD" and next_tok.value == "from":
+            path_tok = peek(tokens, i + 2)
+            if not path_tok or path_tok.type != "STRING":
+                raise CompilerError("Expected path after `from`",
+                    token=path_tok, suggestion='import Image from "tw/image"')
+            name = path_tok.value
+            end_i = i + 3
+            if name in _BUILTIN_TW_COMPONENTS or name.lower() in _BUILTIN_TW_COMPONENTS:
+                return None, end_i
+            if not component_exists(name):
+                raise CompilerError(
+                    f"Imported component not found: `{name}`",
+                    token=path_tok,
+                    suggestion=f"Expected file: `{os.path.join(COMPONENTS_DIR, name + '.tw')}`",
+                )
+            load_component_ast(name)
+            return None, end_i
     if not token or token.type != "STRING":
         raise CompilerError("Expected component name after `import`", token=peek(tokens, i - 1))
     name = token.value
@@ -3628,7 +3696,11 @@ def parse_head_block(tokens, i, head) -> Any:
                 if tok.type == "BRACE" and tok.value == "}":
                     i += 1
                     break
-                if is_statement_separator(tok):
+                # v0.8.48 (bug #5): commas between attributes, as shown in the
+                # docs (`name "viewport", content "..."`), were previously
+                # swallowed as a literal `,` key, corrupting the output.
+                # Treat a bare comma as an optional separator, same as `;`/newline.
+                if is_statement_separator(tok) or (tok.type == "WORD" and tok.value == ","):
                     i += 1
                     continue
                 if tok.type != "WORD":
@@ -3656,7 +3728,7 @@ def parse_head_block(tokens, i, head) -> Any:
                 if tok.type == "BRACE" and tok.value == "}":
                     i += 1
                     break
-                if is_statement_separator(tok):
+                if is_statement_separator(tok) or (tok.type == "WORD" and tok.value == ","):
                     i += 1
                     continue
                 if tok.type != "WORD":
@@ -3988,7 +4060,14 @@ def _attach_component_stylesheets(page, source) -> None:
         for dep_path in dep_paths:
             if dep_path in _COMPONENT_STYLESHEET_PATHS and dep_path not in seen_paths:
                 seen_paths.add(dep_path)
-                page.loaded_sheets.append(_COMPONENT_STYLESHEET_PATHS[dep_path])
+                # v0.8.48 (Issue 7): _COMPONENT_STYLESHEET_PATHS now stores
+                # a LIST of sheets (one per `load` line) instead of a single
+                # sheet.  Extend loaded_sheets with all of them.
+                stored = _COMPONENT_STYLESHEET_PATHS[dep_path]
+                if isinstance(stored, list):
+                    page.loaded_sheets.extend(stored)
+                else:
+                    page.loaded_sheets.append(stored)
 
 
 
@@ -4090,6 +4169,104 @@ def _split_tss_body_items(body) -> Any:
     return merged
 
 
+def _tokenize_tss_value_line(line):
+    """Tokenize a TSS declaration line on whitespace, keeping parenthesised
+    groups (e.g. rgba(0, 0, 0, .5)) and quoted strings intact as one token."""
+    tokens = []
+    buf = []
+    depth = 0
+    in_quote = False
+    quote_char = ""
+    for ch in line:
+        if in_quote:
+            buf.append(ch)
+            if ch == quote_char:
+                in_quote = False
+            continue
+        if ch in ('"', "'"):
+            in_quote = True
+            quote_char = ch
+            buf.append(ch)
+            continue
+        if ch == "(":
+            depth += 1
+            buf.append(ch)
+            continue
+        if ch == ")":
+            depth -= 1
+            buf.append(ch)
+            continue
+        if ch.isspace() and depth == 0:
+            if buf:
+                tokens.append("".join(buf))
+                buf = []
+            continue
+        buf.append(ch)
+    if buf:
+        tokens.append("".join(buf))
+    return tokens
+
+
+def _looks_like_css_property_token(tok) -> bool:
+    name = tok.strip(":;,").lower()
+    if not name or not re.match(r"^-{0,2}[a-z][a-z-]*$", name):
+        return False
+    if name.startswith("--"):
+        return True
+    if name in CSS_PROPERTIES or name in CSS_ALIASES:
+        return True
+    if name.startswith(("-webkit-", "-moz-", "-ms-", "-o-", "-khtml-")):
+        return True
+    return False
+
+
+def _split_multi_prop_declaration(item):
+    """Split a single TSS line that packs multiple properties without
+    semicolons, e.g. `border-radius 50% object-fit cover`, into individual
+    (prop, value) pairs.
+
+    Fix for bug #4 (v0.8.48): previously a line like
+        border 3px solid rgba(0, 240, 255, 0.15) border-top-color #00f0ff
+    was parsed as ONE declaration (`border: 3px solid rgba(...) border-top-color #00f0ff`),
+    silently corrupting the generated CSS. Each token is scanned; whenever a
+    token that is itself a recognized CSS property name shows up after at
+    least one value token, that marks the start of a new declaration.
+
+    Returns None (meaning "nothing to split, use normal single-declaration
+    parsing") when the item only contains one property.
+    """
+    tokens = _tokenize_tss_value_line(item)
+    if len(tokens) < 3:
+        return None
+
+    first_prop = tokens[0].strip(":;,").lower()
+    if not (
+        first_prop in CSS_PROPERTIES
+        or first_prop in CSS_ALIASES
+        or first_prop.startswith("--")
+        or first_prop.startswith(("-webkit-", "-moz-", "-ms-", "-o-", "-khtml-"))
+    ):
+        return None
+
+    boundaries = [0]
+    for idx in range(2, len(tokens)):
+        if _looks_like_css_property_token(tokens[idx]):
+            boundaries.append(idx)
+    if len(boundaries) < 2:
+        return None  # only one property on this line — nothing to split
+
+    decls = []
+    for b_idx, start in enumerate(boundaries):
+        end = boundaries[b_idx + 1] if b_idx + 1 < len(boundaries) else len(tokens)
+        chunk = tokens[start:end]
+        if not chunk:
+            continue
+        prop = chunk[0].strip(":;,")
+        val = " ".join(chunk[1:]).strip().strip(";") or "true"
+        decls.append((normalize_css_prop(prop), val))
+    return decls
+
+
 def _parse_tss_rule(selector, body) -> Any:
     rule = RuleNode(selector)
     for item in _split_tss_body_items(body):
@@ -4107,6 +4284,12 @@ def _parse_tss_rule(selector, body) -> Any:
         if tw_decls is not None:
             for prop, val in tw_decls:
                 rule.declarations.append((prop, val))
+            continue
+
+        # ── Multiple properties crammed onto one line without semicolons ──
+        multi_decls = _split_multi_prop_declaration(item)
+        if multi_decls is not None:
+            rule.declarations.extend(multi_decls)
             continue
 
         # ── Normal TSS property: value parsing ──
@@ -4562,6 +4745,10 @@ def build_theme_inline_script(context) -> Any:
 
 
 def maybe_optimize_image(node) -> None:
+    # v0.8.48 (Issue 3): treat `image` tag as an alias for `img` so it gets
+    # the same lazy-loading / decoding defaults and renders as <img>.
+    if node.tag == "image":
+        node.tag = "img"
     if node.tag != "img":
         return
 
@@ -5319,10 +5506,29 @@ def render_html(page, context, css_href) -> Any:
 
     if page.layouts:
         wrapped_body = body_html
+        # v0.8.48 (Issue 9): Guard against missing named layouts in the
+        # render path — previously `load_layout()` raised a raw
+        # `FileNotFoundError` traceback here.  Now we emit a clean TW1000
+        # CompilerError with a helpful suggestion.
         for inner_name in reversed(page.layouts[1:]):
-            wrapped_body = apply_layout_fragment(load_layout(inner_name), wrapped_body, context)
+            try:
+                layout_frag = load_layout(inner_name)
+            except FileNotFoundError:
+                expected = os.path.join(LAYOUTS_DIR, f"{inner_name}.tw")
+                raise CompilerError(
+                    f"Named layout `{inner_name}` not found (expected: {expected}).",
+                    suggestion=f"Create `{expected}` or remove the `layout \"{inner_name}\"` key from the page.",
+                )
+            wrapped_body = apply_layout_fragment(layout_frag, wrapped_body, context)
 
-        layout_template = load_layout(page.layouts[0])
+        try:
+            layout_template = load_layout(page.layouts[0])
+        except FileNotFoundError:
+            expected = os.path.join(LAYOUTS_DIR, f"{page.layouts[0]}.tw")
+            raise CompilerError(
+                f"Named layout `{page.layouts[0]}` not found (expected: {expected}).",
+                suggestion=f"Create `{expected}` or remove the `layout \"{page.layouts[0]}\"` key from the page.",
+            )
         layout_html = apply_layout_template(
             layout_template,
             title,
@@ -5630,7 +5836,7 @@ def discover_pages() -> Any:
             rel_dir = os.path.relpath(root, PAGES_DIR)
             rel_dir = normalize_route_directory(rel_dir)
             for fname in sorted(files):
-                if not fname.endswith(".tw"):
+                if not fname.endswith(".tw") or _is_backup_or_temp_file(fname):
                     continue
                 full_path = os.path.join(root, fname)
                 dynamic_meta = classify_dynamic_route_file(fname)
@@ -5684,6 +5890,33 @@ def copy_assets() -> None:
                 ASSET_URL_MAP[original_url] = hashed_url
 
 
+def copy_public_folder() -> None:
+    """Copy the project's public/ folder (static passthrough assets) into the
+    build output root, mirroring Next.js-style `public/` behaviour.
+
+    Looked up in [home]/public first, then <project_root>/public. Files are
+    copied verbatim (no hashing, no URL rewriting) so a file at
+    public/photo.jpg is served at /photo.jpg.
+    """
+    for public_dir in (os.path.join(HOME_DIR, "public"), os.path.join(PROJECT_ROOT, "public")):
+        if not os.path.isdir(public_dir):
+            continue
+        for dirpath, _, filenames in os.walk(public_dir):
+            rel_dir = os.path.relpath(dirpath, public_dir)
+            rel_dir = "" if rel_dir == "." else rel_dir
+            target_dir = os.path.join(PUBLIC_DIR, rel_dir) if rel_dir else PUBLIC_DIR
+            for filename in filenames:
+                full_src = os.path.join(dirpath, filename)
+                if not os.path.isfile(full_src):
+                    continue
+                os.makedirs(target_dir, exist_ok=True)
+                full_dst = os.path.join(target_dir, filename)
+                shutil.copy2(full_src, full_dst)
+        # Only the first existing public/ directory wins (mirrors _user_provided
+        # priority used elsewhere: [home]/public before <project_root>/public).
+        break
+
+
 def verify_api_isolated() -> None:
     if os.path.exists(API_DIR):
         log("  🔒 api/ folder detected — kept server-only, not included in build output.")
@@ -5734,6 +5967,20 @@ def build_one_page(page_info, css_url) -> Any:
 
     # ── App Router mode: use compose_nested_layouts ───────────────────
     if page_info.get("app_router") and page_info.get("layout_files"):
+        # v0.8.48 (bug #8): a page can carry a leftover/mistaken `layout "name"`
+        # key (the older named-layout system) while ALSO living inside an App
+        # Router group with its own layout.tw chain. Only the folder-based
+        # layout_files chain is ever applied here — the named `layout` key is
+        # silently ignored, which is confusing on its own even though it does
+        # NOT double-wrap the page. Warn once so this doesn't go unnoticed.
+        if getattr(page_ast, "layouts", None):
+            log(
+                f"  ⚠️  {compiler.safe_relpath(tw_path, compiler.PROJECT_ROOT)}: "
+                f"`layout {page_ast.layouts!r}` is ignored here — this page is inside an "
+                f"App Router group and already uses its layout.tw chain. Remove the "
+                f"named `layout` key or move the page out of the group folder.",
+                level="warning",
+            )
         if page_info["type"] == "static":
             route_path = page_info.get("url_path", route_path_from_page_info(page_info))
             context = build_page_context(page_info, page_ast, tw_path, route_path=route_path)

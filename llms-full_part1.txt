@@ -321,8 +321,17 @@ Filename → alt text (first 8 chars).
 9. IMAGE OPTIMIZATION (v0.8.37+)
 ================================================================================
 
-- `image { src "..." alt "..." width 800 }` → optimized (lazy, srcset, async)
-- `img { src "..." alt "..." }` → normal (no optimization)
+- `Image { src "..." alt "..." width 800 height 600 }` → optimized component
+  (auto lazy/eager loading, srcset generation, WebP/AVIF conversion, layout-
+  shift-safe width/height). Component name is capitalized `Image` — `tw/image`
+  works as an alias. No `import` needed; `import Image from "tw/image"` also
+  works (fixed v0.8.48). There is no lowercase `image` tag — `<image>` isn't a
+  real HTML element.
+  Props: src, width, height, alt, quality (1-100, default 75), unoptimized,
+  priority, originalFormat, sizes, class, loading. See llms.txt section 15
+  for the full table.
+- `img { src "..." alt "..." }` → plain passthrough `<img>`, still gets
+  `loading="lazy" decoding="async"` automatically, but no optimization.
 
 ================================================================================
 10. BUILD FEATURES
