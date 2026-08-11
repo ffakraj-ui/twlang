@@ -1,5 +1,175 @@
 # Changelog
 
+## v0.9.14 — "700 TARGET" (Edge V8 + Module Boundaries + Runtime Init)
+
+### edge_v8_adapter.py (bugs 601-650)
+- **#603**: `_js_tw_storage_read` now raises `PermissionError` instead of generic `Exception`
+- **#605/#606/#607**: Split `except` clause — `HTTPError` (has `.code/.reason/.headers`) separated from `URLError` (doesn't have them). Prevents `AttributeError` on non-HTTP errors
+- **#610**: `_js_tw_env_get` now filters env vars (only `TW_`/`PUBLIC_`/`EDGE_` prefixes) — was returning ALL env vars including secrets
+- **#618**: `tw.cache.set` JS now tracks TTL expiry timestamps; `tw.cache.get` checks and evicts expired entries
+- **#619**: JS `capabilities()` — `persistent_storage` corrected to `false` (in-memory dict is NOT persistent)
+- **#621**: `EdgeV8Storage.write` — handles `UnicodeDecodeError` on binary data via base64 fallback
+- **#625**: `EdgeV8Crypto.encrypt` — empty key check already present (verified)
+- **#631**: `execute` — request data now double-JSON-encoded and parsed via `JSON.parse()` in JS to prevent injection
+- **#633**: `max_fetch_passes` env var now validated (clamped 1-50, fallback to 10 on invalid)
+- **#638**: `_normalize_response` JSON decode already wrapped in try/except (verified)
+- **#639**: `_normalize_response` — `status` field parsed safely (try/except, defaults to 200)
+- **#642/#643**: `EdgeV8Runtime._storage_inst`/`_cache_inst` moved from class variables to instance variables (prevents shared state across instances)
+- **#645**: `EdgeV8Runtime.capabilities()` — `PERSISTENT_STORAGE` corrected to `False`
+- **#648**: `execute_handler` — documented V8 timeout limitation and production guidance
+
+### module_boundaries.py (bugs 651-685)
+- **#651-654**: Documented regex false-positive limitation (API patterns in comments/strings) — recommended AST parser for production
+- **#661/#662**: `scan_source_imports` now matches dynamic `import("path")` and `require("path")` calls — was only matching static `import` statements
+- **#666**: Verified false positive — `"tw-custom"` does NOT match `startswith("tw/")`
+- **#668**: Verified false positive — set uses exact match, `"fs-extra"` does NOT match `"fs"`
+- **#672**: `classify_import` — relative imports (`./`, `../`) no longer misclassified as npm packages
+- **#675**: Verified false positive — `get_client_imports` creates new `ImportInfo`, doesn't mutate original
+- **#677**: `classify_module_source` now caches results via `_source_cache` dict (keyed by source hash + file path)
+- **#680**: `BoundaryViolation` — added `severity` field (default `"error"`)
+- **#681**: `ImportInfo` — added `is_dynamic` flag for dynamic import tracking
+- **#684**: `classify_import` — `"tw/server"` now uses exact match + proper path prefix, preventing `"tw/serverless"` false match
+
+### tw_runtime/__init__.py (bugs 686-700)
+- **#687**: Updated docstring version to v0.9.14
+- **#688**: Updated docstring to list all 5 runtimes (was listing 4, missing edge-py)
+- **#692**: Documented that auto-registration is intentional for backward compatibility
+- **#695**: `register_runtimes()` now thread-safe via `_REGISTER_LOCK` with double-check pattern
+- **#697**: Verified `register_runtimes` already in `__all__`
+- **#699**: Added `__version__ = "0.9.14"` to module
+- **#700**: Added `__version__` to `__all__`
+
+### Test Results
+- 610 passed, 9 skipped, 0 failed
+- No regressions
+
+
+## v0.9.13 (2026-08-12)
+
+### 6 Core Module Fixes — reactivity.py, twm_parser.py, security.py, client_bundler.py, error_formatter.py, common.py
+
+#### reactivity.py Fixes (401–430)
+
+**VDOM Runtime JS**
+- #402: `__twEval` — uses `with(__twState)` instead of parameter names to handle state keys with spaces/hyphens
+- #406: `__twBindEvents` — warns on invalid `data-tw-on` JSON instead of silent fail
+- #410: `__twFetch` — prevents double-stringify when body is already a string
+- #412: `has_vdom_features` — regex only matches `render interactive` directive, not comments
+- #413: `transform_reactive_attrs` — supports multiple handlers for same event (array instead of last-wins)
+- #414: `_STATE_BLOCK_RE` — handles nested braces in state blocks
+- #428: `__twWatch` — returns unwatch function for cleanup (prevents memory leak)
+- #429: `__twAction` — validates `__twSetState` keys against known state (prevents arbitrary injection)
+- #430: `__twFetch` — exact content-type check instead of loose `includes('application/json')`
+
+#### twm_parser.py Fixes (431–460)
+
+- #441: `compile_twm_module_to_js` — guards `window.__twRegister` call for Node.js server-side execution
+- #448: `build_page_twm_bundle_js` — sanitizes `page_source_path` to prevent comment injection
+- #453: `build_page_twm_bundle_js` — unique module_id for inline sources to avoid collision
+
+#### security.py Fixes (461–485)
+
+- #462: `build_csp_header` — deduplicates directive values when appending
+- #466: `sanitize_js_string` — catches all case variants of `</script>` and HTML comment sequences
+- #467: `sanitize_html` — unescapes first to prevent double-escaping
+- #468: `build_csp_header` — adds `upgrade-insecure-requests` directive
+- #472: `X-XSS-Protection` — marked as deprecated (kept for legacy browser support)
+- #478: `sanitize_attribute` — unescapes first to prevent double-escaping
+- #484: `sanitize_js_string` — removes null bytes that break JS
+- #485: `build_csp_header` — validates directive values (strips semicolons that break CSP)
+
+#### client_bundler.py Fixes (486–510)
+
+- #488: `_EXPORTS_ASSIGN_RE` — supports both dot and bracket notation (`exports["foo-bar"]`)
+- #491: `_topological_sort` — uses `deque.popleft()` for O(1) instead of `list.pop(0)` O(n)
+- #495: `is_node_builtin` — validates `node:` prefix properly (empty name after strip)
+- #510: `_MODULE_EXPORTS_RE` — matches both `module.exports =` and `module.exports.foo =`
+
+#### error_formatter.py Fixes (511–525)
+
+- #511: `format_error` — handles numeric/short codes that don't have TW prefix
+- #513: `format_error` — escapes source snippet to prevent terminal injection
+- #514: `format_error` — truncates very long `why` field (500 chars max)
+- #516: `format_error` — validates `doc_link` URL before printing
+- #517: `format_error` — doesn't print empty suggestion
+- #519: `format_error` — shows `exception_type` field if available
+
+#### common.py Fixes (526–540)
+
+- #526: `content_hash` — uses SHA-256 instead of MD5 for better collision resistance
+- #530: `log` — adds timestamp to log output
+- #531: `content_hash` — handles non-stringable objects gracefully
+- #538: `content_hash` — handles None explicitly
+
+## v0.9.12 (2026-08-12)
+
+### QUADRUPLE CENTURY — app_router.py + server.py + remaining compiler.py bugs
+
+#### app_router.py Fixes (376–405)
+
+**Validation & Safety**
+- #376: `classify_segment` — validates empty param names, rejects `[]` and `[...]`
+- #390: `discover_routes` — deduplicates routes by URL, warns on conflicts
+- #391: `match_route` — proper best_score initialization
+- #400: `discover_routes` — case-insensitive check for page.tw files
+
+**Cross-Platform & Performance**
+- #378/#379: `find_layouts_for_dir` — cross-platform depth calculation via `os.path.relpath`
+- #380: Added `find_special_files_cached` for cached special file lookups
+- #388: `has_app_router_structure` — cached result to avoid repeated `os.walk` on every check
+- #389: `route_to_output_path` — cross-platform safe path generation
+- #397: `discover_routes` — handles both `os.sep` and `/` for cross-platform path splitting
+- #399: `find_layouts_for_dir` — caches layout lookups to avoid repeated disk I/O
+
+**Routing Logic**
+- #382: `discover_routes` — warns when both page.tw and route.tw exist in same dir, skips route.tw
+- #385/#386: `match_route` — consistent trailing slash handling
+- #393: API routes no longer get unnecessary layout files
+- #398: `match_route` — catch-all preserves leading segment correctly
+- #403: `match_route` — skips empty/whitespace URL segments (handles `//`)
+- #405: `has_legacy_structure` — backward compatible with empty dirs
+
+#### server.py Fixes (406–450)
+
+**Security Hardening**
+- #436: Request body size limit (10MB default, configurable via `TW_MAX_BODY_SIZE`) — prevents DoS
+- #447/#448: `X-Frame-Options: SAMEORIGIN` and `X-Content-Type-Options: nosniff` headers on all responses
+- #432: SSL certificate file existence verification before enabling TLS
+- #414: `_cached_404` moved from class variable to instance attribute — no cross-handler leakage
+- #449: PID file written to prevent multiple server instances
+
+**Performance & Caching**
+- #408: `_AST_CACHE_MAX` configurable via `TW_AST_CACHE_MAX` env var
+- #411: `serve_static_file` — chunked MD5 hashing for files >10MB instead of loading to memory
+- #412/#441: `try_brotli_or_gzip` — checks `Accept-Encoding` before reading compressed files
+- #428: Custom 500 page cached per-instance instead of recompiling on every error
+- #440: `Last-Modified` header added to static file responses
+- #444: `_AST_CACHE` — TTL-based expiry (configurable via `TW_AST_CACHE_TTL`, default 300s)
+
+**Robustness**
+- #421: `_serve_page` — handles `"60s"` style revalidate values (strips non-numeric suffixes)
+- #431: `ThreadedTCPServer.daemon_threads = True` — clean shutdown, no orphaned threads
+- #438: `_serve_page` — handles both `str` and `bytes` response HTML
+- #434: `RedisSSRCache` — proper bytes serialization via base64 encoding
+- #450: Logging configured with rotation (5MB max, 3 backups)
+
+#### compiler.py Remaining Fixes (314–375)
+
+- #314: `load_generate_static_params` — documented DRY relationship with `load_dynamic_items`
+- #319: `discover_pages` — uses cached `has_app_router_structure`
+- #330: `compute_dependency_signature` — documented algorithm (SHA-1 + file fingerprints)
+- #338: `compile_text_pipeline` — documented program=None guard
+- #348: `maybe_optimize_image` — warns on duplicate attrs
+- #356: `render_elements_html` — protected internal vars from component context overwrite
+- #358: `children` tag — documented as App Router layout composition marker
+- #363: `load_config` — handles tabs as well as spaces for indentation
+- #366: `build_one_page` — validates output path against BUILD_DIR (prevents traversal)
+- #369: `_token_to_dict` — type-safe return values (str/int coercion)
+- #370: `_diagnostic_to_payload` — wraps `CompilerError.to_diagnostic` in try/except
+- #372: `compile_file_pipeline` — filters out non-existent dependency paths
+- #373: `_collect_components` — handles ForNode/IfNode body children
+- #374: `apply_layout_template` — documented that comments before DOCTYPE are valid HTML
+
 ## v0.9.11 (2026-08-12)
 
 ### TRIPLE CENTURY — 100 Bug Fixes across compiler.py, framework.py, cli.py

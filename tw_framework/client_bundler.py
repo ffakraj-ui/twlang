@@ -76,8 +76,10 @@ _REQUIRE_RE = re.compile(
 )
 
 # Patterns for module.exports and exports.x = ...
-_MODULE_EXPORTS_RE = re.compile(r'\bmodule\.exports\s*=')
-_EXPORTS_ASSIGN_RE = re.compile(r'\bexports\.(\w+)\s*=')
+# FIX #510: Match both module.exports = and module.exports.foo =
+_MODULE_EXPORTS_RE = re.compile(r'\bmodule\.exports(?:\.(\w+))?\s*=')
+# FIX #488: Support both dot and bracket notation for exports
+_EXPORTS_ASSIGN_RE = re.compile(r'\bexports\.(\w+)\s*=|exports\[["\']([^"\']+)["\']\]\s*=')
 
 # Node.js built-in modules that need browser stubs
 NODE_BUILTINS = {
@@ -219,8 +221,11 @@ def get_builtin_stub(name: str) -> Optional[str]:
 
 def is_node_builtin(name: str) -> bool:
     """Check if a module name is a Node.js built-in."""
+    # FIX #495: Strip node: prefix and validate the remaining name
     if name.startswith("node:"):
         name = name[5:]
+        if not name:
+            return False
     return name in NODE_BUILTINS
 
 
@@ -938,14 +943,14 @@ class ClientBundler:
             else:
                 deps_map[name] = set()
 
-        # Kahn's algorithm
+        # Kahn's algorithm — FIX #491: Use deque for O(1) popleft
+        from collections import deque as _deque
         result: List[str] = []
-        # Start with packages that have no dependencies
-        ready = sorted([n for n in all_names if not deps_map[n]])
+        ready = _deque(sorted([n for n in all_names if not deps_map[n]]))
         remaining = set(all_names) - set(ready)
 
         while ready:
-            name = ready.pop(0)
+            name = ready.popleft()
             result.append(name)
             # Remove this package from everyone's dependency lists
             for other in list(remaining):

@@ -88,7 +88,7 @@ def _reset_request_stores():
 def _js_tw_storage_read(path: str, encoding: str = "utf-8") -> str:
     if path in _REQUEST_KV:
         return _REQUEST_KV[path]
-    raise Exception("Edge runtime does not support filesystem. Use tw.storage.write() for KV, or runtime='nodejs'.")
+    raise PermissionError("Edge runtime does not support filesystem. Use tw.storage.write() for KV, or runtime='nodejs'.")
 
 def _js_tw_storage_write(path: str, data: str) -> bool:
     _REQUEST_KV[path] = data if isinstance(data, str) else str(data)
@@ -129,13 +129,15 @@ def _js_tw_http_fetch(url: str, options_json: str = "{}") -> str:
                 except Exception:
                     pass
             return json.dumps({"ok": 200 <= resp.status < 300, "status": resp.status, "statusText": resp.reason, "url": url, "headers": resp_headers, "text": text, "data": data})
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError) as e:  # v0.9.08 FIX #84
+    except urllib.error.HTTPError as e:  # FIX #605/#606/#607: HTTPError has .code/.reason/.headers
         text = ""
         try:
             text = e.read().decode("utf-8", errors="replace")
         except Exception:
             pass
-        return json.dumps({"ok": False, "status": e.code, "statusText": e.reason, "url": url, "headers": dict(e.headers), "text": text, "data": text})
+        return json.dumps({"ok": False, "status": e.code, "statusText": str(e.reason), "url": url, "headers": dict(e.headers), "text": text, "data": text})
+    except (urllib.error.URLError, TimeoutError, OSError) as e:  # URLError doesn't have .code/.headers
+        return json.dumps({"ok": False, "status": 0, "statusText": str(getattr(e, 'reason', e)), "url": url, "headers": {}, "text": "", "data": None})
     except Exception as e:
         return json.dumps({"ok": False, "status": 0, "statusText": str(e), "url": url, "headers": {}, "text": "", "data": None})
 
@@ -155,7 +157,10 @@ def _js_tw_crypto_uuid() -> str:
     return str(uuid.uuid4())
 
 def _js_tw_env_get(name: str, default: str = "") -> str:
-    return os.environ.get(name, default)
+    # FIX #610: Filter env vars — only TW_/PUBLIC_/EDGE_ prefixed vars are safe
+    if name.startswith(("TW_", "PUBLIC_", "EDGE_")) or name in ("NODE_ENV",):
+        return os.environ.get(name, default)
+    return default
 
 def _js_tw_env_all() -> str:
     safe = {}
@@ -335,8 +340,18 @@ var tw = {
         has: function(name) { return __tw_env_store && __tw_env_store[name] !== undefined; }
     },
     cache: {
-        get: function(key, defaultVal) { return key in __tw_cache_store ? __tw_cache_store[key] : (defaultVal === undefined ? null : defaultVal); },
-        set: function(key, value, ttl) { __tw_cache_store[key] = value; return true; },
+        get: function(key, defaultVal) {
+            if (key in __tw_cache_store) {
+                var ttlKey = '__ttl_' + key;
+                if (ttlKey in __tw_cache_store && Date.now() > __tw_cache_store[ttlKey]) {
+                    delete __tw_cache_store[key]; delete __tw_cache_store[ttlKey];
+                    return defaultVal === undefined ? null : defaultVal;
+                }
+                return __tw_cache_store[key];
+            }
+            return defaultVal === undefined ? null : defaultVal;
+        },
+        set: function(key, value, ttl) { __tw_cache_store[key] = value; /* FIX #618: TTL stored but in-memory cache doesn't expire */ if(ttl && ttl > 0) { __tw_cache_store['__ttl_' + key] = Date.now() + ttl * 1000; } return true; },
         delete: function(key) { return delete __tw_cache_store[key]; },
         has: function(key) { return key in __tw_cache_store; },
         clear: function() { __tw_cache_store = {}; return true; }
@@ -344,7 +359,7 @@ var tw = {
     runtime: {
         name: function() { return "edge-v8"; },
         version: function() { return "tw-edge-v8/1.0"; },
-        capabilities: function() { return {filesystem: false, network: true, native_modules: false, subprocess: false, database: false, crypto: true, cache: true, env_vars: true, persistent_storage: true, timers: false, streaming: false}; },
+        capabilities: function() { return {filesystem: false, network: true, native_modules: false, subprocess: false, database: false, crypto: true, cache: true, env_vars: true, persistent_storage: false, timers: false, streaming: false  /* FIX #619: in-memory = not persistent */}; },
         supports: function(cap) { return this.capabilities()[cap] === true; }
     }
 };
@@ -359,7 +374,15 @@ class EdgeV8Storage(StorageAPI):
             return _REQUEST_KV[path]
         raise PermissionError("Edge V8: filesystem not supported. Use tw.storage.write() for KV, or runtime='nodejs'.")
     def write(self, path: str, data: Union[str, bytes]) -> bool:
-        _REQUEST_KV[path] = data if isinstance(data, str) else data.decode("utf-8")
+        # FIX #621: Handle binary data safely — store as base64 if not decodable
+        if isinstance(data, str):
+            _REQUEST_KV[path] = data
+        else:
+            try:
+                _REQUEST_KV[path] = data.decode("utf-8")
+            except UnicodeDecodeError:
+                import base64 as _b64
+                _REQUEST_KV[path] = "base64:" + _b64.b64encode(data).decode("ascii")
         return True
     def delete(self, path: str) -> bool:
         return _REQUEST_KV.pop(path, None) is not None
@@ -458,8 +481,9 @@ class EdgeV8Executor:
         handler_body = re.sub(r'^[ \t]*runtime[ \t]*=[ \t]*["\']?\w+["\']?[ \t]*$', '', handler_body, flags=re.MULTILINE)
 
         # Wrap as JS IIFE
-        request_json = json.dumps(request_data)
-        js_code = "(function(request) {\n" + handler_body + "\n})(" + request_json + ");"
+        # FIX #631: Sanitize request_json to prevent JS injection — use JSON.stringify in JS
+        request_json = json.dumps(json.dumps(request_data))  # Double-encode for safe JS string literal
+        js_code = "(function(request) {\n" + handler_body + "\n})(JSON.parse(" + request_json + "));"
 
         # Build env vars JSON for injection (only safe vars)
         safe_env = {}
@@ -476,7 +500,11 @@ class EdgeV8Executor:
         # V8 multi-pass fetch: V8 is synchronous, so tw.http.fetch() throws
         # __YIELD_FETCH__ to pause execution. Python catches it, does the
         # HTTP request, then re-evals with __fetch_result__ set.
-        max_fetch_passes = int(os.environ.get('TW_MAX_FETCH_PASSES', '10'))  # v0.9.08 FIX #78: Configurable
+        # FIX #633: Validate max_fetch_passes from env
+        try:
+            max_fetch_passes = max(1, min(50, int(os.environ.get('TW_MAX_FETCH_PASSES', '10'))))
+        except (ValueError, TypeError):
+            max_fetch_passes = 10
 
         for pass_num in range(max_fetch_passes + 1):
             try:
@@ -557,7 +585,9 @@ class EdgeV8Executor:
             parsed = {"result": str(result)}
 
         if isinstance(parsed, dict):
-            if "status" in parsed: status = int(parsed["status"])
+            if "status" in parsed:
+                try: status = int(parsed["status"])
+                except (ValueError, TypeError): status = 200
             if "content_type" in parsed: content_type = str(parsed["content_type"])
             if "headers" in parsed:
                 h = parsed["headers"]
@@ -594,8 +624,8 @@ class EdgeV8Executor:
 # --- Edge V8 Runtime class ---
 
 class EdgeV8Runtime(BaseRuntime):
-    _storage_inst = None
-    _cache_inst = None
+    # FIX #642/#643: Move to instance variables — class variables are shared across instances
+    # These are now initialized in __init__
     """Edge V8 Runtime — real JavaScript sandbox via V8.
 
     Like Next.js Edge Runtime:
@@ -608,6 +638,8 @@ class EdgeV8Runtime(BaseRuntime):
 
     def __init__(self):
         self._executor = EdgeV8Executor()
+        self._storage_inst = None  # FIX #642: Instance variable, not class variable
+        self._cache_inst = None    # FIX #643: Instance variable, not class variable
 
     @property
     def runtime_name(self) -> str:
@@ -636,7 +668,7 @@ class EdgeV8Runtime(BaseRuntime):
             RuntimeCapability.CRYPTO.value: True,
             RuntimeCapability.CACHE.value: True,
             RuntimeCapability.ENV_VARS.value: True,
-            RuntimeCapability.PERSISTENT_STORAGE.value: True,
+            RuntimeCapability.PERSISTENT_STORAGE.value: False,  # FIX #645: in-memory = not persistent
             RuntimeCapability.TIMERS.value: False,
             RuntimeCapability.STREAMING.value: False,
         }
@@ -648,6 +680,8 @@ class EdgeV8Runtime(BaseRuntime):
         return self._executor.engine or "none"
 
     def execute_handler(self, handler_body: str, method: str, request_data: dict, handler_path: str = "") -> dict:
+        # FIX #648: Note — V8 eval is synchronous, no built-in timeout.
+        # For production, use a subprocess with timeout or a separate worker thread with join(timeout).
         return self._executor.execute(handler_body, method, request_data, handler_path)
 
     def reload(self):

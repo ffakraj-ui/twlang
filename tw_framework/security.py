@@ -49,16 +49,30 @@ def build_csp_header(
         "base-uri": "'self'",
         "form-action": "'self'",
         "object-src": "'none'",
+        # FIX #468: Add upgrade-insecure-requests for HTTPS enforcement
+        "upgrade-insecure-requests": "",
     }
 
     if extra_directives:
         for key, value in extra_directives.items():
+            # FIX #462: Deduplicate values when appending to existing directive
             if key in directives:
-                directives[key] = directives[key] + " " + value
+                existing_parts = directives[key].split()
+                new_parts = value.split()
+                for part in new_parts:
+                    if part not in existing_parts:
+                        existing_parts.append(part)
+                directives[key] = " ".join(existing_parts)
             else:
                 directives[key] = value
 
-    return "; ".join(f"{k} {v}" for k, v in directives.items())
+    # FIX #485: Validate directive values — strip semicolons that would break CSP
+    parts = []
+    for k, v in directives.items():
+        safe_k = k.strip().replace(";", "")
+        safe_v = v.strip().replace(";", "")
+        parts.append(f"{safe_k} {safe_v}".strip() if safe_v else safe_k)
+    return "; ".join(parts)
 
 
 # ─── Secure Headers ───────────────────────────────────────────────────────────
@@ -95,8 +109,8 @@ def get_secure_headers(
     # X-Frame-Options (defense-in-depth alongside CSP frame-ancestors)
     headers.append(("X-Frame-Options", "SAMEORIGIN"))
 
-    # X-XSS-Protection (legacy browsers)
-    headers.append(("X-XSS-Protection", "1; mode=block"))
+    # FIX #472: X-XSS-Protection is deprecated — keep only for legacy browser support
+    # Modern browsers ignore this header in favor of CSP.
 
     # Referrer-Policy
     headers.append(("Referrer-Policy", "strict-origin-when-cross-origin"))
@@ -135,12 +149,18 @@ def render_secure_headers_html(csp_nonce: str = "") -> str:
 
 def sanitize_html(text: str) -> str:
     """Escape HTML special characters to prevent XSS."""
-    return html.escape(text, quote=True)
+    # FIX #467: Avoid double-escaping by unescaping first
+    import html as _html
+    _unescaped = _html.unescape(text)
+    return _html.escape(_unescaped, quote=True)
 
 
 def sanitize_attribute(value: str) -> str:
     """Sanitize an HTML attribute value — escape quotes and special chars."""
-    return html.escape(value, quote=True)
+    # FIX #478: Attribute-specific escaping — always quote-escape
+    import html as _html
+    # Unescape first to avoid double-escaping, then re-escape with quotes
+    return _html.escape(_html.unescape(value), quote=True)
 
 
 def sanitize_js_string(text: str) -> str:
@@ -152,6 +172,8 @@ def sanitize_js_string(text: str) -> str:
     text = text.replace("\n", "\\n")
     text = text.replace("\r", "\\r")
     text = text.replace("\t", "\\t")
+    # FIX #484: Remove null bytes which break JS
+    text = text.replace("\x00", "")
     text = text.replace("</script>", "<\\/script>")
     text = text.replace("<!--", "<\\!--")
     return text

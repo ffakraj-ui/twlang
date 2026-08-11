@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 def format_error(diag: Diagnostic, project_root: str) -> Any:
     """Format a diagnostic into a human-readable string with all required fields."""
     lines = []
-    code_display = diag.code if str(diag.code).upper().startswith("TW") else f"TW{diag.code}"
+    # FIX #511: Handle numeric/short codes that don't have TW prefix
+    _raw_code = str(diag.code) if diag.code else "0000"
+    code_display = _raw_code if _raw_code.upper().startswith("TW") else f"TW{_raw_code}"
     lines.append(f"{code_display} • {diag.category} Error")
     lines.append("")
     lines.append(f"Severity: {diag.severity.upper()}")
@@ -38,7 +40,9 @@ def format_error(diag: Diagnostic, project_root: str) -> Any:
     if diag.source_snippet:
         lines.append("")
         lines.append("Code:")
-        lines.append(diag.source_snippet)
+        # FIX #513: Escape source snippet to prevent terminal injection
+        import html as _html
+        lines.append(_html.escape(str(diag.source_snippet)))
     if diag.reason:
         lines.append("")
         lines.append(f"Reason: {diag.reason}")
@@ -47,11 +51,23 @@ def format_error(diag: Diagnostic, project_root: str) -> Any:
     if diag.found:
         lines.append(f"Found: {diag.found}")
     if diag.why:
-        lines.append(f"Why: {diag.why}")
-    if diag.suggestion:
+        # FIX #514: Truncate very long explanations
+        _why = str(diag.why)
+        if len(_why) > 500:
+            _why = _why[:500] + "..."
+        lines.append(f"Why: {_why}")
+    if diag.suggestion and str(diag.suggestion).strip():
+        # FIX #517: Don't print empty suggestion
         lines.append(f"Suggestion: {diag.suggestion}")
     if diag.doc_link:
-        lines.append(f"Docs: {diag.doc_link}")
+        # FIX #516: Basic URL validation
+        _link = str(diag.doc_link)
+        if _link.startswith(("http://", "https://", "/")):
+            lines.append(f"Docs: {_link}")
+    # FIX #519: Show exception type if available
+    _exc_type = getattr(diag, "exception_type", None)
+    if _exc_type:
+        lines.append(f"Exception: {_exc_type}")
     return "\n".join(lines)
 
 

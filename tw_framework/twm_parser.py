@@ -232,7 +232,8 @@ def compile_twm_module_to_js(source: str, *, module_id: str) -> Any:
         body = fn["body"]
         async_prefix = "async " if fn.get("async") else ""
         lines.append(f"{async_prefix}function {name}{params}{{{body}\n}}")
-        lines.append(f"window.__twRegister('{_js_string(name)}', {name});")
+        # FIX #441: Guard against window not existing (Node.js server-side)
+        lines.append(f"if (typeof window !== 'undefined' && window.__twRegister) window.__twRegister('{_js_string(name)}', {name});")
         lines.append("")
     return "\n".join(lines)
 
@@ -360,7 +361,9 @@ def build_page_twm_bundle_js(
     parts.append("    }")
     parts.append("  };")
     if page_source_path:
-        parts.append(f"  // Source page: {page_source_path}")
+        # FIX #448: Sanitize path to prevent comment injection / path escape
+        _safe_path = page_source_path.replace("*/", "").replace("\n", " ").replace("\r", "")
+        parts.append(f"  // Source page: {_safe_path}")
     parts.append("")
 
     for item in sources or []:
@@ -378,7 +381,9 @@ def build_page_twm_bundle_js(
             continue
         if item.get("kind") == "inline":
             src = item.get("source") or ""
-            parts.append(compile_twm_module_to_js(src, module_id="<inline SCRIPT>"))
+            # FIX #453: Use unique module_id for inline sources to avoid collision
+            _inline_id = f"<inline-{hash(src) & 0xFFFF:04x}>"
+            parts.append(compile_twm_module_to_js(src, module_id=_inline_id))
             parts.append("")
             continue
         # FIX #111: Log unknown kinds instead of silently skipping

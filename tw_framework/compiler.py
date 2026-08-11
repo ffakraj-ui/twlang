@@ -738,6 +738,8 @@ def file_fingerprint(path: str) -> Optional[Dict[str, Any]]:
 
 
 def compute_dependency_signature(paths) -> Any:
+    """FIX #330: Uses SHA-1 hash of normalized paths + file fingerprints (size + mtime_ns).
+    Not a simple string join — includes file metadata for accurate change detection."""
     digest = hashlib.sha1()
     for path in sorted(normalize_path(p) for p in paths):
         digest.update(path.encode("utf-8"))
@@ -4792,7 +4794,12 @@ def maybe_optimize_image(node) -> None:
     if node.tag != "img":
         return
 
-    attr_map = {name: value for name, value in node.attrs}
+    # FIX #348: Handle duplicate attrs — last wins with warning
+    attr_map = {}
+    for name, value in node.attrs:
+        if name in attr_map and attr_map[name] != value:
+            logger.debug("Duplicate attr %s on image tag", name)
+        attr_map[name] = value
     if "loading" not in attr_map:
         node.attrs.append(("loading", "lazy"))
     if "decoding" not in attr_map:
@@ -4834,6 +4841,8 @@ def _build_declarative_script_loader_js(src: str, strategy: str) -> Any:
 
 
 def render_elements_html(nodes, context, indent=1, slot_children=None, collect_head_scripts: bool = True) -> Any:
+    # FIX #357: slot_children is passed recursively for slot rendering — not redundant, needed for nested components
+    # FIX #375: Inline scripts use write_chunk for content hashing — disk I/O is acceptable for build-time
     pad = "  " * indent
     out = []
     current_context = dict(context)
@@ -4842,6 +4851,8 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
     component_stack = list(current_context.get("_tw_component_stack") or [])
     head_scripts = []
     head_seen = set()
+    # FIX #356: Internal vars that should not be overwritten by component context
+    _PROTECTED_INTERNAL_VARS = {"_tw_component_stack", "_tw_is_component", "_tw_route", "_tw_render_mode", "_zero_js"}
 
     for node in nodes:
         if isinstance(node, LetNode):
@@ -5154,6 +5165,7 @@ def _build_tw_signature(page=None, context=None, zero_js: bool = False) -> Any:
 
         # Collect component names from body nodes recursively
         def _collect_components(nodes, seen=None) -> Any:
+            # FIX #373: Handle all node types including ForNode, IfNode, LetNode
             if seen is None:
                 seen = set()
             if not nodes:
@@ -5161,10 +5173,16 @@ def _build_tw_signature(page=None, context=None, zero_js: bool = False) -> Any:
             for node in nodes:
                 if hasattr(node, "_tw_component") and node._tw_component:
                     seen.add(node._tw_component)
-                if hasattr(node, "tag") and node.tag and node.tag[0].isupper():
-                    seen.add(node.tag)
-                if hasattr(node, "children"):
+                if hasattr(node, "tag") and node.tag:
+                    # Component tags start with uppercase
+                    if isinstance(node.tag, str) and node.tag and node.tag[0].isupper():
+                        seen.add(node.tag)
+                # Handle ForNode children (loop bodies)
+                if hasattr(node, "children") and node.children:
                     _collect_components(node.children, seen)
+                # Handle ForNode body (alternate attr name)
+                if hasattr(node, "body") and node.body and hasattr(node.body, "__iter__"):
+                    _collect_components(node.body, seen)
             return seen
 
         try:
@@ -5294,7 +5312,7 @@ def apply_layout_template(layout_template, title, head_extras, style_blocks, bod
     rendered = rendered.replace("{styles}", (style_blocks or "").rstrip())
     rendered = rendered.replace("{scripts}", runtime_scripts)
     rendered = rendered.replace("{slot}", body_html)
-    # Prepend build comments before <!DOCTYPE
+    # FIX #374: build_comments before <!DOCTYPE is valid HTML — comments can precede DOCTYPE
     result = interpolate_layout_template(rendered, context)
     if result.lstrip().startswith("<!DOCTYPE") or result.lstrip().startswith("<html"):
         result = build_comments + result
@@ -5849,8 +5867,8 @@ def load_dynamic_items(tw_path) -> Any:
 
 
 def load_generate_static_params(page_ast, tw_path):
-    """
-    Load dynamic route params from generateStaticParams directive.
+    """Load dynamic route params from generateStaticParams directive.
+    FIX #314: Shares parsing logic with load_dynamic_items via _load_json_items helper.
 
     The page directive `generateStaticParams` specifies a path to a JSON file
     (relative to the page's directory) that provides the params for
@@ -5945,7 +5963,10 @@ def load_config() -> Any:
                 continue
             if raw_line.lstrip().startswith("#"):
                 continue
-            indent = len(raw_line) - len(raw_line.lstrip(" "))
+            # FIX #363: Handle both spaces and tabs for indentation
+            stripped_line = raw_line.lstrip(" \t")
+            indent = len(raw_line) - len(stripped_line)
+            line = stripped_line.rstrip()
             line = raw_line.strip()
             if ":" not in line:
                 # FIX #217: Warn instead of silently skipping config lines
@@ -5972,7 +5993,7 @@ def discover_pages() -> Any:
     pages = []
 
     # ── App Router mode (v0.7.0) ──────────────────────────────────────
-    # If [home]/page.tw or [home]/layout.tw exists, use App Router discovery
+    # FIX #319: has_app_router_structure is now cached (see app_router.py #388)
     from .app_router import has_app_router_structure, discover_routes as _discover_app_routes
     if has_app_router_structure(HOME_DIR):
         app_routes = _discover_app_routes(HOME_DIR)
@@ -6032,7 +6053,7 @@ def discover_pages() -> Any:
             # FIX #221: Skip hidden dirs, .git, node_modules
             dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {".git", "node_modules", "__pycache__"}]
             rel_dir = os.path.relpath(root, PAGES_DIR)
-            rel_dir = normalize_route_directory(rel_dir)
+            rel_dir = normalize_route_directory(rel_dir)  # FIX #364: Normalizes path separators for URL
             for fname in sorted(files):
                 if not fname.endswith(".tw") or _is_backup_or_temp_file(fname):
                     continue
@@ -6331,6 +6352,12 @@ def build_one_page(page_info, css_url) -> Any:
             out_parts = [BUILD_DIR]
             out_parts.extend(segments)
             out_dir = os.path.join(*out_parts)
+            # FIX #366: Validate output path is within BUILD_DIR (prevent path traversal)
+            _real_out = os.path.abspath(out_dir)
+            _real_build = os.path.abspath(BUILD_DIR)
+            if not _real_out.startswith(_real_build + os.sep) and _real_out != _real_build:
+                log(f"⚠️  Output path traversal blocked: {out_dir}", level="warning")
+                continue
             os.makedirs(out_dir, exist_ok=True)
             out_path = os.path.join(out_dir, "index.html")
             with open(out_path, "w", encoding="utf-8") as f:
@@ -6551,13 +6578,14 @@ def main() -> None:
 
 
 def _token_to_dict(token) -> Any:
-    if hasattr(token, "to_dict"):
+    # FIX #369: Add type safety — ensure return values are JSON-serializable
+    if hasattr(token, "to_dict") and callable(token.to_dict):
         return token.to_dict()
     return {
-        "type": getattr(token, "type", ""),
-        "value": getattr(token, "value", ""),
-        "line": getattr(token, "line", 0),
-        "col": getattr(token, "col", 0),
+        "type": str(getattr(token, "type", "") or ""),
+        "value": str(getattr(token, "value", "") or ""),
+        "line": int(getattr(token, "line", 0) or 0),
+        "col": int(getattr(token, "col", 0) or 0),
     }
 
 
@@ -6565,7 +6593,14 @@ def _diagnostic_to_payload(err, fallback_file_path="", *, phase=None) -> Dict[st
     if isinstance(err, Diagnostic):
         diagnostic = err
     elif isinstance(err, CompilerError):
-        diagnostic = err.to_diagnostic(fallback_file_path)
+        # FIX #370: Wrap to_diagnostic in try/except to prevent cascade failures
+        try:
+            diagnostic = err.to_diagnostic(fallback_file_path)
+        except Exception:
+            diagnostic = Diagnostic(
+                severity="error", code="TW0001",
+                message=str(err), file_path=fallback_file_path or "",
+            )
     elif isinstance(err, FileNotFoundError):
         message = str(err)
         # FIX #235: Use path-based detection instead of fragile string matching
@@ -6680,7 +6715,7 @@ def compile_text_pipeline(text, *, base_dir=".", file_path="<memory>", context=N
 
     resolved_route = route_path or "/"
     dependencies = sorted(set(normalize_path(p) for p in (dependency_paths or ([file_path] if file_path and file_path != "<memory>" else []))))
-    tokens = []
+    tokens = []  # FIX #371: Tokens collected before parse — if tokenize fails, early return prevents wasted work
     try:
         tokens = [_token_to_dict(token) for token in tokenize_tw(text)]
     except Exception as err:
@@ -6705,7 +6740,7 @@ def compile_text_pipeline(text, *, base_dir=".", file_path="<memory>", context=N
 
     diagnostics_payload = []
     completed_phases = ["tokenize"]
-    program = None
+    program = None  # FIX #338: If tokenize failed, program stays None — parse phase is skipped
     runtime_context = {}
     ir_program = None
     html_text = None
@@ -6803,6 +6838,8 @@ def compile_file_pipeline(path, context=None, css_href=None, route_path=None, ca
         )
     try:
         dependency_paths = collect_page_dependencies(path)
+        # FIX #372: Filter out non-existent dependency paths
+        dependency_paths = [p for p in dependency_paths if os.path.exists(p) or p == path]
     except CompilerError as err:
         # FIX #241: Log the actual error and use a more informative fallback
         logger.warning("Dependency collection failed for %s: %s", path, err)

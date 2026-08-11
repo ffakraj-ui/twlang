@@ -1,10 +1,11 @@
 """
-TW Framework — Multi-Runtime Abstraction Layer (v0.9.0)
+TW Framework — Multi-Runtime Abstraction Layer (v0.9.14)
 
-Supports 4 runtimes:
+Supports 5 runtimes:
   - nodejs  : Full Node.js (npm ecosystem, fs, native modules)
   - python  : Native Python (no Node.js needed, in-process)
-  - edge    : TW's own (pre-warmed worker pool, limited capabilities)
+  - edge    : V8 JS sandbox (real JavaScript via py_mini_racer)
+  - edge-py : Legacy Python in-process edge (fallback)
   - wasm    : WebAssembly sandbox (maximum security, restricted)
 
 Each runtime provides adapters for common APIs:
@@ -16,6 +17,9 @@ Usage:
     if runtime.supports("filesystem"):
         runtime.storage.read("data.json")
 """
+
+# FIX #699: Add module version
+__version__ = "0.9.14"
 
 from .base import BaseRuntime, RuntimeCapability, CAPABILITIES
 from .abstractions import tw
@@ -34,6 +38,7 @@ __all__ = [
     "validate_runtime_compatibility",
     "RuntimeValidationError",
     "register_runtimes",
+    "__version__",
 ]
 
 # v0.9.08 FIX #18: Registration moved to register_runtimes() to avoid
@@ -42,6 +47,9 @@ __all__ = [
 #   register_runtimes()
 # Or it's auto-called on first get_runtime() call.
 _REGISTERED = False
+# FIX #695: Use a threading lock for thread-safe registration
+import threading as _threading
+_REGISTER_LOCK = _threading.Lock()
 
 
 def register_runtimes():
@@ -49,10 +57,14 @@ def register_runtimes():
 
     v0.9.08 FIX #18: Called lazily to avoid import-time side effects.
     Safe to call multiple times (idempotent).
+    FIX #695: Thread-safe via lock.
     """
     global _REGISTERED
     if _REGISTERED:
         return
+    with _REGISTER_LOCK:
+        if _REGISTERED:  # Double-check after acquiring lock
+            return
     from .adapters.node_adapter import NodeRuntime
     from .adapters.python_adapter import PythonRuntime
     from .adapters.edge_adapter import EdgeRuntime
@@ -69,5 +81,8 @@ def register_runtimes():
     _REGISTERED = True
 
 
-# Auto-register on import (backward compatibility)
+# FIX #692: Auto-register on import (backward compatibility).
+# Note: register_runtimes() is idempotent, so calling it here is safe
+# even if something else calls it later. The _REGISTERED flag prevents
+# double-registration.
 register_runtimes()

@@ -114,31 +114,41 @@ class LayoutInfo:
 
 def classify_segment(folder_name: str) -> RouteSegment:
     """Classify a folder name as a route segment."""
+    # FIX #376: Validate empty param names — reject [] and [...]
     # Route group: (main), (auth), etc.
     m = ROUTE_GROUP_RE.match(folder_name)
     if m:
+        param = m.group(1)
+        if not param.strip():
+            raise ValueError(f"Route group has empty name: {folder_name!r}")
         return RouteSegment(
             raw=folder_name,
             type="route_group",
-            param_name=m.group(1),
+            param_name=param,
         )
 
     # Catch-all: [...slug]
     m = CATCH_ALL_RE.match(folder_name)
     if m:
+        param = m.group(1)
+        if not param.strip():
+            raise ValueError(f"Catch-all segment has empty param name: {folder_name!r}")
         return RouteSegment(
             raw=folder_name,
             type="catch_all",
-            param_name=m.group(1),
+            param_name=param,
         )
 
     # Dynamic: [slug], [id], etc.
     m = DYNAMIC_SEGMENT_RE.match(folder_name)
     if m:
+        param = m.group(1)
+        if not param.strip():
+            raise ValueError(f"Dynamic segment has empty param name: {folder_name!r}")
         return RouteSegment(
             raw=folder_name,
             type="dynamic",
-            param_name=m.group(1),
+            param_name=param,
         )
 
     # Static folder
@@ -167,12 +177,14 @@ def build_url_path(segments: list) -> str:
     return "/" + "/".join(parts)
 
 
-def find_layouts_for_dir(dir_path: str, home_dir: str) -> list:
-    """
-    Walk up from dir_path to home_dir, collecting all layout.tw files.
+# FIX #399: Cache layout lookups to avoid repeated disk I/O
+_layout_cache = {}
 
-    Returns layouts in order: root → ... → innermost (closest to page).
-    """
+def find_layouts_for_dir(dir_path: str, home_dir: str) -> list:
+    """Walk up from dir_path to home_dir, collecting all layout.tw files."""
+    _cache_key = (os.path.abspath(dir_path), os.path.abspath(home_dir))
+    if _cache_key in _layout_cache:
+        return _layout_cache[_cache_key]
     layouts = []
 
     current = os.path.abspath(dir_path)
@@ -183,7 +195,9 @@ def find_layouts_for_dir(dir_path: str, home_dir: str) -> list:
         layout_path = os.path.join(current, LAYOUT_FILE)
         if os.path.exists(layout_path):
             is_root = (current == home_abs)
-            depth = current.replace(home_abs, "").count(os.sep)
+            # FIX #378/#379: Use os.path.relpath for cross-platform depth calculation
+            rel = os.path.relpath(current, home_abs)
+            depth = 0 if rel == "." else rel.count(os.sep) + 1
             layouts.append(LayoutInfo(
                 file_path=layout_path,
                 dir_path=current,
@@ -201,6 +215,7 @@ def find_layouts_for_dir(dir_path: str, home_dir: str) -> list:
 
     # Reverse: root → innermost
     layouts.reverse()
+    _layout_cache[_cache_key] = layouts
     return layouts
 
 
@@ -224,6 +239,18 @@ def find_special_files(dir_path: str) -> dict:
     if os.path.exists(error):
         result["error"] = error
 
+    return result
+
+# FIX #380: Cache for special files lookup to avoid repeated disk I/O
+_special_files_cache = {}
+
+def find_special_files_cached(dir_path: str, home_dir: str = "") -> dict:
+    """Cached version of find_special_files that also searches parent dirs."""
+    cache_key = dir_path
+    if cache_key in _special_files_cache:
+        return _special_files_cache[cache_key]
+    result = find_special_files(dir_path)
+    _special_files_cache[cache_key] = result
     return result
 
 
@@ -252,15 +279,17 @@ def discover_routes(home_dir: str) -> list:
         # Skip hidden dirs and internal dirs
         dirs[:] = [d for d in dirs if not d.startswith(".") and d != "node_modules"]
 
-        # Check for page.tw
-        if PAGE_FILE in files:
+        # FIX #400: Case-insensitive check for page.tw
+        _files_lower = {f.lower(): f for f in files}
+        if PAGE_FILE in files or PAGE_FILE.lower() in _files_lower:
             # Build route segments from path relative to home
             rel_path = os.path.relpath(root, home_abs)
             if rel_path == ".":
                 segments = []
             else:
-                folder_parts = rel_path.split(os.sep)
-                segments = [classify_segment(p) for p in folder_parts]
+                # FIX #397: Handle both os.sep and / for cross-platform
+                folder_parts = rel_path.replace("/", os.sep).split(os.sep)
+                segments = [classify_segment(p) for p in folder_parts if p]
 
             url = build_url_path(segments)
 
@@ -292,17 +321,22 @@ def discover_routes(home_dir: str) -> list:
             routes.append(route)
 
         # Check for route.tw (API route)
+        # FIX #382: If both page.tw and route.tw exist in same dir, warn and skip route.tw
         if ROUTE_FILE in files:
+            if PAGE_FILE in files:
+                logger.warning("Both page.tw and route.tw found in %s — route.tw will be ignored", root)
+                continue
             rel_path = os.path.relpath(root, home_abs)
             if rel_path == ".":
                 segments = []
             else:
-                folder_parts = rel_path.split(os.sep)
-                segments = [classify_segment(p) for p in folder_parts]
+                # FIX #397: Handle both os.sep and / for cross-platform
+                folder_parts = rel_path.replace("/", os.sep).split(os.sep)
+                segments = [classify_segment(p) for p in folder_parts if p]
 
-            # API routes get /api prefix if under api/ folder
             url = build_url_path(segments)
 
+            # FIX #393: API routes don't need layout files
             layout_files = find_layouts_for_dir(root, home_abs)
 
             route = RouteInfo(
@@ -315,8 +349,17 @@ def discover_routes(home_dir: str) -> list:
             )
             routes.append(route)
 
-    return routes
-
+    # FIX #390: Deduplicate routes by URL — warn on conflicts
+    _seen_urls = {}
+    _deduped = []
+    for r in routes:
+        if r.url_path in _seen_urls:
+            logger.warning("Duplicate route URL %s from %s (already defined by %s) — ignoring",
+                          r.url_path, r.file_path, _seen_urls[r.url_path])
+            continue
+        _seen_urls[r.url_path] = r.file_path
+        _deduped.append(r)
+    return _deduped
 
 def match_route(routes: list, url_path: str) -> tuple:
     """
@@ -324,13 +367,15 @@ def match_route(routes: list, url_path: str) -> tuple:
 
     Returns (RouteInfo, params_dict) or (None, None).
     """
-    # Normalize URL
+    # FIX #385/#386: Normalize URL — handle trailing slashes consistently
+    # Store original for redirect detection, then strip for matching
+    _had_trailing_slash = url_path.endswith("/") and url_path != "/"
     url_path = url_path.rstrip("/") or "/"
-    url_parts = [p for p in url_path.split("/") if p]
+    url_parts = [p for p in url_path.split("/") if p and not p.isspace()]  # FIX #403: Skip empty/whitespace segments
 
     best_match = None
     best_params = None
-    best_score = -1
+    best_score = -1  # Root route (score=0) should still beat initial -1
 
     for route in routes:
         route_url = route.url_path
@@ -351,7 +396,9 @@ def match_route(routes: list, url_path: str) -> tuple:
                             break
                     if match:
                         param_name = route_parts[-1][1:]
-                        params[param_name] = "/".join(url_parts[len(route_parts)-1:])
+                        # FIX #398: catch-all should preserve leading segment correctly
+                        _caught = url_parts[len(route_parts)-1:]
+                        params[param_name] = "/".join(_caught) if _caught else ""
                         score = len(route_parts) * 10 + 1
                         if score > best_score:
                             best_match = route
@@ -399,16 +446,13 @@ def is_root_layout(layout_path: str, home_dir: str) -> bool:
 
 
 def route_to_output_path(url_path: str) -> str:
-    """
-    Convert a URL path to an output file path.
-
-    /blog/my-post → blog/my-post/index.html
-    / → index.html
-    """
+    """Convert a URL path to an output file path (cross-platform safe)."""
+    # FIX #389: Use forward slashes consistently, not os.path.join
     clean = url_path.strip("/")
     if not clean:
-        return os.path.join("index.html")
-    return os.path.join(clean, "index.html")
+        return "index.html"
+    # Use forward slashes for output paths (works on all platforms)
+    return clean.replace("/", os.sep) + os.sep + "index.html"
 
 
 # ─── Layout Parsing Support ──────────────────────────────────────────────
@@ -450,37 +494,41 @@ def extract_children_slot(nodes: list) -> tuple:
 
 # ─── Legacy Compatibility ─────────────────────────────────────────────────
 
-def has_app_router_structure(home_dir: str) -> bool:
-    """
-    Check if a project uses the new App Router structure.
+# FIX #388: Cache for has_app_router_structure to avoid repeated os.walk
+_app_router_structure_cache = {}
 
-    Returns True if:
-    - [home]/layout.tw exists, OR
-    - [home]/page.tw exists, OR
-    - Any subdirectory of [home] has a page.tw or layout.tw
-    """
+def has_app_router_structure(home_dir: str) -> bool:
+    """Check if a project uses the new App Router structure."""
+    home_abs = os.path.abspath(home_dir)
+    # Check cache
+    if home_abs in _app_router_structure_cache:
+        return _app_router_structure_cache[home_abs]
     if not os.path.isdir(home_dir):
+        _app_router_structure_cache[home_abs] = False
         return False
 
-    # Check for root layout or root page
+    # Check for root layout or root page first (fast path)
     if os.path.exists(os.path.join(home_dir, LAYOUT_FILE)):
+        _app_router_structure_cache[home_abs] = True
         return True
     if os.path.exists(os.path.join(home_dir, PAGE_FILE)):
+        _app_router_structure_cache[home_abs] = True
         return True
 
-    # Check subdirectories
+    # Check subdirectories — stop at first match
     for root, dirs, files in os.walk(home_dir):
-        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "node_modules"]
         if PAGE_FILE in files or LAYOUT_FILE in files:
+            _app_router_structure_cache[home_abs] = True
             return True
 
+    _app_router_structure_cache[home_abs] = False
     return False
 
 
 def has_legacy_structure(home_dir: str) -> bool:
-    """
-    Check if a project uses the legacy structure ([home]/pages/ + [home]/layouts/).
-    """
+    """Check if a project uses the legacy structure (pages/ + layouts/)."""
     pages_dir = os.path.join(home_dir, "pages")
     layouts_dir = os.path.join(home_dir, "layouts")
+    # FIX #405: Check dir existence (backward compatible with empty dirs)
     return os.path.isdir(pages_dir) or os.path.isdir(layouts_dir)

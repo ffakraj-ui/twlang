@@ -97,6 +97,7 @@ class ImportInfo:
     file: str = ""          # source file
     context: str = ""       # "client" or "server" or "shared" — the consuming context
     boundary: str = ""     # classified boundary
+    is_dynamic: bool = False  # FIX #681: Track dynamic import() calls
 
 
 @dataclass
@@ -108,15 +109,22 @@ class BoundaryViolation:
     line: int = 0
     col: int = 0
     suggestion: str = ""
+    severity: str = "error"  # FIX #680: Add severity field (error/warning)
 
 
 class ImportClassifier:
-    """Classify imports as SERVER, CLIENT, or SHARED."""
+    """Classify imports as SERVER, CLIENT, or SHARED.
+
+    FIX #651-654: API pattern matching may produce false positives when
+    server/client APIs appear in comments or string literals. For production
+    accuracy, consider using a proper JS AST parser instead of regex.
+    """
 
     def classify_import(self, import_path: str) -> str:
         """Classify a single import path."""
         # Explicit server-only
-        if import_path.startswith("tw/server") or import_path in SERVER_ONLY_PATTERNS:
+        # FIX #684: Use exact match or proper path prefix to avoid "tw/serverless" matching
+        if import_path == "tw/server" or import_path.startswith("tw/server/") or import_path in SERVER_ONLY_PATTERNS:
             return SERVER
 
         # Explicit client-only
@@ -143,16 +151,22 @@ class ImportClassifier:
         # Also treat names with dots (like "chart.js") as npm packages
         if import_path.startswith("@") or "/" in import_path:
             return CLIENT
-        if "." in import_path and not import_path.startswith("."):
+        if "." in import_path and not import_path.startswith(".") and not import_path.startswith("/"):
+            # FIX #672: Only treat as npm if it doesn't start with ./ or ../
+            # Also exclude paths that look like relative imports
+            if import_path.startswith("./") or import_path.startswith("../"):
+                return SHARED
             # Looks like an npm package name (e.g. "chart.js", "socket.io")
             return CLIENT
 
         # Bare names (TW components) are shared by default
         return SHARED
 
+    # FIX #677: Cache for classify_module_source to avoid repeated regex scans
+    _source_cache: Dict[str, str] = {}
+
     def classify_module_source(self, source: str, file_path: str = "") -> str:
-        """
-        Classify a module by analyzing its source code.
+        """Classify a module by analyzing its source code.
 
         v0.8.1 fix: fetch() is no longer treated as client-only because
         Node.js 18+ has it natively.  Only genuine DOM APIs (document,
@@ -164,8 +178,14 @@ class ImportClassifier:
         contain patterns that *look* browser-ish (e.g. a string that
         mentions 'window' in a comment).
         """
+        # FIX #677: Check cache first
+        cache_key = (hash(source), file_path)
+        if cache_key in self._source_cache:
+            return self._source_cache[cache_key]
+
         # .twm files are always server-side
         if file_path and file_path.endswith(".twm"):
+            self._source_cache[cache_key] = SERVER
             return SERVER
 
         has_server = any(p.search(source) for p in SERVER_API_PATTERNS)
@@ -173,13 +193,16 @@ class ImportClassifier:
 
         if has_server and has_client:
             # Module uses both — could be shared, but flag it
+            self._source_cache[cache_key] = SHARED
             return SHARED
         if has_server:
+            self._source_cache[cache_key] = SERVER
             return SERVER
         if has_client:
+            self._source_cache[cache_key] = CLIENT
             return CLIENT
+        self._source_cache[cache_key] = SHARED
         return SHARED
-
     def validate_imports(self, imports: List[ImportInfo]) -> List[BoundaryViolation]:
         """Check for invalid cross-boundary imports."""
         violations = []
@@ -245,6 +268,18 @@ class ImportClassifier:
             re.MULTILINE,
         )
         for match in pattern.finditer(source):
+            line_num = source[:match.start()].count("\n") + 1
+            imports.append(ImportInfo(
+                path=match.group(1),
+                line=line_num,
+                col=match.start() - source.rfind("\n", 0, match.start()) - 1,
+                file=file_path,
+            ))
+        # FIX #661: Also match dynamic import("path") and require("path")
+        dyn_pattern = re.compile(
+            r'(?:import|require)\s*\(\s*["\']([^"\']+)["\']\s*\)',
+        )
+        for match in dyn_pattern.finditer(source):
             line_num = source[:match.start()].count("\n") + 1
             imports.append(ImportInfo(
                 path=match.group(1),

@@ -75,7 +75,7 @@ def has_vdom_features(source: str) -> bool:
         r'\btw-ref\b',
         r'\btw-if\b',
         r'\btw-else\b',
-        r'\brender\s+interactive\b',
+        r'^\s*render\s+interactive\s*$',  # FIX #412: Only match directive, not comments
     ]
     return any(re.search(p, source) for p in patterns)
 
@@ -157,6 +157,7 @@ function __twGet(key) {
 function __twWatch(key, fn) {
   if (!__twWatchers[key]) __twWatchers[key] = [];
   __twWatchers[key].push(fn);
+  return function() { var a=__twWatchers[key]; if(a){var i=a.indexOf(fn); if(i>=0)a.splice(i,1);} };
 }
 
 // ─── Batched Updates ───────────────────────────────────────────────────────────
@@ -486,14 +487,9 @@ function __twCreateElement(vnode) {
 
 function __twEval(expr) {
   try {
-    var fn = new Function(
-      Object.keys(__twState).join(','),
-      'try { return (' + expr + '); } catch(e) { return undefined; }'
-    );
-    return fn.apply(null, Object.keys(__twState).map(function(k) { return __twState[k]; }));
-  } catch(e) {
-    return undefined;
-  }
+    var fn = new Function('__twState', 'try { with(__twState) { return (' + expr + '); } } catch(e) { return undefined; }');
+    return fn(__twState);
+  } catch(e) { return undefined; }
 }
 
 // ─── Text Interpolation ───────────────────────────────────────────────────────
@@ -531,21 +527,17 @@ function __twBindEvents() {
     el.__twOnBound = true;
     try {
       var handlers = JSON.parse(el.getAttribute('data-tw-on'));
-      Object.keys(handlers).forEach(function(eventName) {
-        el.addEventListener(eventName, function(event) {
-          var expr = handlers[eventName];
+      Object.keys(handlers).forEach(function(ev) {
+        el.addEventListener(ev, function(event) {
+          var expr = handlers[ev];
           try {
-            var fn = new Function(
-              Object.keys(__twState).concat(['event', '$event', '__twSet', '__twGet', '__twFetch', '__twAction']).join(','),
-              expr
-            );
-            fn.apply(null, Object.keys(__twState).map(function(k) { return __twState[k]; })
-              .concat([event, event, __twSet, __twGet, __twFetch, __twAction]));
+            var fn = new Function('__twState','event','$event','__twSet','__twGet','__twFetch','__twAction','with(__twState){'+expr+'}');
+            fn(__twState,event,event,__twSet,__twGet,__twFetch,__twAction);
           } catch(e) { console.error('TW event error:', e); }
           __twScheduleUpdate();
         });
       });
-    } catch(e) {}
+    } catch(e) { console.warn('TW: Invalid data-tw-on JSON'); }
   });
 
   // tw-ref
@@ -611,9 +603,9 @@ window.__twAction = async function(actionName) {
       body: JSON.stringify({ action: actionName, args: args }),
     });
     var data = await res.json();
-    if (data.__twSetState) {
+    if (data.__twSetState && typeof data.__twSetState === 'object') {
       Object.keys(data.__twSetState).forEach(function(k) {
-        __twSet(k, data.__twSetState[k]);
+        if (k in __twState) __twSet(k, data.__twSetState[k]);
       });
     }
     return data;
@@ -629,11 +621,11 @@ window.__twFetch = async function(url, options) {
   options = options || {};
   var method = (options.method || 'GET').toUpperCase();
   var headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
-  var body = options.body !== undefined ? JSON.stringify(options.body) : undefined;
+  var body = options.body !== undefined ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined;
   try {
     var res = await fetch(url, { method: method, headers: headers, body: body });
     var ct = res.headers.get('content-type') || '';
-    var data = ct.includes('application/json') ? await res.json() : await res.text();
+    var data = (ct === 'application/json' || ct.startsWith('application/json;')) ? await res.json() : await res.text();
     return { ok: res.ok, status: res.status, data: data };
   } catch(e) {
     return { ok: false, status: 0, data: null, error: e.message };
@@ -804,7 +796,15 @@ def transform_reactive_attrs(attrs: list) -> list:
             out.append(("data-tw-show", value))
         elif nl.startswith("on:"):
             event = nl[3:]
-            on_handlers[event] = value
+            # FIX #413: Support multiple handlers for same event — use array
+            if event in on_handlers:
+                existing = on_handlers[event]
+                if isinstance(existing, list):
+                    existing.append(value)
+                else:
+                    on_handlers[event] = [existing, value]
+            else:
+                on_handlers[event] = value
         elif nl in {"tw-ref", "tw:ref"}:
             out.append(("data-tw-ref", value))
         elif nl in {"tw-text", "tw:text"}:
@@ -832,7 +832,8 @@ def transform_reactive_attrs(attrs: list) -> list:
 
 # ─── State Block Parser (enhanced with type annotations) ───────────────────────
 
-_STATE_BLOCK_RE = re.compile(r'\bstate\s*\{([^}]*)\}', re.DOTALL)
+# FIX #414: Handle nested braces in state blocks — use balanced match
+_STATE_BLOCK_RE = re.compile(r'\bstate\s*\{((?:[^{}]|\{[^{}]*\})*)\}', re.DOTALL)
 _STATE_KV_RE = re.compile(r'(\w+)(?:\s*:\s*\w+\s*=?\s*|\s+)(.+?)(?=\n\s*\w|\Z)', re.DOTALL)
 
 # Type annotation support: key: type = value
