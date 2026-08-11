@@ -150,9 +150,12 @@ class ReactCompat:
         if not (os.path.exists(react_path) and os.path.exists(react_dom_path)):
             self._react_installed = False
             return False
-        # FIX #135: Check version compatibility
-        react_ver = self.get_react_version()
-        react_dom_ver = self._get_react_dom_version()
+        # Mark as installed BEFORE checking versions to avoid infinite recursion
+        # (get_react_version calls is_react_installed).
+        self._react_installed = True
+        # FIX #135: Check version compatibility via internal helpers (no recursion)
+        react_ver = self._read_pkg_version(react_path)
+        react_dom_ver = self._read_pkg_version(react_dom_path)
         if react_ver and react_dom_ver:
             r_major = react_ver.split(".")[0]
             d_major = react_dom_ver.split(".")[0]
@@ -160,10 +163,19 @@ class ReactCompat:
                 import logging
                 logging.getLogger("tw_framework").warning(
                     "React %s and ReactDOM %s have mismatched major versions!",
-                    react_ver, react_dom_ver
+                    react_ver, react_dom_ver,
                 )
-        self._react_installed = True
         return True
+
+    def _read_pkg_version(self, pkg_path):
+        """Read the 'version' field from a package.json without recursion."""
+        try:
+            import json as _json
+            with open(pkg_path, "r", encoding="utf-8") as f:
+                data = _json.load(f)
+            return data.get("version", "unknown")
+        except (OSError, ValueError):
+            return None
 
     def _get_react_dom_version(self) -> Optional[str]:
         """Get installed react-dom version."""

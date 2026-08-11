@@ -1,5 +1,153 @@
 # Changelog
 
+## v0.9.11 (2026-08-12)
+
+### TRIPLE CENTURY — 100 Bug Fixes across compiler.py, framework.py, cli.py
+
+#### compiler.py / framework.py Fixes (201–273)
+
+**Security & Information Disclosure**
+- #201: `_build_tw_signature` — omit route/render/build details in production HTML comments to prevent information disclosure
+- #204: `build_redirect_document` — URL-encode meta refresh target to handle special characters
+- #225: `verify_api_isolated` — actually verify no .twm API files leaked into pages/ directory
+- #250: `_build_declarative_script_loader_js` — use namespaced `__tw._loadedScripts` instead of global `__twExternalScripts`
+- #266: `_inject_on_load_inits` — use `__tw.invoke` namespace instead of raw `window[name]`
+
+**HTML/CSS/JS Quality**
+- #202/#203: `build_default_document` — added `lang="en"` attribute for accessibility; verified DOCTYPE + script placement
+- #205: `interpolate_layout_template` — regex now supports spaces, hyphens in variable names
+- #206: `interpolate_layout_template` — warns on unresolvable expressions instead of silent fail
+- #207: `apply_layout_template` — `{slot}` replaced LAST to prevent body content from being affected by other replacements
+- #208: `apply_layout_template` — deduplicates `<meta>` tags in head
+- #263: `render_elements_html` — avoids double-escaping pre-escaped text content
+- #269: `render_html` — clarified CSS reset styles are correct in `<style>` (not viewport meta)
+
+**Data & Config Handling**
+- #210: `load_external_json` — added schema validation (reject non-dict/non-list JSON)
+- #211: `infer_json_context_key` — allow hyphens and unicode in key names
+- #212: `load_page_data` — added `auto_page_data` config opt-out
+- #213: `load_dynamic_items` — warns when JSON file not found instead of silent `[]`
+- #215: `resolve_dynamic_segments` — handles list values by joining with slash
+- #216: `resolve_dynamic_segments` — uses param name as fallback instead of hardcoded "unknown"
+- #217: `load_config` — warns on lines without `:` separator instead of silently skipping
+- #218: `load_config` — empty value now stores empty string, not nested dict
+- #227: `create_base_context` — caches loaded JSON files to avoid repeated file I/O
+
+**Route Discovery & Build**
+- #220: `discover_pages` — guards against StopIteration when dynamic segment not found
+- #221: `discover_pages` legacy mode — skips `.git`, `node_modules`, hidden dirs
+- #222: `copy_assets` — thread-safe local dict merged at end instead of mutating global ASSET_URL_MAP
+- #223: `copy_assets` — uses SHA-256 with 12-char hash and chunked file reading
+- #224: `copy_public_folder` — uses `shutil.copy` instead of `copy2` (metadata unnecessary)
+- #226: `create_base_context` — copies config/site/env to prevent shared mutation across pages
+- #228: `build_one_page` — App Router static pages now collect TWM module JS
+- #229: `build_one_page` — uses shallow `copy.copy` instead of `deepcopy` for dynamic items (much faster for 1000+ items)
+- #232: `update_page_manifest_entry` — handles metadata collection failure gracefully
+- #234: `main()` — logs errors from failed future results
+- #268: `render_html` — caches layout_responsive check results
+
+**Diagnostics & Pipeline**
+- #235: `_diagnostic_to_payload` — uses path-based detection instead of fragile string matching for error codes
+- #236: `_diagnostic_to_payload` — handles None diagnostic.line/col gracefully
+- #237: `_summarize_diagnostics_payload` — handles empty string severity properly
+- #238: `_pipeline_metadata_from_program` — guards against layouts being a string instead of list
+- #240: `compile_text_pipeline` — handles None context before passing to analyze_program
+- #241: `compile_file_pipeline` — better error logging for dependency collection failures
+
+**Search & Theme**
+- #243/#244: `get_search_runtime_url` — added basic stemming and capped limit at 100 to prevent DoS
+- #245: `build_theme_inline_script` — uses `__tw.setTheme`/`__tw.toggleTheme` instead of global `window.__twSetTheme`
+- #246: `build_theme_inline_script` — handles localStorage quota exceeded gracefully
+- #247: `maybe_optimize_image` — saves original tag before in-place mutation
+
+**Rendering & Components**
+- #249: `_build_declarative_script_loader_js` — only appends to `document.head` (not `documentElement`)
+- #251: `render_elements_html` — increased `@/` script resolution depth limit from 10 to 32
+- #252: `render_elements_html` — uses `shutil.copy` with existence check to prevent race condition
+- #254/#255: `render_elements_html` — uses regex word-boundary match + JSON-safe escaping for ScriptNode context vars
+- #257: `render_elements_html` — Icon component handles "24px" and non-integer sizes without ValueError
+- #258: `render_elements_html` — tracks full component stack for A→B→A cycle detection
+- #262: `render_elements_html` — warns when void tags have children
+- #264: `_inject_reactivity_runtime` — better error message on injection failure
+- #265: `_inject_react_integration` — warns (not just debug) when React integration fails
+- #270: `render_html` — bundles multiple runtime scripts into fewer requests
+- #271: `render_html` — ensures only the last `</body>` is replaced for injections
+- #272: `parse_layout_chain` — validates separators and layout names
+- #273: `apply_layout_fragment` — calls `interpolate_layout_template` BEFORE `{slot}` replacement
+
+#### cli.py Fixes (274–300)
+
+- #274: Removed `engines.node` requirement from starter `package.json` (Python framework doesn't need Node)
+- #275: Removed non-existent `auth "session"` from starter middleware.tw
+- #278: `build_vercel_json` — uses `npx tw build` instead of `tw build` (handles non-global install)
+- #279: `find_project_root` — added max depth limit (20) to prevent walking to filesystem root
+- #280: `create_project` — doesn't overwrite existing files (warns instead)
+- #281: `open_browser_later` — only opens browser after confirming server is listening
+- #282: `command_build` — documented closure capture risk
+- #283: `command_build` watch mode — reduced polling from 1s to 0.5s
+- #285/#286: `command_preview` — fixed fake Namespace and `0` falsy success check
+- #287: `command_clean` — uses English instead of Hinglish output
+- #288: `command_doctor` — Vercel token check is informational, not a blocking failure
+- #289: `command_info` — uses `log()` instead of `print()` for consistency
+- #290: `command_ast` — checks file exists before parsing
+- #291: `command_run_file` — warns when HTML output is None
+- #292: `command_verify` — flexible regex for minified/modified HTML
+- #293: `command_login` — documented restrictive file permissions for token storage
+- #294: `command_deploy` — documented env var side effect
+- #295: `command_plugin` — warns about arbitrary code execution risk when installing plugins
+- #296: `command_serve` — warns about using development-grade HTTP server
+- #297: `command_install` — warns if not in a project directory
+- #299: `build_parser` — plugin search now accepts a query argument
+- #300: `main()` — catches exceptions and shows clean error instead of ugly traceback
+
+## v0.9.10 (2026-08-12)
+
+### Bug Fixes
+
+**1. React Compat Infinite Recursion (FIX #141)**
+- `is_react_installed()` called `get_react_version()` which called `is_react_installed()` — infinite loop causing `RecursionError`.
+- Fixed: mark `_react_installed = True` before version checks; use internal `_read_pkg_version()` helper.
+
+**2. Zero-JS Prefetch Injection (FIX #142)**
+- Prefetch script was injected into pure static Zero-JS pages, violating the 0-script-tag guarantee.
+- Fixed: skip prefetch injection when `zero_js` is True; also respect `prefetch: false` in config.
+
+**3. Version Mismatch (FIX #143)**
+- `__init__.py` reported `0.8.0` while `pyproject.toml` reported `0.9.09`.
+- Fixed: synced to `0.9.09`.
+
+### Enhancements
+
+**4. CLI `--version` Flag (FIX #143)**
+- Added `--version` flag to CLI. Running `tw --version` prints `tw-framework v0.9.09`.
+- No-command invocation now prints help instead of crashing.
+
+**5. Enhanced Minification (FIX #144)**
+- HTML minifier: strips comments (preserves TW build markers + Zero-JS markers), collapses whitespace, protects `<pre>/<textarea>/<script>`.
+- CSS minifier: removes trailing semicolons, empty rules, zero-unit values (`0px` → `0`), leading zeros (`0.5` → `.5`).
+- JS minifier: strips line comments safely, collapses multiple semicolons.
+
+**6. Production Optimizer Overhaul (FIX #146)**
+- Consolidated 3 separate directory walks into a single pass — 3x faster.
+- Added Brotli compression support (when `brotli` library is available).
+- Per-file error handling — one bad file no longer aborts the whole optimization.
+
+**7. Incremental Cache Atomic Writes (FIX #147)**
+- Cache writes now use atomic write-then-rename pattern.
+- Prevents cache corruption when build is interrupted (Ctrl+C, crash, OOM).
+- Added `stats()` method to report entry count and total cache size.
+
+**8. Enhanced Doctor Checks (FIX #148)**
+- Component usage check: detects orphaned components (defined but never used).
+- Build cache size check: flags when cache exceeds 100 MB.
+- `.env` file presence check.
+- Node.js runtime availability check.
+
+**9. Security Module Enhancements**
+- `sanitize_filename()`: prevents directory traversal via filenames.
+- `check_password_strength()`: scores password 0-5 with suggestions.
+- `generate_content_integrity_hash()`: generates SRI hashes for Subresource Integrity.
+
 ## v0.9.08 (2026-08-11)
 
 ### Major Feature Release — 7 Improvements + Plugin System

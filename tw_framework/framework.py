@@ -4647,6 +4647,66 @@ def doctor_project(project_root: str) -> List[dict]:
     )
     add_check("API routes", len(discover_api_routes()) >= 0, f"{len(discover_api_routes())} API route(s) discovered")
 
+    # FIX #148: Additional doctor checks — component hygiene & cache stats
+    # Check for orphaned components (defined but never used in any page)
+    try:
+        _components_dir = os.path.join(project_root, "[home]", "components")
+        _defined_components = set()
+        if os.path.isdir(_components_dir):
+            for fname in os.listdir(_components_dir):
+                if fname.endswith(".tw") and not fname.startswith("."):
+                    _defined_components.add(os.path.splitext(fname)[0])
+        _pages_dir = os.path.join(project_root, "[home]", "pages")
+        _all_source = ""
+        if os.path.isdir(_pages_dir):
+            for fname in os.listdir(_pages_dir):
+                if fname.endswith(".tw"):
+                    try:
+                        _all_source += compiler.read_text_file(os.path.join(_pages_dir, fname))
+                    except Exception:
+                        pass
+        _used_components = {c for c in _defined_components if c in _all_source}
+        _orphaned = _defined_components - _used_components
+        add_check(
+            "Component usage",
+            len(_orphaned) == 0,
+            f"{len(_defined_components)} defined, {len(_used_components)} used" +
+            (f" — orphaned: {', '.join(sorted(_orphaned))}" if _orphaned else ""),
+        )
+    except Exception:
+        pass
+
+    # Check incremental cache stats
+    try:
+        _cache_stats = cache.stats()
+        _cache_mb = _cache_stats["size_bytes"] / (1024 * 1024)
+        _cache_ok = _cache_mb < 100  # Flag if cache exceeds 100 MB
+        add_check(
+            "Build cache size",
+            _cache_ok,
+            f"{_cache_stats['entries']} entries, {_cache_mb:.1f} MB" +
+            (" — consider `tw clean`" if not _cache_ok else ""),
+        )
+    except Exception:
+        pass
+
+    # Check for .env file presence (not its contents — just existence)
+    add_check(
+        ".env file",
+        os.path.exists(os.path.join(project_root, ".env")),
+        "Found" if os.path.exists(os.path.join(project_root, ".env"))
+        else "No .env file found — create one for environment variables",
+    )
+
+    # Check Node.js availability (needed for multi-runtime API routes)
+    from .npm_manager import find_node
+    _node_bin = find_node()
+    add_check(
+        "Node.js runtime",
+        _node_bin is not None,
+        _node_bin or "Node.js not found — needed for `nodejs` runtime API routes",
+    )
+
     # Env schema validation
     env = load_project_env(project_root, "development")
     config = compiler.load_config()

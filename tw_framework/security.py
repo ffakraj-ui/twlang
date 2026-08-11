@@ -246,6 +246,106 @@ def strip_dangerous_html(content: str) -> str:
     return content
 
 
+# ─── Additional Security Helpers (v0.9.10) ────────────────────────────────────
+
+def sanitize_filename(filename: str) -> str:
+    """
+    Sanitize a filename to prevent directory traversal and unsafe characters.
+    Strips path separators, null bytes, and keeps only safe characters.
+    """
+    if not filename:
+        return ""
+    # Remove any path components
+    filename = os.path.basename(filename)
+    # Remove null bytes and control characters
+    filename = re.sub(r"[\x00-\x1f]", "", filename)
+    # Remove leading dots (hidden files / directory traversal)
+    filename = filename.lstrip(".")
+    # Only allow alphanumeric, dash, underscore, dot, and space
+    filename = re.sub(r"[^a-zA-Z0-9._- ]", "", filename)
+    # Limit length
+    if len(filename) > 255:
+        name, ext = os.path.splitext(filename)
+        filename = name[:255 - len(ext)] + ext
+    return filename
+
+
+def check_password_strength(password: str) -> dict:
+    """
+    Check password strength and return a report with score and suggestions.
+    Returns dict with: score (0-5), strength (str), issues (list), suggestions (list).
+    """
+    issues = []
+    suggestions = []
+    score = 0
+
+    if len(password) < 8:
+        issues.append("Too short (minimum 8 characters)")
+        suggestions.append("Use at least 8 characters")
+    elif len(password) >= 12:
+        score += 2
+    else:
+        score += 1
+
+    has_lower = bool(re.search(r"[a-z]", password))
+    has_upper = bool(re.search(r"[A-Z]", password))
+    has_digit = bool(re.search(r"\d", password))
+    has_special = bool(re.search(r"[!@#$%^&*()_+=\[\]{};:'\",.<>?/\\|~-]", password))
+
+    if has_lower:
+        score += 1
+    else:
+        suggestions.append("Add lowercase letters")
+
+    if has_upper:
+        score += 1
+    else:
+        suggestions.append("Add uppercase letters")
+
+    if has_digit:
+        score += 1
+    else:
+        suggestions.append("Add numbers")
+
+    if has_special:
+        score += 1
+    else:
+        suggestions.append("Add special characters")
+
+    # Common weak passwords check
+    weak_patterns = ["password", "123456", "qwerty", "abc123", "admin", "letmein"]
+    lower_pwd = password.lower()
+    for pattern in weak_patterns:
+        if pattern in lower_pwd:
+            issues.append(f"Contains common weak pattern: '{pattern}'")
+            score = max(0, score - 1)
+            break
+
+    strength_labels = ["Very Weak", "Weak", "Fair", "Good", "Strong", "Very Strong"]
+    strength = strength_labels[min(score, 5)]
+
+    return {
+        "score": score,
+        "strength": strength,
+        "issues": issues,
+        "suggestions": suggestions,
+    }
+
+
+def generate_content_integrity_hash(content: bytes, algorithm: str = "sha384") -> str:
+    """
+    Generate a Subresource Integrity (SRI) hash for the given content.
+    Used for integrity="" attributes on <script> and <link> tags.
+    """
+    import hashlib as _hl
+    import base64 as _b64
+    if algorithm not in ("sha256", "sha384", "sha512"):
+        algorithm = "sha384"
+    digest = _hl.new(algorithm, content).digest()
+    b64 = _b64.b64encode(digest).decode("ascii")
+    return f"{algorithm}-{b64}"
+
+
 __all__ = [
     "generate_csp_nonce",
     "build_csp_header",
@@ -260,4 +360,7 @@ __all__ = [
     "render_csrf_meta_tag",
     "safe_join_path",
     "strip_dangerous_html",
+    "sanitize_filename",
+    "check_password_strength",
+    "generate_content_integrity_hash",
 ]

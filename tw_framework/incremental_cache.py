@@ -48,8 +48,24 @@ class IncrementalCache:
     def set(self, key: str, value: Any) -> None:
         path = self._key_path(key)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(value, f, indent=2)
+        # FIX #147: Atomic write — write to temp file then rename.
+        # This prevents cache corruption when the build is interrupted
+        # (Ctrl+C, crash, OOM kill). Previously a half-written JSON
+        # file would cause json.load() to fail on the next build.
+        import tempfile as _tf
+        fd, tmp_path = _tf.mkstemp(
+            dir=self.cache_dir, suffix=".tmp", prefix=".cache_"
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(value, f, indent=2)
+            os.replace(tmp_path, path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def invalidate(self, key: str) -> None:
         path = self._key_path(key)
@@ -67,6 +83,22 @@ class IncrementalCache:
         if os.path.exists(self.cache_dir):
             shutil.rmtree(self.cache_dir)
         os.makedirs(self.cache_dir, exist_ok=True)
+
+    def stats(self) -> Dict[str, Any]:
+        """Return cache statistics: entry count, total size in bytes."""
+        count = 0
+        total_size = 0
+        if os.path.exists(self.cache_dir):
+            for fname in os.listdir(self.cache_dir):
+                if fname.endswith(".json"):
+                    count += 1
+                    try:
+                        total_size += os.path.getsize(
+                            os.path.join(self.cache_dir, fname)
+                        )
+                    except OSError:
+                        pass
+        return {"entries": count, "size_bytes": total_size}
 
 
 __all__ = ["IncrementalCache"]

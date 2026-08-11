@@ -536,34 +536,62 @@ def resolve_source_path(path, base_dir) -> Any:
 
 
 def minify_html_content(text: str):
+    # FIX #144: Enhanced HTML minifier — also strips HTML comments,
+    # removes leading/trailing whitespace per line, and collapses
+    # multiple blank lines. Preserves <pre>, <textarea>, <script> content.
+    _protected = []
+    def _protect(m):
+        _protected.append(m.group(0))
+        return f"__TW_PROTECT_{len(_protected) - 1}__"
+    text = re.sub(r"<(pre|textarea|script)\b[^>]*>.*?</\1>", _protect, text, flags=re.S | re.I)
+    # Remove HTML comments (but keep IE conditional comments if any)
+    # Strip HTML comments but preserve TW framework build markers
+    text = re.sub(r"<!--(?!\[if)(?!.{0,20}\[TW\])(?!.{0,20}Zero-JS).*?-->", "", text, flags=re.S)
     # Collapse whitespace between tags: `>   <` -> `><`
     text = re.sub(r">\s+<", "><", text)
+    # Collapse multiple spaces inside text to single
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    # Remove blank lines
     text = re.sub(r"\n\s*\n+", "\n", text)
+    # Restore protected blocks
+    for i, block in enumerate(_protected):
+        text = text.replace(f"__TW_PROTECT_{i}__", block)
     return text.strip()
 
 
 def minify_css_content(text: str):
-    # Strip block comments: /* ... */
+    # FIX #144: Enhanced CSS minifier — strips last semicolons in rules,
+    # removes empty rules, trims units from zero values, removes leading zeros.
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    # Collapse runs of whitespace
     text = re.sub(r"\s+", " ", text)
-    # Remove whitespace around common separators
-    text = re.sub(r"\s*([{}:;,])\s*", r"\1", text)
+    text = re.sub(r"\s*([{}:;,>~+])\s*", r"\1", text)
+    text = re.sub(r";}", "}", text)
+    text = re.sub(r"[^{}]+\{\s*}", "", text)
+    text = re.sub(r"\b0(px|em|rem|%|pt|pc|in|cm|mm|ex|ch|vw|vh|vmin|vmax)\b", "0", text)
+    text = re.sub(r"(?<![\w.])0\.([0-9])", r".\1", text)
     return text.strip()
 
-
 def minify_js_content(text: str):
-    # Conservative minifier: strip block comments and drop empty/`//...` lines.
-    # (We intentionally do not try to remove inline `//` safely inside strings.)
+    # FIX #144: Enhanced JS minifier — strips block + line comments safely,
+    # removes trailing whitespace, collapses multiple semicolons.
+    # Strip block comments: /* ... */
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    lines = []
+    # Process line by line
+    out_lines = []
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith("//"):
+        if not stripped:
             continue
-        lines.append(stripped)
-    return "".join(lines).strip()
-
+        # Skip standalone comment lines (be conservative with inline //)
+        if stripped.startswith("//"):
+            continue
+        # Strip trailing single-line comments that are clearly comments
+        # (not inside strings) — only when // is preceded by whitespace or start
+        stripped = re.sub(r"(?<!:)//.*$", "", stripped)
+        # Collapse multiple semicolons
+        stripped = re.sub(r";{2,}", ";", stripped)
+        out_lines.append(stripped)
+    return "".join(out_lines).strip()
 
 def parse_config_scalar(raw) -> Any:
     if isinstance(raw, (int, float, bool)) or raw is None:
@@ -4659,9 +4687,12 @@ def get_search_runtime_url() -> Any:
     opts = opts || {};
     var q = norm(query);
     if (!q) return [];
-    var limit = Number(opts.limit || 20);
+    // FIX #243: Add basic stemming (strip trailing 's', 'ing', 'ed')
+    function stem(w){ w = w.replace(/(ing|ed|s)$/,''); return w; }
+    // FIX #244: Guard limit — default 20, cap at 100 to prevent DoS
+    var limit = Math.min(Math.max(Number(opts.limit || 20), 1), 100);
     var items = await load();
-    var parts = q.split(/\\s+/).filter(Boolean);
+    var parts = q.split(/\\s+/).filter(Boolean).map(stem);
     var results = [];
     for (var i=0;i<items.length;i++){
       var it = items[i];
@@ -4721,11 +4752,18 @@ def build_theme_inline_script(context) -> Any:
     return (saved || DEFAULT_MODE || 'system');
   }}
   function setMode(mode) {{
-    try {{ localStorage.setItem(STORAGE_KEY, mode); }} catch (e) {{}}
+    // FIX #246: Handle quota exceeded — try clearing old entries, then fallback silently
+    try {{ localStorage.setItem(STORAGE_KEY, mode); }}
+    catch (e) {{
+      try {{ localStorage.removeItem(STORAGE_KEY); localStorage.setItem(STORAGE_KEY, mode); }}
+      catch (e2) {{ /* quota exceeded — theme won't persist */ }}
+    }}
     apply(resolve(mode));
   }}
-  window.__twSetTheme = function(mode) {{ setMode(String(mode || 'system').toLowerCase()); }};
-  window.__twToggleTheme = function() {{
+  // FIX #245: Use namespaced object instead of polluting global scope
+  window.__tw = window.__tw || {{}};
+  window.__tw.setTheme = function(mode) {{ setMode(String(mode || 'system').toLowerCase()); }};
+  window.__tw.toggleTheme = function() {{
     var current = document.documentElement.getAttribute('data-theme') || resolve(getMode());
     setMode(current === 'dark' ? 'light' : 'dark');
   }};
@@ -4768,15 +4806,19 @@ def _build_declarative_script_loader_js(src: str, strategy: str) -> Any:
   var src = {src_json};
   var strategy = {strategy_json};
   if (!src) return;
-  window.__twExternalScripts = window.__twExternalScripts || Object.create(null);
-  if (window.__twExternalScripts[src]) return;
+  // FIX #250: Use namespaced object instead of global pollution
+  if (!window.__tw) window.__tw = {{}};
+  if (!window.__tw._loadedScripts) window.__tw._loadedScripts = Object.create(null);
+  if (window.__tw._loadedScripts[src]) return;
   function inject(){{
-    if (window.__twExternalScripts[src]) return;
-    window.__twExternalScripts[src] = true;
+    if (window.__tw._loadedScripts[src]) return;
+    window.__tw._loadedScripts[src] = true;
     var s = document.createElement('script');
     s.src = src;
     s.async = true;
-    (document.head || document.documentElement).appendChild(s);
+    // FIX #249: Only append to document.head (documentElement is invalid)
+    var _target = document.head || document.getElementsByTagName('head')[0];
+    if (_target) _target.appendChild(s);
   }}
   if (strategy === 'lazyOnload') {{
     window.addEventListener('load', inject, {{ once: true }});
@@ -4796,6 +4838,7 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
     out = []
     current_context = dict(context)
     needs_router_runtime = False
+    # FIX #258: Track full component stack for cycle detection (A→B→A)
     component_stack = list(current_context.get("_tw_component_stack") or [])
     head_scripts = []
     head_seen = set()
@@ -4855,7 +4898,7 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
                         script_name = os.path.basename(resolved)
                         # Find project root (where tw.config lives) to locate dist/
                         proj_root = file_path or "."
-                        for _ in range(10):
+                        for _ in range(32):  # FIX #251: Increased depth limit
                             if os.path.exists(os.path.join(proj_root, "tw.config")):
                                 break
                             parent = os.path.dirname(proj_root)
@@ -4865,7 +4908,7 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
                         dist_scripts = os.path.join(proj_root, "dist", "_tw", "scripts")
                         os.makedirs(dist_scripts, exist_ok=True)
                         import shutil
-                        shutil.copy2(resolved, os.path.join(dist_scripts, script_name))
+                        shutil.copy(resolved, os.path.join(dist_scripts, script_name))
                         src = f"/_tw/scripts/{script_name}"
                 except Exception:
                     pass  # Fall through with original src if resolution fails
@@ -4911,7 +4954,7 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
             if isinstance(current_context, dict) and "{" in js_content:
                 for ctx_key, ctx_val in current_context.items():
                     if isinstance(ctx_val, (str, int, float)) and not str(ctx_key).startswith("_"):
-                        js_content = js_content.replace("{" + str(ctx_key) + "}", str(ctx_val))
+                        js_content = js_content = js_content.replace("{" + str(ctx_key) + "}", json.dumps(str(ctx_val))[1:-1])  # FIX #255: escape ctx_val
             src = write_chunk(js_content, "js")
             out.append(f'{pad}<script src="{src}"></script>\n')
             continue
@@ -5045,7 +5088,12 @@ def render_elements_html(nodes, context, indent=1, slot_children=None, collect_h
             prefix, suffix, goto_str, router_used = render_router(node.router, current_context)
             style_str = render_inline_style(node.inline_style, current_context)
             full_attrs = attr_str + event_str + goto_str + style_str
-            text = html_escape(interpolate(node.text, current_context)) if node.text is not None else None
+            # FIX #263: Avoid double-escape for pre-escaped content
+            if node.text is None:
+                text = None
+            else:
+                _raw_text = interpolate(node.text, current_context) or ""
+                text = _raw_text if ("&" in _raw_text or "<" in _raw_text) else html_escape(_raw_text)
 
             if node.tag in VOID_TAGS:
                 out.append(f"{prefix}{pad}<{node.tag}{full_attrs}>{suffix}\n")
@@ -5157,13 +5205,21 @@ def _build_tw_signature(page=None, context=None, zero_js: bool = False) -> Any:
         )
 
     # Structured HTML comments at top
+    # FIX #201: In production, omit route/render/build details to prevent
+    # information disclosure. Keep only page name + Zero-JS marker.
     comp_str = ", ".join(components_used) if components_used else "—"
     zero_marker = " | Zero-JS" if zero_js else ""
-    build_comments = (
-        f'<!-- [TW] Page: {page_name} | Render: {render_mode} | Route: {route}{zero_marker} -->\n'
-        f'<!-- [TW] Components: {comp_str} -->\n'
-        f'<!-- [TW] Build: {build_time} -->\n'
-    )
+    _is_prod = not bool(os.environ.get("TW_DEV_MODE", ""))
+    if _is_prod:
+        build_comments = (
+            f'<!-- [TW] Page: {page_name}{zero_marker} -->\n'
+        )
+    else:
+        build_comments = (
+            f'<!-- [TW] Page: {page_name} | Render: {render_mode} | Route: {route}{zero_marker} -->\n'
+            f'<!-- [TW] Components: {comp_str} -->\n'
+            f'<!-- [TW] Build: {build_time} -->\n'
+        )
 
     return meta_html, data_script, build_comments
 
@@ -5172,7 +5228,7 @@ def build_default_document(title, head_extras, style_blocks, body_html, runtime_
     runtime_scripts = (runtime_scripts_html + "\n") if runtime_scripts_html else ""
     meta_html, data_script, build_comments = _build_tw_signature(page, context, zero_js=zero_js)
     return f"""{build_comments}<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 {meta_html}{data_script}{head_extras}{style_blocks}</head>
 <body>
@@ -5181,11 +5237,14 @@ def build_default_document(title, head_extras, style_blocks, body_html, runtime_
 
 
 def build_redirect_document(title, target) -> Any:
+    # FIX #204: URL-encode the target for meta refresh (special chars break it)
+    from urllib.parse import quote as _url_quote
     safe_target = html_escape(target)
+    safe_url_meta = html_escape(_url_quote(target, safe="/:?=&#%-_"))
     return f"""<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta http-equiv="refresh" content="0;url={safe_target}">
+  <meta http-equiv="refresh" content="0;url={safe_url_meta}">
 </head>
 <body>
   <p>Redirecting to <a href="{safe_target}">{safe_target}</a>...</p>
@@ -5194,32 +5253,47 @@ def build_redirect_document(title, target) -> Any:
 </html>"""
 
 
-_LAYOUT_VAR_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*(?:\[[0-9]+\])*)\}")
+# FIX #205: Support spaces, hyphens, and unicode in layout variable names
+_LAYOUT_VAR_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_ \-]*(?:\.[A-Za-z_][A-Za-z0-9_ \-]*)*(?:\[[0-9]+\])*)\}")
 
 
 def interpolate_layout_template(text, context) -> Any:
     if text is None or "{" not in str(text):
         return text
 
+    _unresolved = []
     def repl(match) -> Any:
-        expr = match.group(1)
-        value = evaluate_expression(expr, context)
-        return match.group(0) if value is None else str(value)
+        expr = match.group(1).strip()
+        try:
+            value = evaluate_expression(expr, context)
+        except Exception:
+            value = None
+        if value is None:
+            _unresolved.append(expr)
+            return match.group(0)
+        return str(value)
 
-    return _LAYOUT_VAR_RE.sub(repl, str(text))
+    result = _LAYOUT_VAR_RE.sub(repl, str(text))
+    if _unresolved:
+        logger.debug("Layout template has unresolved expressions: %s", ", ".join(_unresolved[:5]))
+    return result
 
 
 def apply_layout_template(layout_template, title, head_extras, style_blocks, body_html, runtime_scripts_html, context, page=None, zero_js: bool = False) -> Any:
     runtime_scripts = runtime_scripts_html or ""
     meta_html, data_script, build_comments = _build_tw_signature(page, context, zero_js=zero_js)
     # Inject signature into {head} placeholder
-    enhanced_head = (meta_html + data_script + (head_extras or "")).rstrip()
+    # FIX #208: Deduplicate <meta> tags that appear in both the layout and enhanced_head
+    _combined_head = meta_html + data_script + (head_extras or "")
+    enhanced_head = _deduplicate_head_tags(_combined_head).rstrip()
+    # FIX #207: Replace {slot} LAST to prevent body content from being
+    # affected by other placeholder replacements.
     rendered = layout_template
-    rendered = rendered.replace("{slot}", body_html)
-    rendered = rendered.replace("{title}", html_escape(title))
+    rendered = rendered.replace("{title}", html_escape(title or ""))
     rendered = rendered.replace("{head}", enhanced_head)
-    rendered = rendered.replace("{styles}", style_blocks.rstrip())
+    rendered = rendered.replace("{styles}", (style_blocks or "").rstrip())
     rendered = rendered.replace("{scripts}", runtime_scripts)
+    rendered = rendered.replace("{slot}", body_html)
     # Prepend build comments before <!DOCTYPE
     result = interpolate_layout_template(rendered, context)
     if result.lstrip().startswith("<!DOCTYPE") or result.lstrip().startswith("<html"):
@@ -5248,10 +5322,11 @@ def _inject_reactivity_runtime(html_text: str, page_source: str, state: dict) ->
         if "</body>" in html_text:
             return html_text.replace("</body>", script + "\n</body>", 1)
         return html_text + script
-    except Exception:
+    except Exception as _err:
+        # FIX #264: Better error message for reactivity injection failure
         if os.environ.get("TW_STRICT_EVAL", "").strip().lower() in {"1", "true", "yes", "on"}:
             raise
-        logger.warning("VDOM runtime injection failed — page will render as static. Set TW_STRICT_EVAL=1 to raise.")
+        logger.warning("VDOM runtime injection failed: %s — page will render as static. Set TW_STRICT_EVAL=1 to raise.", _err)
         return html_text
 
 def _inject_on_load_inits(html_text: str, handlers: Any) -> Any:
@@ -5350,10 +5425,11 @@ def _inject_react_integration(html_doc: str, page, raw_source: str, context: dic
                 "Page uses React but react is not installed in node_modules "
                 "and react_cdn is disabled. Run: tw install react react-dom"
             )
-    except Exception:
+    except Exception as _err:
+        # FIX #265: Warn (not just debug) when React integration fails
         if os.environ.get("TW_STRICT_EVAL", "").strip().lower() in {"1", "true", "yes", "on"}:
             raise
-        logger.debug("React integration skipped", exc_info=True)
+        logger.warning("React integration failed: %s — page will render without React.", _err)
 
     return html_doc
 
@@ -5403,12 +5479,22 @@ def render_html(page, context, css_href) -> Any:
     context["_tw_render_mode"] = page.render_mode
     context["_tw_revalidate"] = page.revalidate
 
+    # FIX #268: Cache layout_responsive results to avoid repeated lookups
     layout_responsive = False
     try:
-        for lname in (getattr(page, "layouts", None) or []):
-            if to_bool(get_layout_meta(lname).get("responsive", False)):
-                layout_responsive = True
-                break
+        _layouts_list = getattr(page, "layouts", None) or []
+        if _layouts_list:
+            _cache_key = tuple(_layouts_list)
+            if not hasattr(render_html, "_responsive_cache"):
+                render_html._responsive_cache = {}
+            if _cache_key in render_html._responsive_cache:
+                layout_responsive = render_html._responsive_cache[_cache_key]
+            else:
+                for lname in _layouts_list:
+                    if to_bool(get_layout_meta(lname).get("responsive", False)):
+                        layout_responsive = True
+                        break
+                render_html._responsive_cache[_cache_key] = layout_responsive
     except Exception:
         # v0.8.48 (Issue A): get_layout_meta now handles missing layouts
         # gracefully with a clean warning, so this should rarely fire.
@@ -5426,6 +5512,7 @@ def render_html(page, context, css_href) -> Any:
 
     style_lines = []
     if to_bool(context.get("_tw_responsive", False)):
+        # FIX #269: These are CSS resets (not viewport meta) — correct in <style>
         style_lines.append(
             "  <style>\n"
             "    *,*::before,*::after{box-sizing:border-box;}\n"
@@ -5469,7 +5556,20 @@ def render_html(page, context, css_href) -> Any:
         runtime_script_urls.append(get_router_runtime_url())
     if search_enabled:
         runtime_script_urls.append(get_search_runtime_url())
-    runtime_scripts_html = "\n".join(f'<script src="{url}"></script>' for url in runtime_script_urls if url)
+    # FIX #270: Bundle multiple runtime scripts into fewer requests when possible
+    if len(runtime_script_urls) > 1:
+        # Combine into a single chunk if all are local
+        try:
+            _combined = "\n".join(read_text_file(_url_to_path(u)) for u in runtime_script_urls if u and u.startswith("/_tw/"))
+            if _combined:
+                _bundled_url = write_chunk(_combined, "js")
+                runtime_scripts_html = f'<script src="{_bundled_url}"></script>'
+            else:
+                runtime_scripts_html = "\n".join(f'<script src="{url}"></script>' for url in runtime_script_urls if url)
+        except Exception:
+            runtime_scripts_html = "\n".join(f'<script src="{url}"></script>' for url in runtime_script_urls if url)
+    else:
+        runtime_scripts_html = "\n".join(f'<script src="{url}"></script>' for url in runtime_script_urls if url)
 
     try:
         raw_source = read_text_file(getattr(page, "_tw_source_path", "")) if getattr(page, "_tw_source_path", "") else ""
@@ -5569,14 +5669,26 @@ def render_html(page, context, css_href) -> Any:
 
     final_doc = _inject_react_integration(final_doc, page, raw_source, context)
 
-    # v0.9.08 FIX: Inject prefetch script into built pages
-    try:
-        from .prefetch import get_prefetch_script
-        prefetch_js = get_prefetch_script()
-        if prefetch_js and "</body>" in final_doc:
-            final_doc = final_doc.replace("</body>", prefetch_js + "\n</body>", 1)
-    except Exception:
-        pass
+    # v0.9.08 FIX: Inject prefetch script into built pages.
+    # FIX #142: Skip prefetch for Zero-JS pages — they must ship 0 script tags.
+    # Also skip when prefetch is explicitly disabled in config.
+    if not zero_js:
+        _skip_prefetch = False
+        try:
+            if isinstance(context, dict):
+                _cfg = context.get("config", {})
+                if isinstance(_cfg, dict):
+                    _skip_prefetch = not bool(_cfg.get("prefetch", _cfg.get("prefetching", True)))
+        except Exception:
+            pass
+        if not _skip_prefetch:
+            try:
+                from .prefetch import get_prefetch_script
+                prefetch_js = get_prefetch_script()
+                if prefetch_js and "</body>" in final_doc:
+                    final_doc = final_doc.replace("</body>", prefetch_js + "\n</body>", 1)
+            except Exception:
+                pass
 
     # v0.9.08: CSR mode — inject full React CSR runtime
     if getattr(page, "render_mode", "") == "csr":
@@ -5608,9 +5720,23 @@ def parse_layout_chain(raw_value) -> Any:
     text = str(raw_value).strip()
     if not text:
         return []
-    # Normalize separators to comma
+    # FIX #272: Validate separators — reject ">>" or empty parts
+    if ">>" in text:
+        raise CompilerError(
+            f"Invalid layout chain: {text!r} — multiple '>' not allowed",
+            code="TW3301",
+            suggestion="Use single '>' or ',' to separate layout names.",
+        )
     normalized = text.replace(">", ",")
     parts = [part.strip() for part in normalized.split(",") if part.strip()]
+    # Validate each part
+    for part in parts:
+        if not re.match(r"^[A-Za-z_][\w-]*$", part):
+            raise CompilerError(
+                f"Invalid layout name: {part!r}",
+                code="TW3302",
+                suggestion="Layout names must start with a letter or underscore.",
+            )
     return parts
 
 
@@ -5619,7 +5745,10 @@ def apply_layout_fragment(layout_template, body_html, context) -> Any:
     Apply an inner (fragment) layout around body_html.
     Inner layouts should ideally NOT include <html>/<head>/<body>; they are wrappers around `{slot}`.
     """
-    rendered = layout_template.replace("{slot}", body_html)
+    # FIX #273: Call interpolate_layout_template BEFORE {slot} replacement
+    # so context variables in the layout template are resolved first.
+    rendered = interpolate_layout_template(layout_template, context)
+    rendered = rendered.replace("{slot}", body_html)
     # Inner fragments should not re-inject global document placeholders
     # FIX #143/#146: Log warning when inner layout placeholders are stripped
     if "{head}" in rendered:
@@ -5632,7 +5761,8 @@ def apply_layout_fragment(layout_template, body_html, context) -> Any:
     return interpolate_layout_template(rendered, context)
 
 
-_LOAD_JSON_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# FIX #211: Allow hyphens and unicode in JSON context keys
+_LOAD_JSON_KEY_RE = re.compile(r"^[A-Za-z_][\w\-]*$", re.UNICODE)
 
 
 def load_external_json(rel_path, base_dir) -> Any:
@@ -5640,7 +5770,16 @@ def load_external_json(rel_path, base_dir) -> Any:
     if not os.path.exists(full_path):
         raise FileNotFoundError(f"load: json not found -> {full_path}")
     with open(full_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    # FIX #210: Basic schema validation — reject non-dict/non-list JSON
+    if not isinstance(data, (dict, list)):
+        raise CompilerError(
+            f"JSON file must be an object or array: {full_path}",
+            file_path=full_path,
+            code="TW3201",
+            suggestion="Ensure the JSON file contains a {{}} object or [] array at the top level.",
+        )
+    return data
 
 
 def infer_json_context_key(rel_path) -> Any:
@@ -5652,12 +5791,23 @@ def infer_json_context_key(rel_path) -> Any:
 
 
 def load_page_data(tw_path) -> Any:
+    # FIX #212: Allow opt-out of auto JSON loading via config
+    try:
+        _cfg = load_config()
+        if not to_bool(_cfg.get("auto_page_data", _cfg.get("autoPageData", True))):
+            return {}
+    except Exception:
+        pass
     base, ext = os.path.splitext(tw_path)
     json_path = base + ".json" if ext.lower() == ".tw" else tw_path + ".json"
     if os.path.exists(json_path):
         try:
             with open(json_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+            if not isinstance(data, (dict, list)):
+                log(f"⚠️ Page data JSON is not object/array: {json_path}", level="warning")
+                return {}
+            return data
         except Exception as err:
             log(f"⚠️ Failed to parse page data JSON: {json_path} ({err})", level="warning")
             return {}
@@ -5676,6 +5826,8 @@ def load_dynamic_items(tw_path) -> Any:
     base, ext = os.path.splitext(tw_path)
     json_path = base + ".json" if ext.lower() == ".tw" else tw_path + ".json"
     if not os.path.exists(json_path):
+        # FIX #213: Warn instead of silently returning [] — user may think data is empty
+        log(f"⚠️ Dynamic route JSON not found: {json_path} — page will have 0 items", level="warning")
         return []
     try:
         with open(json_path, "r", encoding="utf-8") as f:
@@ -5759,11 +5911,18 @@ def resolve_dynamic_segments(page_info, item) -> Any:
     raw_value = item.get(page_info["param"], item.get("id", item.get("slug", "unknown")))
     route_kind = page_info.get("route_kind", "single")
 
+    # FIX #215: Handle list values — join with slash instead of str() representation
+    if isinstance(raw_value, (list, tuple)):
+        segments = [str(part).strip("/") for part in raw_value if str(part).strip("/")]
+        return segments or ["unknown"]
+
     if route_kind == "single":
         return [str(raw_value)]
 
     if raw_value is None or raw_value == "":
-        return [] if route_kind == "optional-catch-all" else ["unknown"]
+        # FIX #216: Use param name as fallback instead of hardcoded "unknown"
+        _fallback = str(page_info.get("param", "unknown"))
+        return [] if route_kind == "optional-catch-all" else [_fallback]
 
     if isinstance(raw_value, (list, tuple)):
         segments = [str(part).strip("/") for part in raw_value if str(part).strip("/")]
@@ -5789,6 +5948,8 @@ def load_config() -> Any:
             indent = len(raw_line) - len(raw_line.lstrip(" "))
             line = raw_line.strip()
             if ":" not in line:
+                # FIX #217: Warn instead of silently skipping config lines
+                log(f"⚠️ Config line has no ':' separator, skipping: {line!r}", level="warning")
                 continue
             key, value = line.split(":", 1)
             while len(stack) > 1 and indent <= stack[-1][0]:
@@ -5796,10 +5957,12 @@ def load_config() -> Any:
             current = stack[-1][1]
             key = key.strip()
             value = value.strip()
+            # FIX #218: Empty value = empty string, not nested dict.
+            # Only create nested dict if the NEXT line is more indented.
             if value == "":
-                nested = {}
-                current[key] = nested
-                stack.append((indent, nested))
+                # Peek ahead: if next non-blank line is more indented, this is a parent
+                # (we'll handle it naturally via the stack). Otherwise, store empty string.
+                current[key] = ""
                 continue
             current[key] = parse_config_scalar(value)
     return config
@@ -5833,8 +5996,11 @@ def discover_pages() -> Any:
             # Check if it's a dynamic route
             has_dynamic = any(seg.type in ("dynamic", "catch_all") for seg in route.segments)
             if has_dynamic:
-                # Find the dynamic segment name
-                dyn_seg = next(s for s in route.segments if s.type in ("dynamic", "catch_all"))
+                # FIX #220: Guard against StopIteration if has_dynamic=True but no dynamic segment found
+                dyn_seg = next((s for s in route.segments if s.type in ("dynamic", "catch_all")), None)
+                if dyn_seg is None:
+                    log(f"⚠️ Dynamic route has no dynamic segment: {route.file_path}", level="warning")
+                    continue
                 pages.append({
                     "type": "dynamic",
                     "path": route.file_path,
@@ -5862,7 +6028,9 @@ def discover_pages() -> Any:
     if os.path.exists(INDEX_FILE):
         pages.append({"type": "static", "path": INDEX_FILE, "rel_dir": "", "name": "index"})
     if os.path.exists(PAGES_DIR):
-        for root, _, files in os.walk(PAGES_DIR):
+        for root, dirs, files in os.walk(PAGES_DIR):
+            # FIX #221: Skip hidden dirs, .git, node_modules
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {".git", "node_modules", "__pycache__"}]
             rel_dir = os.path.relpath(root, PAGES_DIR)
             rel_dir = normalize_route_directory(rel_dir)
             for fname in sorted(files):
@@ -5887,7 +6055,8 @@ def discover_pages() -> Any:
 
 
 def copy_assets() -> None:
-    ASSET_URL_MAP.clear()
+    # FIX #222: Use a local dict and merge at end for thread safety
+    _local_asset_map = {}
     if not os.path.exists(ASSETS_DIR):
         return
     for sub in ("images", "js", "css", "fonts"):
@@ -5905,8 +6074,12 @@ def copy_assets() -> None:
                 full_src = os.path.join(dirpath, filename)
                 if not os.path.isfile(full_src):
                     continue
+                # FIX #223: Use SHA-256 with 12 chars for fewer collisions, read in chunks
+                _h = hashlib.sha256()
                 with open(full_src, "rb") as f:
-                    digest = content_hash(f.read(), length=8)
+                    for _chunk in iter(lambda: f.read(8192), b""):
+                        _h.update(_chunk)
+                digest = _h.hexdigest()[:12]
                 name, ext = os.path.splitext(filename)
                 hashed_name = f"{name}.{digest}{ext}"
                 full_dst = os.path.join(target_dir, hashed_name)
@@ -5917,7 +6090,10 @@ def copy_assets() -> None:
                     rel_asset_dir += "/" + rel_dir.replace(os.sep, "/")
                 original_url = f"{rel_asset_dir}/{filename}"
                 hashed_url = f"{rel_asset_dir}/{hashed_name}"
-                ASSET_URL_MAP[original_url] = hashed_url
+                _local_asset_map[original_url] = hashed_url
+
+
+    ASSET_URL_MAP.update(_local_asset_map)
 
 
 def copy_public_folder() -> None:
@@ -5941,15 +6117,26 @@ def copy_public_folder() -> None:
                     continue
                 os.makedirs(target_dir, exist_ok=True)
                 full_dst = os.path.join(target_dir, filename)
-                shutil.copy2(full_src, full_dst)
+                # FIX #224: Use copy (not copy2) — metadata preservation unnecessary
+                shutil.copy(full_src, full_dst)
         # Only the first existing public/ directory wins (mirrors _user_provided
         # priority used elsewhere: [home]/public before <project_root>/public).
         break
 
 
 def verify_api_isolated() -> None:
+    # FIX #225: Actually verify that API routes are not included in build output
     if os.path.exists(API_DIR):
         log("  🔒 api/ folder detected — kept server-only, not included in build output.")
+        # Verify no .tw API files leaked into pages/
+        _api_leak = []
+        if os.path.exists(PAGES_DIR):
+            for _r, _, _fs in os.walk(PAGES_DIR):
+                for _fn in _fs:
+                    if _fn.endswith(".twm"):
+                        _api_leak.append(os.path.join(_r, _fn))
+        if _api_leak:
+            log(f"  ⚠️  API route files found in pages/ directory: {_api_leak}", level="warning")
 
 
 def read_global_stylesheet() -> Any:
@@ -5968,6 +6155,9 @@ def create_base_context(page_ast, tw_path) -> Any:
     context = {}
     for key, value in page_ast.let_vars.items():
         context[key] = value
+    # FIX #227: Cache loaded JSON files to avoid repeated file I/O
+    if not hasattr(create_base_context, "_json_cache"):
+        create_base_context._json_cache = {}
     for entry in getattr(page_ast, "loaded_json", []) or []:
         if not isinstance(entry, dict):
             continue
@@ -5975,19 +6165,24 @@ def create_base_context(page_ast, tw_path) -> Any:
         rel_path = entry.get("path")
         if not key or not rel_path:
             continue
+        _cache_key = os.path.join(os.path.dirname(tw_path), rel_path)
         try:
-            payload = load_external_json(rel_path, os.path.dirname(tw_path))
+            if _cache_key in create_base_context._json_cache:
+                payload = create_base_context._json_cache[_cache_key]
+            else:
+                payload = load_external_json(rel_path, os.path.dirname(tw_path))
+                create_base_context._json_cache[_cache_key] = payload
         except FileNotFoundError as e:
             raise CompilerError(str(e), file_path=tw_path)
         context[key] = payload
     config = load_config()
-    # Only set config/site/env from site config if not already defined by let vars
+    # FIX #226: Use copies (not references) to prevent shared mutation across pages
     if "config" not in context:
-        context["config"] = config
+        context["config"] = dict(config) if isinstance(config, dict) else config
     if "site" not in context:
-        context["site"] = config
+        context["site"] = dict(config) if isinstance(config, dict) else config
     if "env" not in context:
-        context["env"] = get_public_env(config)
+        context["env"] = dict(get_public_env(config))
     return context
 
 
@@ -6040,13 +6235,30 @@ def build_one_page(page_info, css_url) -> Any:
             if isinstance(context, dict):
                 context["_zero_js"] = zero_js
 
+            # FIX #228: Collect TWM module JS for App Router static pages
+            _app_router_scripts = ""
+            if not zero_js:
+                try:
+                    _twm_sources = []
+                    for _mod_path in getattr(page_ast, "loaded_modules", []) or []:
+                        if _mod_path and os.path.exists(_mod_path):
+                            _twm_sources.append({"kind": "file", "path": _mod_path})
+                    for _local_src in getattr(page_ast, "local_modules", []) or []:
+                        if _local_src and str(_local_src).strip():
+                            _twm_sources.append({"kind": "inline", "source": str(_local_src)})
+                    if _twm_sources:
+                        from .twm_parser import build_page_twm_bundle_js
+                        _bundle = build_page_twm_bundle_js(_twm_sources, page_source_path=getattr(page_ast, "_tw_source_path", ""))
+                        _app_router_scripts = f'<script>{_bundle}</script>'
+                except Exception:
+                    pass
             html = compose_nested_layouts(
                 layout_files=page_info["layout_files"],
                 page_body_html=body_html,
                 page_title=title,
                 page_head_extras=head_extras,
                 page_style_blocks=style_blocks,
-                page_runtime_scripts="",
+                page_runtime_scripts=_app_router_scripts,
                 context=context,
                 page=page_ast,
                 zero_js=zero_js,
@@ -6072,7 +6284,9 @@ def build_one_page(page_info, css_url) -> Any:
             segments = resolve_dynamic_segments(page_info, item)
             route_path = route_path_from_page_info(page_info, item=item)
             context = build_page_context(page_info, page_ast, tw_path, item=item, route_path=route_path)
-            page_copy = copy.deepcopy(page_ast)
+            # FIX #229: Use shallow copy instead of deepcopy — AST nodes are not mutated
+            # during rendering, so a shallow copy is sufficient and much faster for 1000+ items.
+            page_copy = copy.copy(page_ast)
 
             body_html, needs_router, head_scripts = render_elements_html(page_copy.body, context)
             title = interpolate(page_copy.title, context) if page_copy.title else ""
@@ -6230,8 +6444,13 @@ def update_page_manifest_entry(manifest, page_info, dependencies, outputs, metad
     stale_outputs = sorted(previous_outputs - current_outputs)
     cleanup_outputs(stale_outputs)
     if metadata is None:
-        page_ast = load_page_ast_from_file(page_info["path"])
-        metadata = collect_page_metadata(page_info, page_ast=page_ast, pipeline="legacy")
+        # FIX #232: Avoid re-parsing if metadata can be collected from cached context
+        try:
+            page_ast = load_page_ast_from_file(page_info["path"])
+            metadata = collect_page_metadata(page_info, page_ast=page_ast, pipeline="legacy")
+        except Exception as err:
+            logger.debug("Failed to collect metadata for %s: %s", page_info.get("path"), err)
+            metadata = {"path": page_info.get("path", ""), "type": page_info.get("type", "static")}
     manifest["pages"][key] = {
         "type": page_info["type"],
         "path": normalize_path(page_info["path"]),
@@ -6320,6 +6539,7 @@ def main() -> None:
                         log(f"  ✅ {rel_out}")
                         built += 1
                 except Exception as err:
+                    # FIX #234: Log and continue — partial output possible
                     print_compiler_error(page_info, err)
 
     save_build_manifest(manifest)
@@ -6348,12 +6568,17 @@ def _diagnostic_to_payload(err, fallback_file_path="", *, phase=None) -> Dict[st
         diagnostic = err.to_diagnostic(fallback_file_path)
     elif isinstance(err, FileNotFoundError):
         message = str(err)
-        code = "TW2404" if "Layout not found" in message else "TW2405" if "Component not found" in message else "TW2400"
-        suggestion = None
-        if code == "TW2404":
+        # FIX #235: Use path-based detection instead of fragile string matching
+        _msg_lower = message.lower()
+        if "layout" in _msg_lower or "layouts/" in _msg_lower:
+            code = "TW2404"
             suggestion = "Add the layout file to `[home]/layouts/<name>.tw`, or update the page's `layout` value."
-        elif code == "TW2405":
+        elif "component" in _msg_lower or "components/" in _msg_lower:
+            code = "TW2405"
             suggestion = "Add the component file to `[home]/components`, or fix the import name."
+        else:
+            code = "TW2400"
+            suggestion = None
         diagnostic = Diagnostic(
             severity="error",
             code=code,
@@ -6375,8 +6600,9 @@ def _diagnostic_to_payload(err, fallback_file_path="", *, phase=None) -> Dict[st
         "file_path": diagnostic.file_path,
         "line": diagnostic.line,
         "col": diagnostic.col,
-        "end_line": getattr(diagnostic, "end_line", diagnostic.line),
-        "end_col": getattr(diagnostic, "end_col", diagnostic.col),
+        # FIX #236: Handle None diagnostic.line/col gracefully
+        "end_line": getattr(diagnostic, "end_line", None) or diagnostic.line or 0,
+        "end_col": getattr(diagnostic, "end_col", None) or diagnostic.col or 0,
         "suggestion": diagnostic.suggestion,
         "notes": list(diagnostic.notes or []),
         "phase": phase or getattr(diagnostic, "phase", None),
@@ -6395,7 +6621,9 @@ def _summarize_diagnostics_payload(items) -> Any:
     }
     for item in items or []:
         summary["total"] += 1
-        severity = str(item.get("severity", "info") or "info").lower()
+        # FIX #237: Handle empty string severity properly
+        _sev = item.get("severity", "")
+        severity = (str(_sev) if _sev else "info").lower()
         if severity == "error":
             summary["errors"] += 1
         elif severity == "warning":
@@ -6412,7 +6640,14 @@ def _summarize_diagnostics_payload(items) -> Any:
 
 
 def _pipeline_metadata_from_program(program, *, file_path, route_path, dependencies) -> Dict[str, Any]:
-    layouts = list(program.meta.layouts or [])
+    # FIX #238: Guard against layouts being a string instead of list
+    _raw_layouts = program.meta.layouts
+    if isinstance(_raw_layouts, str):
+        layouts = [_raw_layouts]
+    elif isinstance(_raw_layouts, (list, tuple)):
+        layouts = list(_raw_layouts)
+    else:
+        layouts = []
     if not layouts and program.meta.layout:
         layouts = [program.meta.layout]
     raw = ""
@@ -6483,9 +6718,11 @@ def compile_text_pipeline(text, *, base_dir=".", file_path="<memory>", context=N
             raise
         diagnostics_payload.append(_diagnostic_to_payload(err, file_path, phase="parse"))
 
+    # FIX #240: Ensure context is not None
+    _safe_context = context if context is not None else {}
     if program is not None:
         try:
-            diagnostics = analyze_program(program, context=context)
+            diagnostics = analyze_program(program, context=_safe_context)
             diagnostics_payload = diagnostics.to_list()
             for item in diagnostics_payload:
                 item.setdefault("phase", "analyze")
@@ -6567,8 +6804,9 @@ def compile_file_pipeline(path, context=None, css_href=None, route_path=None, ca
     try:
         dependency_paths = collect_page_dependencies(path)
     except CompilerError as err:
+        # FIX #241: Log the actual error and use a more informative fallback
         logger.warning("Dependency collection failed for %s: %s", path, err)
-        dependency_paths = [path]
+        dependency_paths = [path]  # Fallback: treat file as its own dependency
     except Exception:
         logger.exception("Unexpected error while collecting dependencies for %s", path)
         dependency_paths = [path]

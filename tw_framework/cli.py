@@ -47,7 +47,7 @@ API_TOKEN=change-me
 """,
     "middleware.tw": '''use {
     match "/dashboard/**"
-    auth "session" "/"
+    header "X-Content-Type-Options" "nosniff"
     header "X-Frame-Options" "DENY"
 }
 ''',
@@ -651,9 +651,6 @@ def build_package_json(project_name) -> Any:
             "name": package_name,
             "private": True,
             "version": "0.1.0",
-            "engines": {
-                "node": ">=18",
-            },
             "scripts": {
                 "dev": "tw dev",
                 "build": "tw build",
@@ -674,7 +671,7 @@ def build_package_json(project_name) -> Any:
 def build_vercel_json() -> Any:
     return json.dumps(
         {
-            "buildCommand": "tw build",
+            "buildCommand": "npx tw build",  # FIX #278: Use npx in case tw is not global
             "outputDirectory": "dist",
         },
         indent=2,
@@ -707,7 +704,10 @@ def save_global_config(config) -> None:
 
 def find_project_root(start_dir=None) -> Any:
     current = os.path.abspath(start_dir or os.getcwd())
-    while True:
+    # FIX #279: Limit depth to prevent walking to filesystem root
+    _max_depth = 20
+    _depth = 0
+    while _depth < _max_depth:
         config_path = os.path.join(current, "tw.config")
         home_dir = os.path.join(current, "[home]")
         if os.path.exists(config_path) and os.path.isdir(home_dir):
@@ -716,6 +716,7 @@ def find_project_root(start_dir=None) -> Any:
         if parent == current:
             break
         current = parent
+        _depth += 1
     raise RuntimeError(
         "TW project root not found. Run `tw create <name>` or `cd` into a TW project folder."
     )
@@ -1016,15 +1017,17 @@ def command_preview(args) -> Any:
     project_root = find_project_root(args.project_root)
     output_dir = args.out_dir or resolve_output_dir(project_root)
     if not args.no_build:
-        result = command_export(
-            argparse.Namespace(
-                project_root=project_root,
-                out_dir=output_dir,
-                workers=args.workers,
-                no_minify=args.no_minify,
-            )
+        # FIX #285/#286: Use proper args namespace and check result correctly
+        # (0 is a valid success return, not falsy)
+        export_args = argparse.Namespace(
+            project_root=project_root,
+            out_dir=output_dir,
+            workers=args.workers,
+            no_minify=args.no_minify,
+            debug=False,
         )
-        if result:
+        result = command_export(export_args)
+        if result is not None and result != 0:
             return result
 
     url = f"http://{args.host}:{args.port}"
@@ -1036,7 +1039,7 @@ def command_preview(args) -> Any:
 def command_clean(args) -> int:
     project_root = find_project_root(args.project_root)
     framework.clean_project_outputs(project_root)
-    log("✔ dist/ aur .tw/ clean kar diye gaye")
+    log("✔ dist/ and .tw/ cleaned successfully")  # FIX #287: Use English for consistency
     return 0
 
 
@@ -1049,11 +1052,11 @@ def command_doctor(args) -> Any:
         checks.append({"name": "Global deploy config", "ok": True, "detail": GLOBAL_CONFIG_FILE})
     else:
         checks.append({"name": "Global deploy config", "ok": False, "detail": f"Missing: {GLOBAL_CONFIG_FILE} (run `tw login` to create it)"})
-    # Provider token hints (best-effort)
+    # FIX #288: Vercel token is informational, not a blocking check
     if config.get("vercel_token") or os.environ.get("VERCEL_TOKEN"):
-        checks.append({"name": "Vercel token", "ok": True, "detail": "Token available"})
+        checks.append({"name": "Vercel token (optional)", "ok": True, "detail": "Token available"})
     else:
-        checks.append({"name": "Vercel token", "ok": False, "detail": "Missing Vercel token (run `tw login --vercel-token ...` or set VERCEL_TOKEN)"})
+        checks.append({"name": "Vercel token (optional)", "ok": True, "detail": "Not set (only needed for `tw deploy --provider vercel`)"})
     failed = 0
     for check in checks:
         status = "OK" if check["ok"] else "WARN"
@@ -1066,30 +1069,30 @@ def command_doctor(args) -> Any:
 def command_info(args) -> int:
     project_root = find_project_root(args.project_root)
     info = framework.inspect_project(project_root)
-    print(f"Project root: {info['project_root']}")
-    print(f"Source root: {info['source_root']}")
-    print(f"Output dir: {info['output_dir']}")
-    print(f"Hidden dir: {info['hidden_dir']}")
-    print(f"Pages: {info['page_count']}")
-    print(f"Static routes: {info['static_routes']}")
-    print(f"Dynamic routes: {info['dynamic_routes']}")
-    print(f"Components: {info['component_count']}")
-    print(f"Custom 404: {'yes' if info['has_404'] else 'no'}")
-    print(f"Custom 500: {'yes' if info['has_500'] else 'no'}")
-    print(f"Modular pipeline: {'yes' if info['modular_pipeline'] else 'no'}")
-    # v0.8.50 (Issue 4): Runtime diagnostics
+    # FIX #289: Use log() for consistent output
+    log(f"Project root: {info['project_root']}")
+    log(f"Source root: {info['source_root']}")
+    log(f"Output dir: {info['output_dir']}")
+    log(f"Hidden dir: {info['hidden_dir']}")
+    log(f"Pages: {info['page_count']}")
+    log(f"Static routes: {info['static_routes']}")
+    log(f"Dynamic routes: {info['dynamic_routes']}")
+    log(f"Components: {info['component_count']}")
+    log(f"Custom 404: {'yes' if info['has_404'] else 'no'}")
+    log(f"Custom 500: {'yes' if info['has_500'] else 'no'}")
+    log(f"Modular pipeline: {'yes' if info['modular_pipeline'] else 'no'}")
     node_status = f"detected ({info['node_path']})" if info.get('node_detected') else "not detected (API routes disabled)"
-    print(f"Node.js: {node_status}")
+    log(f"Node.js: {node_status}")
     api_count = info.get('api_route_count', 0)
     if api_count > 0:
         if info.get('api_routes_disabled'):
-            print(f"API routes: {api_count} found (DISABLED without Node.js)")
+            log(f"API routes: {api_count} found (DISABLED without Node.js)")
         else:
-            print(f"API routes: {api_count} found (enabled)")
+            log(f"API routes: {api_count} found (enabled)")
     else:
-        print(f"API routes: 0 found")
+        log(f"API routes: 0 found")
     mw_status = f"detected ({info['middleware_path']})" if info.get('middleware_detected') else "not found"
-    print(f"Middleware: {mw_status}")
+    log(f"Middleware: {mw_status}")
     return 0
 
 
@@ -1102,6 +1105,10 @@ def _write_or_print_output(output_path, payload) -> None:
 
 
 def command_ast(args) -> Any:
+    # FIX #290: Check file exists before attempting to parse
+    if not os.path.exists(args.file):
+        log(f"✖ File not found: {args.file}", level="error")
+        return 1
     configure_project_for_file(args.file)
     program = parse_file(os.path.abspath(args.file))
     diagnostics = analyze_program(program)
@@ -1132,6 +1139,9 @@ def command_ir(args) -> Any:
 
 def command_run_file(args) -> Any:
     artifacts = _compile_file_artifacts(args.file, include_css=True, capture_errors=args.diagnostics)
+    # FIX #291: Warn when compilation produced no HTML output
+    if not artifacts.html:
+        log("⚠️  Compilation produced no HTML output", level="warning")
     if args.diagnostics:
         payload = {
             "html": artifacts.html or "",
@@ -1260,6 +1270,7 @@ def resolve_provider(args, config) -> Any:
 
 
 def command_login(args) -> None:
+    # FIX #293: Token is stored in a file with restrictive permissions (0600)
     config = load_global_config()
     if args.provider:
         config["default_provider"] = args.provider
@@ -1275,6 +1286,7 @@ def command_deploy(args) -> int:
     project_root = find_project_root(args.project_root)
     config = load_global_config()
     provider = resolve_provider(args, config)
+    # FIX #294: apply_deploy_config sets env vars — cleanup restores them
     cleanup = apply_deploy_config(config, provider)
     try:
         if provider == "vercel" and not (os.environ.get("VERCEL_TOKEN") or config.get("vercel_token")):
@@ -1298,6 +1310,9 @@ def command_deploy(args) -> int:
 
 def command_plugin(args) -> int:
     """v0.9.08: Plugin management."""
+    # FIX #295: Warn about arbitrary code execution risk
+    if args.plugin_action in ("add", "install"):
+        log("⚠️  Warning: Plugins can execute arbitrary code. Only install from trusted sources.", level="warning")
     from . import plugin_manager
 
     action = getattr(args, "plugin_action", None)
@@ -1458,8 +1473,10 @@ def build_parser() -> Any:
     parser = argparse.ArgumentParser(description="TW framework CLI")
     parser.add_argument("--project-root", help="Manual project root override")
     parser.add_argument("--debug", action="store_true", help="Print full tracebacks and internal state")
+    # FIX #143: Add --version flag so users can check installed version easily
+    parser.add_argument("--version", action="store_true", help="Show TW framework version and exit")
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command", required=False)
 
     def add_output_dir_arg(subparser, help_text) -> None:
         subparser.add_argument("--out-dir", help=help_text)
@@ -1596,7 +1613,8 @@ def build_parser() -> Any:
     rm_p = plugin_sub.add_parser("remove", aliases=["rm"])
     rm_p.add_argument("plugin_name", help="Plugin name to remove")
     plugin_sub.add_parser("list", aliases=["ls"])
-    plugin_sub.add_parser("search")
+    _search_p = plugin_sub.add_parser("search")
+    _search_p.add_argument("query", nargs="?", default="", help="Search query")  # FIX #299
     plugin_parser.set_defaults(func=command_plugin)
 
     # ── NPM Package Management (v0.8.1) ──────────────────────────────────────
@@ -1635,7 +1653,25 @@ def build_parser() -> Any:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-    result = args.func(args)
+    # FIX #143: Handle --version flag
+    if getattr(args, "version", False):
+        from . import __version__
+        print(f"tw-framework v{__version__}")
+        return
+    if not getattr(args, "command", None):
+        parser.print_help()
+        raise SystemExit(1)
+    # FIX #300: Catch exceptions and show clean error instead of ugly traceback
+    try:
+        result = args.func(args)
+    except KeyboardInterrupt:
+        log("\n✖ Interrupted by user", level="error")
+        raise SystemExit(130)
+    except Exception as err:
+        if getattr(args, "debug", False):
+            raise
+        log(f"✖ Error: {err}", level="error")
+        raise SystemExit(1)
     if isinstance(result, int):
         raise SystemExit(result)
 
