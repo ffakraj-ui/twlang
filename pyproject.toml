@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tw-framework"
-version = "0.9.14"
+version = "0.9.15"
 description = "TW framework CLI with create, dev, build, and deploy commands"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -21,6 +21,40 @@ dependencies = []
 # Dev / contributor tooling (not required to use the framework)
 dev = [
   "pytest>=7",
+]
+
+# Image optimization (Pillow) — for tw image optimization, srcset generation
+image = [
+  "Pillow>=10",
+]
+
+# Brotli compression — for production pre-compression of static assets
+compression = [
+  "brotli>=1.0",
+]
+
+# Edge V8 runtime — real JavaScript sandbox via V8 engine
+edge-v8 = [
+  "py_mini_racer>=0.6",
+]
+
+# Redis — for distributed SSR cache in production
+redis = [
+  "redis>=4",
+]
+
+# WASM runtime — WebAssembly sandbox for maximum isolation
+wasm = [
+  "wasmtime>=10",
+]
+
+# All optional features combined
+all = [
+  "Pillow>=10",
+  "brotli>=1.0",
+  "py_mini_racer>=0.6",
+  "redis>=4",
+  "wasmtime>=10",
 ]
 
 [project.scripts]

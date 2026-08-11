@@ -3,7 +3,7 @@ TW Framework — Complete Technical Reference for AI Coding Assistants
 ================================================================================
 
 Source of truth: github.com/ffakraj-ui/twlang (default branch: main)
-Version: v0.8.47 (2026-08-10)
+Version: v0.9.15 (2026-08-10)
 
 Where the README and the source code/tests disagree, this document follows
 the source code and tests.
@@ -122,7 +122,7 @@ body {
 }
 ```
 
-### 2.2 ES6 Library Import (v0.8.47+)
+### 2.2 ES6 Library Import (v0.9.15+)
 ```tw
 import { startCountdown } from "@/lib/countdown"
 import { formatData, parseJSON } from "@/lib/utils"
@@ -144,8 +144,8 @@ load "@/lib/auth"                # .twm server module
 
 ### 2.4 Script Blocks
 - Inline: `script { console.log("hello") }` — raw JS
-- {prop} interpolation in scripts (v0.8.47+): `script { new Date("{target}") }`
-- External: `script { src "@/lib/file.js" }` — @/ resolved to /_tw/scripts/ (v0.8.47+)
+- {prop} interpolation in scripts (v0.9.15+): `script { new Date("{target}") }`
+- External: `script { src "@/lib/file.js" }` — @/ resolved to /_tw/scripts/ (v0.9.15+)
 - External URL: `script { src "https://cdn.example.com/lib.js" }`
 
 ================================================================================

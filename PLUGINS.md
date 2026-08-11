@@ -1,4 +1,4 @@
-# TW Framework Plugins (v0.9.08)
+# TW Framework Plugins (v0.9.15)
 
 TW Framework ka plugin system WordPress-inspired hai. Plugins `.twp` (TW Plugin) format me hote hain aur restricted sandbox me run hote hain. Plugins sirf TW ke andar kaam karte hain — `plugin.register()`, `ctx`, `tw` sirf TW-specific APIs hain.
 
@@ -308,7 +308,7 @@ plugin.register("beforeRequest", function(ctx) {
 
 ## Migration from v0.9.07
 
-v0.9.07 se v0.9.08 me upgrade karte time:
+v0.9.07 se v0.9.15 me upgrade karte time:
 
 1. Koi breaking change nahi hai — existing projects as-is work karenge.
 2. Plugin system optional hai — agar `.tw/plugins/` nahi hai, to koi effect nahi.

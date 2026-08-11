@@ -2,8 +2,8 @@
 
 > **Purpose:** Ye file batati hai ki TW Framework me kya kya kaam ho chuka hai, kya baki hai, aur kya plan hai. Agar kabhi work restart karna ho toh is file se poora context mil jayega.
 
-**Last Updated:** v0.9.08 (2026-08-11)
-**Current Version:** 0.9.08
+**Last Updated:** v0.9.15 (2026-08-11)
+**Current Version:** 0.9.15
 **Working Directory:** `/scratch/repos/twlang-main/`
 **GitHub Repo:** `ffakraj-ui/twlang`
 **Developer:** ffakraj-ui
@@ -26,7 +26,7 @@
 | v0.9.05 | 2026-08-11 | Edge = V8 based (Python se V8 me badla) |
 | v0.9.06 | 2026-08-11 | QuickJS removed — pure V8 only, README cleaned |
 | v0.9.07 | 2026-08-11 | Credits cleanup, PyPI republish |
-| v0.9.08 | 2026-08-11 | Plugin System + HMR + Image Opt + Prefetch + Streaming SSR + ISR + Edge DB + Zero-Config Deploy |
+| v0.9.15 | 2026-08-11 | Plugin System + HMR + Image Opt + Prefetch + Streaming SSR + ISR + Edge DB + Zero-Config Deploy |
 
 ---
 
@@ -101,7 +101,7 @@
 - **QuickJS completely removed** — 0 references in code
 - Sirf V8 (py_mini_racer) hai, koi fallback nahi
 - All QuickJS detection, context setup, host functions, bootstrap code removed
-- README.md cleaned up (purana v0.8.47 content hata, v0.9.06 content daal)
+- README.md cleaned up (purana v0.9.15 content hata, v0.9.06 content daal)
 - PROGRESS.md updated (this file)
 
 ---

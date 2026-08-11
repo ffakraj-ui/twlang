@@ -1,22 +1,29 @@
-# TW Framework — Project Metadata (v0.8.47)
+# TW Framework — Project Metadata (v0.9.15)
 # Source: https://github.com/ffakraj-ui/twlang
 # Generated: 2026-08-10
 
 ## pyproject.toml
 
 - Name: tw-framework
-- Version: 0.8.44
+- Version: 0.9.15
 - Description: TW framework CLI with create, dev, build, and deploy commands
 - Requires-Python: >=3.9
-- Dependencies: []
-- Optional dependencies: dev = ["pytest>=7"]
+- Dependencies: [] (core framework has no hard third-party dependencies)
+- Optional dependencies:
+  - dev = ["pytest>=7"] — testing
+  - image = ["Pillow>=10"] — image optimization, srcset generation
+  - compression = ["brotli>=1.0"] — Brotli pre-compression of static assets
+  - edge-v8 = ["py_mini_racer>=0.6"] — V8 JavaScript sandbox runtime
+  - redis = ["redis>=4"] — distributed SSR cache in production
+  - wasm = ["wasmtime>=10"] — WebAssembly sandbox runtime
+  - all = [all above combined]
 - Scripts: tw = "tw_framework.cli:main"
 
 ## package.json
 
 - Name: twlang-main
 - Private: true
-- Version: 0.8.44
+- Version: 0.9.15
 - Engines: node >= 18
 
 ## Project Structure
@@ -97,11 +104,11 @@
 ## Script Blocks
 
 - Inline: `script { console.log("hello") }` — raw JS
-- {prop} interpolation works in scripts (v0.8.47+)
-- External: `script { src "@/lib/file.js" }` — @/ resolved, file copied to dist/ (v0.8.47+)
+- {prop} interpolation works in scripts (v0.9.15+)
+- External: `script { src "@/lib/file.js" }` — @/ resolved, file copied to dist/ (v0.9.15+)
 - External URL: `script { src "https://cdn.example.com/lib.js" }`
 
-## Key Features (v0.8.47)
+## Key Features (v0.9.15)
 
 - App Router with nested layouts
 - Zero JS by default (static HTML + CSS)

@@ -2,7 +2,7 @@
 
 A high-performance, HTML-first web framework with Virtual DOM, App Router, Zero-JS static sites, and **Multi-Runtime Architecture** (V8 Edge, Python, Node.js, WASM).
 
-**v0.9.08** — Plugin System, HMR, Image Optimization, Prefetching, Streaming SSR, ISR, Edge DB, Zero-Config Deploy, VDOM + CSR Dual Rendering
+**v0.9.15** — Plugin System, HMR, Image Optimization, Prefetching, Streaming SSR, ISR, Edge DB, Zero-Config Deploy, VDOM + CSR Dual Rendering
 
 ---
 
@@ -17,9 +17,22 @@ tw build
 
 That's it. Your static site is in `dist/` — deploy it anywhere.
 
+### Optional Features
+
+The core framework has **zero hard dependencies**. Install extras as needed:
+
+```bash
+pip install tw-framework[image]       # Pillow — image optimization, srcset
+pip install tw-framework[compression] # brotli — production pre-compression
+pip install tw-framework[edge-v8]      # py_mini_racer — V8 JS sandbox runtime
+pip install tw-framework[redis]       # redis — distributed SSR cache
+pip install tw-framework[wasm]        # wasmtime — WebAssembly sandbox runtime
+pip install tw-framework[all]         # All optional features combined
+```
+
 ---
 
-## v0.9.08 Features
+## v0.9.15 Features
 
 ### Plugin System
 WordPress-inspired plugin system with `.twp` format, 5 lifecycle hooks, and auto-yes permissions.

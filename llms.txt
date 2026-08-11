@@ -1,6 +1,6 @@
 # TW Framework — Complete Reference for AI Coding Assistants
 # Source: https://github.com/ffakraj-ui/twlang
-# Version: v0.8.47 (2026-08-10)
+# Version: v0.9.15 (2026-08-10)
 # Rule: If README and source code disagree, trust the source code and tests.
 
 ---
@@ -19,6 +19,16 @@ TW Framework (package: `tw-framework` on PyPI) is a Python-based full-stack web 
 ### 1.1 Installation
 ```bash
 pip install tw-framework
+```
+
+Optional features (install as needed):
+```bash
+pip install tw-framework[image]       # Pillow — image optimization, srcset
+pip install tw-framework[compression] # brotli — production pre-compression
+pip install tw-framework[edge-v8]      # py_mini_racer — V8 JS sandbox runtime
+pip install tw-framework[redis]       # redis — distributed SSR cache
+pip install tw-framework[wasm]        # wasmtime — WebAssembly sandbox runtime
+pip install tw-framework[all]         # All optional features combined
 ```
 
 ### 1.2 Quick Start
@@ -161,7 +171,7 @@ body {
 }
 ```
 
-### 4.2 ES6 Library Import (v0.8.47+)
+### 4.2 ES6 Library Import (v0.9.15+)
 ```tw
 import { startCountdown } from "@/lib/countdown"
 import { formatData, parseJSON } from "@/lib/utils"
@@ -183,7 +193,7 @@ load "@/lib/auth"                # .twm module (server-side)
 
 ### 4.4 Script Blocks
 Inline scripts: `script { console.log("hello") }` — raw JS, written as-is.
-**{prop} interpolation now works in scripts** (v0.8.47+):
+**{prop} interpolation now works in scripts** (v0.9.15+):
 ```tw
 let target "2025-12-31"
 body {
@@ -191,7 +201,7 @@ body {
 }
 ```
 External scripts: `script { src "@/lib/helper.js" }` — @/ is resolved and
-file is copied to `dist/_tw/scripts/` (v0.8.47+). Also supports absolute URLs:
+file is copied to `dist/_tw/scripts/` (v0.9.15+). Also supports absolute URLs:
 `script { src "https://cdn.example.com/lib.js" }`.
 
 ---

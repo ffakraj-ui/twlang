@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.9.15 — PyPI Release Prep (Dependencies + Docs + llms.txt)
+
+### pyproject.toml
+- Added optional dependency groups for PyPI discoverability:
+  - `image` = Pillow>=10 (image optimization, srcset generation)
+  - `compression` = brotli>=1.0 (production pre-compression)
+  - `edge-v8` = py_mini_racer>=0.6 (V8 JavaScript sandbox runtime)
+  - `redis` = redis>=4 (distributed SSR cache)
+  - `wasm` = wasmtime>=10 (WebAssembly sandbox runtime)
+  - `all` = all above combined
+- Core `dependencies = []` remains empty — framework works standalone
+
+### Documentation (README.md, llms.txt, llms-full.txt, llms-full_part1.txt)
+- **README.md**: Added "Optional Features" section with `pip install tw-framework[extra]` examples
+- **llms.txt**: Updated version to v0.9.15, added optional dependencies installation block
+- **llms-full.txt**: Updated version, expanded dependencies section with all optional groups
+- **llms-full_part1.txt**: Updated version to v0.9.15
+- **PROGRESS.md**, **PLUGINS.md**: Version references updated
+
+### Version Bump
+- `__init__.py`: 0.9.14 → 0.9.15
+- `tw_runtime/__init__.py`: 0.9.14 → 0.9.15
+- `pyproject.toml`: 0.9.14 → 0.9.15
+- `package.json`: 0.9.14 → 0.9.15
+
+### Test Results
+- 610 passed, 9 skipped, 0 failed
+
+
 ## v0.9.14 — "700 TARGET" (Edge V8 + Module Boundaries + Runtime Init)
 
 ### edge_v8_adapter.py (bugs 601-650)
