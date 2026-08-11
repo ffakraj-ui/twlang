@@ -1,8 +1,10 @@
 # TW Framework
 
-A high-performance, HTML-first web framework with Virtual DOM, App Router, and Zero-JS static sites.
+A high-performance, HTML-first web framework with Virtual DOM, App Router, Zero-JS static sites, and **Multi-Runtime Architecture** (V8 Edge, Python, Node.js, WASM).
 
-**v0.8.47** — NPM Package Manager, React Compatibility, esbuild Bundling, Security Module, Route Fixes
+**v0.9.06** — Pure V8 Edge Runtime, Multi-Runtime Architecture, Common API Layer
+
+---
 
 ## Quick Start
 
@@ -15,149 +17,97 @@ tw build
 
 That's it. Your static site is in `dist/` — deploy it anywhere.
 
-> **Pre-release / development install:** `pip install tw-framework` from a clone of this repo.
+---
 
-## What's New in v0.8.47
+## What's New (v0.9.06)
 
-### Route Path Fix (Critical)
-- App Router route paths no longer double-nested (`/about/about` → `/about`)
-- Fixed in `sitemap.xml`, `__TW_DATA__` JSON, HTML metadata comments, and RSS feed
-- All three route generators (`route_path_from_page_info`, `route_from_static_page`, `route_from_dynamic_page`) now consistent
+### Multi-Runtime Architecture
 
-### NPM Package Manager (like Next.js)
-Install, remove, and list npm packages directly from the TW CLI:
-```bash
-tw install react react-dom        # Install packages
-tw install chart.js@4.0.0         # Install specific version
-tw install --save-dev jest         # Save as devDependency
-tw install --exact axios@1.6.0    # Save exact version (no ^)
-tw add lodash                      # Alias for install
-tw remove react                    # Remove a package
-tw list                            # List installed packages
-tw list --detailed                 # Show installed versions
+TW now supports **5 runtimes** for API route handlers. Add a `runtime = "..."` directive at the top of any `.twm` file:
+
+| Runtime | Directive | Engine | Best For |
+|---------|-----------|--------|----------|
+| **Edge** | `runtime = "edge"` | V8 Isolate (py_mini_racer) | Fast, lightweight APIs — real JS sandbox like Next.js Edge |
+| **Node.js** | `runtime = "nodejs"` | Node.js (persistent worker) | Full npm packages, fs, native modules |
+| **Python** | `runtime = "python"` | Python in-process | Python libraries, ML, no Node.js needed |
+| **WASM** | `runtime = "wasm"` | wasmtime / Python sandbox | Untrusted code, secure sandbox |
+| **Edge (legacy)** | `runtime = "edge-py"` | Python in-process | Fallback if V8 not installed |
+
+Default is `nodejs` — all existing routes work as before (backward compatible).
+
+### Common API Layer (`tw.*`)
+
+Write once, run on any runtime:
+
+```javascript
+tw.storage.read("config.json")     // → fs on Node, os on Python, KV on Edge
+tw.storage.write("output.txt", data)
+tw.http.fetch("https://api.com")   // → fetch on Edge, urllib on Python
+tw.crypto.hash("sha256", data)     // → Node crypto, hashlib, pure JS SHA-256
+tw.crypto.random(32)
+tw.crypto.uuid()
+tw.env.get("DATABASE_URL")
+tw.cache.get("key")
+tw.cache.set("key", value, 300)
+tw.runtime.name()                  // → "edge", "nodejs", "python", "wasm"
+tw.runtime.supports("filesystem")  // → true/false
 ```
-Auto-detects npm, pnpm, yarn, and bun from lockfiles.
 
-### React Compatibility
-Use React alongside TW's native VDOM for islands of interactivity:
-```bash
-tw install react react-dom
+### Build-Time Runtime Validation
+
+If a route configured for Edge uses `fs.readFile()`, TW catches it at **build time** — not at runtime:
+
+```
+⚠️ Runtime validation: app/api/data/route.twm
+   This route is configured for Edge Runtime,
+   but `fs.readFile` requires filesystem capability.
+
+   Solutions:
+     1. Change runtime to nodejs
+     2. Use tw.storage.read()
+     3. Move filesystem logic to a nodejs route
 ```
 
-```tw
-import { Counter } from "@/lib/react-component"
+### Edge Runtime (V8)
 
-page {
-    title "React Demo"
-    render interactive
-}
+TW's Edge runtime uses **real V8 isolate** (same engine as Google Chrome and Next.js Edge Runtime):
 
-body {
-    div { id "react-root" }
-    script { on:load "__tw.react.mount('Counter', 'react-root')" }
-}
-```
-React bootstrap and loader scripts are automatically injected during build.
+- Pure JS SHA-256 (64-round, UTF-8, proper padding)
+- Pure JS HMAC-SHA256
+- HTTP fetch via multi-pass yield bridge
+- Environment variables injection
+- In-memory KV storage
+- No filesystem, no subprocess, no native modules
 
-### esbuild Integration
-Complex npm packages (like `dayjs`, `chart.js`) are bundled for the browser using esbuild, with an IIFE fallback when esbuild is not installed.
+Install V8: `pip install py_mini_racer`
 
-### Security Module
-Built-in CSP nonce generation, secure HTTP headers, input sanitization, and CSRF protection.
+---
 
-### Enhanced Lib System
-- NPM packages from node_modules are now properly resolved in .twm files
-- Better error messages with install hints for missing packages
-- Import maps generation for client-side ESM resolution
+## Core Features
 
-### Breaking Changes
-- `tw.config` `server.external_packages` is automatically updated when using `tw install`
-- Lib executor now resolves npm packages from project root node_modules
-- See [MIGRATION_V0.8.1.md](MIGRATION_V0.8.1.md) for full migration guide
-
-## What's New in v0.8.0 (Previous Release)
-
-- **Virtual DOM** — TW-native VDOM with diff-and-patch algorithm (~3KB, no React dependency)
-- **Lib System Overhaul** — `import { getData } from "@/lib/data"` syntax, async/await, type annotations, client-side functions
-- **Server Actions** — `action {}` blocks, call server functions from client without API routes
-- **ISR** — `revalidate 60` for background page regeneration
-- **Metadata API** — Static and dynamic `metadata {}` / `generateMetadata {}` blocks
-- **Suspense & Streaming** — Progressive page loading
-- **Error Boundaries** — Runtime error catching via `error.tw`
-- **Zero-JS Preserved** — Static pages still ship 0 bytes of JavaScript
-
-## Routing (App Router)
+### App Router
 
 ```
 [home]/
-├── layout.tw          ← Root layout (TW component with `children`)
+├── layout.tw          ← Root layout
 ├── page.tw            ← Home page (/)
 ├── about/
 │   └── page.tw        ← /about
 ├── blog/
 │   ├── page.tw        ← /blog
 │   └── [slug]/
-│       └── page.tw    ← /blog/:slug (dynamic route)
+│       └── page.tw    ← /blog/:slug (dynamic)
 ├── (dashboard)/       ← Route group (doesn't appear in URL)
 │   ├── layout.tw
 │   └── stats/
 │       └── page.tw    ← /stats
 ├── api/
-│   └── route.tw       ← API route handler
+│   └── route.twm      ← API route handler
 ├── not-found.tw       ← 404 page
 └── error.tw           ← Error boundary
 ```
 
-## Layouts
-
-Layout files (`layout.tw`) use the standard `head { } body { children }` pattern.
-The `children` keyword injects the page content at that position.
-
-```tw
-// [home]/layout.tw — root layout (wraps ALL pages)
-
-head {
-    title "My Site"
-    meta { charset "UTF-8" }
-    meta { name "viewport" content "width=device-width, initial-scale=1" }
-}
-
-body {
-    nav { class "navbar"
-        a { href "/" } "Home"
-        a { href "/about" } "About"
-    }
-
-    main { class "container"
-        children
-    }
-
-    footer "© 2026"
-}
-```
-
-Route-group layouts work the same way — place a `layout.tw` inside a
-`(group)/` folder to scope chrome to that group's routes only.
-
-```tw
-// [home]/(dashboard)/layout.tw — scoped to dashboard pages only
-
-body {
-    aside { class "sidebar"
-        a { href "/dashboard" } "Overview"
-        a { href "/settings" } "Settings"
-    }
-    main {
-        children
-    }
-}
-```
-
-> **Note:** The older `component layout { html { ... } }` pattern is
-> deprecated — it caused double rendering of `<html>`/`<body>` tags.
-> Use the `head { } body { children }` pattern shown above.
-
-## Virtual DOM
+### Virtual DOM
 
 VDOM is auto-detected. If your page uses `state`, events, or bindings, the VDOM runtime is injected automatically.
 
@@ -169,63 +119,51 @@ page {
 
 state {
     count 0
-    items []
 }
 
 body {
     button { on:click "count++" } "Increment"
     p { tw-text "count" } ""
-    input { bind:value "name" }
-    div { show:visible "count > 5" } "Count is high!"
 }
 ```
 
-Static pages remain Zero-JS — no runtime, no overhead.
+Static pages remain **Zero-JS** — no runtime, no overhead.
 
-## Lib System
+### API Routes (.twm)
 
-```tw
-import { getApps, getApp } from "@/lib/data"
-import formatPrice from "@/lib/utils"
+```javascript
+// app/api/users/route.twm
 
-page {
-    title "Apps"
-    render static
+runtime = "edge"
+
+fn get(request) {
+    return {
+        "users": [
+            { "id": 1, "name": "Suraj" },
+            { "id": 2, "name": "Rahul" }
+        ]
+    }
 }
 
-let apps = getApps()
-
-body {
-    each apps as app {
-        div { class "card"
-            h1 "{app.name}"
-            p "Price: {formatPrice(app.price)}"
-        }
+fn post(request) {
+    var hash = tw.crypto.hash("sha256", request.body)
+    return {
+        "status": 201,
+        "body": { "hash": hash }
     }
 }
 ```
 
-### .twm files
+### NPM Package Manager
 
-```javascript
-// Server-side (build-time execution)
-export async function getApps() {
-    const res = await fetch("https://api.example.com/apps");
-    return res.json();
-}
-
-// Client-side (shipped to browser)
-export client function formatPrice(n) {
-    return "₹" + n.toFixed(2);
-}
-
-// Type annotations (stripped before execution)
-export function getApp(slug: string): Promise<App> {
-    return getApps().find(a => a.slug === slug);
-}
+```bash
+tw install react react-dom        # Install packages
+tw install chart.js@4.0.0         # Specific version
+tw remove react                    # Remove a package
+tw list                            # List installed packages
 ```
 
-## Server Actions
+### Server Actions
 
 ```tw
 action createPost {
@@ -239,41 +177,58 @@ body {
 }
 ```
 
-## Icons
-
-Built-in 60+ SVG icons, zero dependency:
+### Lib System
 
 ```tw
-Icon { name "home" }
-Icon { name "search" size 20 }
-Icon { name "menu" class "text-gray-500" }
-```
+import { getApps } from "@/lib/data"
 
-## CLI
-
-| Command | Description |
-|---------|-------------|
-| `tw create <name>` | Create new App Router project |
-| `tw build` | Build site to `dist/` |
-| `tw dev` | Start dev server |
-| `tw info` | Show project info |
-| `tw dead` | Find unused files |
-
-## Zero-JS
-
-Static pages ship **0 bytes of JavaScript**:
-
-```tw
 page {
-    title "About"
+    title "Apps"
     render static
 }
 
+let apps = getApps()
+
 body {
-    h1 "About Us"
-    p "We build amazing things."
+    each apps as app {
+        div { class "card"
+            h1 "{app.name}"
+        }
+    }
 }
 ```
+
+---
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `tw create <name>` | Create new project |
+| `tw build` | Build site to `dist/` |
+| `tw dev` | Start dev server |
+| `tw info` | Show project info + runtime diagnostics |
+| `tw install <pkg>` | Install npm package |
+| `tw remove <pkg>` | Remove npm package |
+| `tw list` | List installed packages |
+| `tw dead` | Find unused files |
+
+---
+
+## Runtime Capability Matrix
+
+| Capability | nodejs | python | edge (V8) | wasm |
+|-----------|--------|--------|-----------|------|
+| filesystem | ✅ | ✅ | ❌ | ✅ (sandbox) |
+| network | ✅ | ✅ | ✅ | ❌ |
+| native modules | ✅ | ✅ | ❌ | ❌ |
+| subprocess | ✅ | ✅ | ❌ | ❌ |
+| database | ✅ | ✅ | ❌ | ❌ |
+| crypto | ✅ | ✅ | ✅ | ✅ |
+| cache | ✅ | ✅ | ✅ | ✅ |
+| env vars | ✅ | ✅ | ✅ (limited) | ✅ (granted) |
+
+---
 
 ## Deployment
 
@@ -282,35 +237,16 @@ Output is static HTML/CSS/JS in `dist/`. Deploy to any host:
 - GitHub Pages
 - Any static file server
 
+---
+
+## Documentation
+
+- [RUNTIMES.md](RUNTIMES.md) — Complete multi-runtime guide (11 sections)
+- [PROGRESS.md](PROGRESS.md) — Development progress tracker
+- [CHANGELOG.md](CHANGELOG.md) — All version changes
+
+---
+
 ## License
 
 MIT
-
-
-## Components
-
-**Auto-Discovery:** Components in `[home]/components/` are auto-discovered.
-No `import` needed — just use `ComponentName {}` directly.
-
-File: `[home]/components/Button.tw`
-```tw
-let label "Click"
-let href "#"
-
-a { class "btn", href "{href}" text "{label}" }
-```
-
-Usage (no import needed):
-```tw
-body {
-    Button { href "/about", label "Get Started" }
-}
-```
-
-`import "Button"` also works but is optional.
-
-## Script Blocks
-
-- Inline: `script { console.log("hello") }` — raw JS
-- **{prop} interpolation in scripts** (v0.8.47+): `script { new Date("{target}") }`
-- **External `script { src "@/lib/file.js" }`** — @/ resolved, file copied to `dist/_tw/scripts/` (v0.8.47+)

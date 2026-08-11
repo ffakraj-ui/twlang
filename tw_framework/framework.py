@@ -1469,7 +1469,7 @@ _API_ROUTE_CACHE: Optional[List[dict]] = None
 _API_ROUTE_CACHE_LOCK = threading.Lock()
 
 
-_RUNTIME_DIRECTIVE_RE = re.compile(r'^[ \t]*runtime[ \t]*=[ \t]*["\']?(nodejs|node|python|edge|wasm)["\']?[ \t]*$', re.MULTILINE)
+_RUNTIME_DIRECTIVE_RE = re.compile(r'^[ \t]*runtime[ \t]*=[ \t]*["\']?(nodejs|node|python|edge|edge-v8|wasm)["\']?[ \t]*$', re.MULTILINE)
 
 
 def _parse_runtime_directive(handler_path: str) -> str:
@@ -1529,8 +1529,14 @@ def _execute_with_runtime(handler_path: str, runtime_name: str, method: str,
     query = {k: v[0] if len(v) == 1 else v for k, v in query.items()}
     cookies = parse_cookie_header(headers.get("Cookie", ""))
 
-    # For python/edge runtimes: evaluate the .twm handler in-process
-    if runtime_name in ("python", "edge", "wasm"):
+    # v0.9.05: edge runtime is now V8/QuickJS-based (not Python exec)
+    # edge and edge-v8 both go through the V8 sandbox
+    if runtime_name in ("edge", "edge-v8"):
+        return _execute_with_edge_v8(source, runtime, method, url_path, query,
+                                     headers, cookies, body, handler_path)
+
+    # python/wasm runtimes: evaluate the .twm handler in-process via Python
+    if runtime_name in ("python", "wasm"):
         request_data = {
             "method": method.upper(),
             "path": normalize_url_path(url_path),
@@ -1542,8 +1548,73 @@ def _execute_with_runtime(handler_path: str, runtime_name: str, method: str,
         }
         return _execute_twm_in_python(source, runtime, request_data, handler_path)
 
+    # v0.9.03: edge-v8 runtime -- real JavaScript sandbox (V8/QuickJS)
+    if runtime_name == "edge-v8":
+        return _execute_with_edge_v8(source, runtime, method, url_path, query,
+                                     headers, cookies, body, handler_path)
+
     # Fallback to Node.js
     return execute_twm_api_handler(handler_path, method, url_path, headers, body)
+
+
+def _execute_with_edge_v8(source: str, runtime, method: str, url_path: str,
+                           query: dict, headers: dict, cookies: dict,
+                           body: object, handler_path: str) -> dict:
+    """v0.9.03: Execute a .twm handler inside the V8/QuickJS JS sandbox.
+
+    This is TW's real JavaScript Edge runtime -- like Next.js Edge Runtime.
+    """
+    import re as _re
+
+    method_lower = method.lower()
+    fn_pattern = _re.compile(
+        r'fn\s+(' + method_lower + r'|handler)\s*\([^)]*\)\s*\{',
+        _re.MULTILINE,
+    )
+    m = fn_pattern.search(source)
+    if not m:
+        allowed = _re.findall(r'fn\s+(\w+)\s*\(', source)
+        return {
+            "status": 405,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": f"Method {method.upper()} not allowed", "allowed": allowed}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    start = m.end()
+    depth = 1
+    i = start
+    while i < len(source) and depth > 0:
+        if source[i] == '{':
+            depth += 1
+        elif source[i] == '}':
+            depth -= 1
+        i += 1
+    fn_body = source[start:i - 1].strip()
+
+    fn_body = _RUNTIME_DIRECTIVE_RE.sub("", fn_body)
+
+    request_data = {
+        "method": method.upper(),
+        "path": normalize_url_path(url_path),
+        "query": query,
+        "body": body,
+        "headers": headers,
+        "cookies": cookies,
+        "env": dict(os.environ),
+    }
+
+    if hasattr(runtime, "execute_handler"):
+        return runtime.execute_handler(fn_body, method, request_data, handler_path)
+    else:
+        return {
+            "status": 500,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": "Edge V8 runtime not properly configured"}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
 
 
 def _execute_twm_in_python(source: str, runtime, request_data: dict, handler_path: str) -> dict:

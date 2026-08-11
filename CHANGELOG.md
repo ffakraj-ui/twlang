@@ -1,5 +1,149 @@
 # Changelog
 
+## v0.9.06 (2026-08-11)
+
+### Edge = Pure V8, QuickJS Removed (Suraj)
+
+- **QuickJS completely removed** — ab sirf V8 (py_mini_racer) hai. Koi
+  QuickJS fallback nahi. Edge runtime = V8 isolate, point.
+
+- **`runtime = "edge"` = pure V8** — real V8 isolate (same engine jo
+  Google Chrome aur Next.js Edge Runtime use karta hai). No QuickJS,
+  no Python exec, no compromise.
+
+- **What was removed:**
+  - QuickJS engine detection
+  - QuickJS Context setup
+  - QuickJS host function injection (add_callable)
+  - QuickJS bootstrap code (_JS_BOOTSTRAP)
+  - All QuickJS references in comments and docstrings
+
+- **What remains (pure V8):**
+  - SHA-256 in pure JavaScript
+  - HMAC-SHA256 in pure JavaScript
+  - HTTP fetch via multi-pass yield bridge
+  - Environment variables injection
+  - In-memory KV storage
+  - tw.crypto.random(), tw.crypto.uuid()
+
+- **Runtime registry:**
+  - `edge` → EdgeV8Runtime (V8 only)
+  - `edge-v8` → alias for edge
+  - `edge-py` → legacy Python fallback
+  - `python`, `nodejs`, `wasm` → unchanged
+
+- **Install requirement:** `pip install py_mini_racer` (V8 engine)
+
+---
+
+## v0.9.05 (2026-08-11)
+ (2026-08-11)
+
+### Edge Runtime: Python → V8 Based (Huge Update) (Suraj)
+
+- **`runtime = "edge"` is now V8/QuickJS-based** — Edge runtime ab Python
+  exec() nahi use karta. Seedha V8 isolate ya QuickJS sandbox me real
+  JavaScript execute hota hai. Next.js Edge Runtime jaisa.
+
+- **`edge-v8` merged into `edge`** — ab `edge` hi V8 runtime hai.
+  `edge-v8` alias ke roop me kaam karta hai (backward compat).
+  Purana Python-based edge `edge-py` naam se available hai (fallback).
+
+- **framework.py dispatch changed:**
+  - `edge` + `edge-v8` → `_execute_with_edge_v8()` (V8/QuickJS sandbox)
+  - `python` + `wasm` → `_execute_twm_in_python()` (Python in-process)
+  - `nodejs` → `execute_twm_api_handler()` (Node.js persistent worker)
+
+- **Runtime directive regex updated** — `edge-v8` bhi support karta hai.
+
+- **All v0.9.04 V8 features now in `edge`:**
+  - Pure JS SHA-256 (64-round, UTF-8, proper padding)
+  - Pure JS HMAC-SHA256 (ipad/opad construction)
+  - HTTP fetch via multi-pass yield bridge (V8 sync → Python HTTP → back)
+  - Environment variables injection (safe vars as JSON)
+  - In-memory KV storage
+  - tw.crypto.random(), tw.crypto.uuid()
+
+- **Runtime registry updated:**
+  - `edge` → EdgeV8Runtime (V8/QuickJS)
+  - `edge-v8` → EdgeV8Runtime (alias)
+  - `edge-py` → EdgeRuntime (legacy Python fallback)
+
+---
+
+## v0.9.04 (2026-08-11)
+ (2026-08-11)
+
+### Edge V8 — Pure JS Implementation, No Dikhawa (Suraj)
+
+- **SHA-256 fully implemented in pure JavaScript** — `tw.crypto.hash("sha256", data)`
+  now works inside V8 sandbox WITHOUT QuickJS. Real SHA-256 algorithm with UTF-8
+  encoding, 64-round compression, proper padding. No "install QuickJS" error.
+
+- **HMAC fully implemented in pure JavaScript** — `tw.crypto.hmac("sha256", key, msg)`
+  works inside V8 sandbox. Uses the SHA-256 implementation with proper
+  ipad/opad construction.
+
+- **HTTP fetch via multi-pass bridge** — `tw.http.fetch()` now works in V8.
+  V8 (py_mini_racer) is synchronous, so fetch uses a yield pattern:
+  1. JS throws `__YIELD_FETCH__` with pending request
+  2. Python catches it, does real HTTP request via urllib
+  3. Python re-evals with `__fetch_result__` injected
+  4. JS handler continues with the fetch result
+  Max 10 fetches per request (safety limit).
+
+- **Environment variables injection** — `tw.env.get("VAR")` now works in V8.
+  Safe env vars (TW_*, PUBLIC_*, EDGE_*, NODE_ENV) are injected as a JSON
+  object into the V8 sandbox at execution start.
+
+- **tw.crypto.random() and tw.crypto.uuid()** — already worked, kept as-is.
+
+- **No more "install QuickJS" errors** — V8 mode is now fully functional
+  with real implementations, not stubs.
+
+---
+
+## v0.9.03 (2026-08-11)
+ (2026-08-11)
+
+### Edge V8 Runtime — Real JavaScript Sandbox (Suraj)
+
+- **New runtime: `edge-v8`** — real JavaScript sandbox using V8 engine
+  (via `py_mini_racer`) or QuickJS (fallback). This is TW's answer to
+  Next.js Edge Runtime — real JS execution, not Python translation.
+
+- **TW now gives TWO Edge options:**
+  1. `edge` — Python in-process (fastest, tw.* APIs)
+  2. `edge-v8` — V8/QuickJS JS sandbox (real JavaScript, Next.js competitor)
+
+- **EdgeV8Executor** — dual-mode engine:
+  - V8 mode: real V8 isolate via `py_mini_racer`
+  - QuickJS mode: lighter JS engine, full host function support
+  - Auto-selects best available engine
+
+- **tw.* APIs injected as JS host functions** — tw.storage, tw.http,
+  tw.crypto, tw.cache, tw.env all work inside the JS sandbox via
+  bridge functions that call back to Python.
+
+- **Safe engine detection** — no crash if neither V8 nor QuickJS is
+  installed. Returns helpful error with install instructions.
+
+- **`_execute_with_edge_v8()`** in framework.py — extracts .twm handler
+  body, wraps as JS IIFE, executes in sandbox, normalizes response.
+
+- **Next.js comparison:**
+  | Cheez | Next.js Edge | TW edge-v8 |
+  |-------|-------------|-----------|
+  | Engine | V8 Isolate | V8 or QuickJS |
+  | Language | JavaScript | JavaScript (real) |
+  | Cold start | Sub-ms | Fast/Sub-ms |
+  | Execution | Sandboxed JS | Sandboxed JS |
+  | fs | No | No |
+  | network | Yes | Yes |
+  | crypto | Yes | Yes |
+
+---
+
 ## v0.9.02 (2026-08-11)
 
 ### Real WASM Runtime + Progress Tracker (Suraj)

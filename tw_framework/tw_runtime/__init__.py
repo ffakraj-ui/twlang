@@ -39,10 +39,13 @@ __all__ = [
 from .adapters.node_adapter import NodeRuntime
 from .adapters.python_adapter import PythonRuntime
 from .adapters.edge_adapter import EdgeRuntime
+from .adapters.edge_v8_adapter import EdgeV8Runtime
 from .adapters.wasm_adapter import WasmRuntime
 
 RuntimeRegistry.register("nodejs", NodeRuntime)
 RuntimeRegistry.register("node", NodeRuntime)       # alias
 RuntimeRegistry.register("python", PythonRuntime)
-RuntimeRegistry.register("edge", EdgeRuntime)
+RuntimeRegistry.register("edge", EdgeV8Runtime)
+RuntimeRegistry.register("edge-v8", EdgeV8Runtime)  # alias
+RuntimeRegistry.register("edge-py", EdgeRuntime)  # legacy Python edge
 RuntimeRegistry.register("wasm", WasmRuntime)

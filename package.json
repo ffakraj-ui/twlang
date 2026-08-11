@@ -1,7 +1,7 @@
 {
   "name": "twlang-main",
   "private": true,
-  "version": "0.9.02",
+  "version": "0.9.06",
   "scripts": {
     "dev": "tw dev",
     "build": "tw build",
