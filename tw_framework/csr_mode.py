@@ -70,6 +70,18 @@ def inject_csr_runtime(html_doc: str, use_dev: bool = False, use_cdn: bool = Tru
         react_dom_url = REACT_DOM_DEV_CDN_URL if use_dev else REACT_DOM_CDN_URL
         scripts.append('<script crossorigin src="' + react_url + '"></script>')
         scripts.append('<script crossorigin src="' + react_dom_url + '"></script>')
+    else:
+        # v0.9.08 FIX: Use bundled React from node_modules
+        import os as _os
+        nm_react = _os.path.join(_os.getcwd(), "node_modules", "react", "umd", "react.production.min.js")
+        nm_dom = _os.path.join(_os.getcwd(), "node_modules", "react-dom", "umd", "react-dom.production.min.js")
+        if _os.path.exists(nm_react) and _os.path.exists(nm_dom):
+            scripts.append('<script src="/_tw/static/react.production.min.js"></script>')
+            scripts.append('<script src="/_tw/static/react-dom.production.min.js"></script>')
+        else:
+            # Fallback to CDN if bundle not available
+            scripts.append('<script crossorigin src="' + REACT_CDN_URL + '"></script>')
+            scripts.append('<script crossorigin src="' + REACT_DOM_CDN_URL + '"></script>')
 
     scripts.append('<script>\n' + CSR_BOOTSTRAP_JS + '\n</script>')
 

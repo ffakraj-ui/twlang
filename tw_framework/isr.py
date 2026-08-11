@@ -65,3 +65,46 @@ def get_revalidation_status() -> dict:
         return {"secret_configured": bool(_revalidation_secret),
                 "cached_pages": len(_revalidation_cache),
                 "pending": list(_pending_revalidations)}
+
+
+# v0.9.08 FIX: Actual page rebuild logic
+_rebuild_callback = None
+
+
+def set_rebuild_callback(callback):
+    """Register a callback that rebuilds a single page."""
+    global _rebuild_callback
+    _rebuild_callback = callback
+
+
+def process_pending_revalidations(project_root=".", output_dir="dist"):
+    """Process all pending revalidations - actually rebuild pages.
+
+    v0.9.08 FIX: This was missing. Now rebuilds pages via callback or full build.
+    """
+    pending = get_pending_revalidations()
+    if not pending:
+        return {"rebuilt": 0, "paths": []}
+
+    rebuilt = []
+    failed = []
+
+    for path in list(pending):
+        try:
+            if _rebuild_callback:
+                _rebuild_callback(path, project_root, output_dir)
+                mark_revalidated(path)
+                rebuilt.append(path)
+            else:
+                # Fallback: trigger full build
+                try:
+                    from .framework import build_hidden_site
+                    build_hidden_site(project_root, output_dir, force=True)
+                    mark_revalidated(path)
+                    rebuilt.append(path)
+                except Exception as err:
+                    failed.append({"path": path, "error": str(err)})
+        except Exception as err:
+            failed.append({"path": path, "error": str(err)})
+
+    return {"rebuilt": len(rebuilt), "paths": rebuilt, "failed": failed}

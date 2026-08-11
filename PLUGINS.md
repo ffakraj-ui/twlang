@@ -146,10 +146,10 @@ tw plugin search
 
 ## Plugin Registry
 
-Plugins `ffakraj-ui/tw-plugin` GitHub repo me distribute hote hain. Registry ka URL:
+Plugins `tw-origin/tw-plugins` GitHub repo me distribute hote hain. Registry ka URL:
 
 ```
-https://raw.githubusercontent.com/ffakraj-ui/tw-plugin/main/registry.json
+https://raw.githubusercontent.com/tw-origin/tw-plugins/main/registry.json
 ```
 
 Registry format:

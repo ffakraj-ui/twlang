@@ -8,6 +8,7 @@ raises a clear build-time error instead of crashing at runtime.
 """
 
 from __future__ import annotations
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -43,7 +44,7 @@ CAPABILITIES = {
 }
 
 
-class BaseRuntime:
+class BaseRuntime(ABC):
     """Abstract base class for all runtime adapters.
 
     Subclasses MUST override:
@@ -139,6 +140,7 @@ class BaseRuntime:
 
     # ── Execution ──────────────────────────────────────────────────────
 
+    @abstractmethod
     def execute(self, handler_path: str, method: str, url_path: str,
                 headers: dict, body: Any, request_data: dict) -> Optional[dict]:
         """Execute a .twm handler on this runtime.

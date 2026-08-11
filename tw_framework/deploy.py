@@ -91,13 +91,13 @@ def deploy(target: str = None, project_root: str = ".") -> dict:
               "      - uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'\n"
               "      - run: pip install tw-framework\n"
               "      - run: tw build\n"
-              "      - uses: peaceiris/actions-gh-pages@v3\n        with:\n"
+              "      - uses: peaceiris/actions-gh-pages@v4\n        with:\n"
               "          github_token: ${{ secrets.GITHUB_TOKEN }}\n          publish_dir: ./dist\n")
         files[".github/workflows/deploy.yml"] = wf
 
     elif target == "docker":
         df = ("FROM python:3.12-slim\nWORKDIR /app\n"
-              "RUN pip install tw-framework\nCOPY . .\nRUN tw build\n"
+              "RUN pip install tw-framework gunicorn\nCOPY . .\nRUN tw build\n"
               "EXPOSE 8080\nCMD [\"python\", \"-m\", \"http.server\", \"8080\", \"--directory\", \"dist\"]\n")
         files["Dockerfile"] = df
 

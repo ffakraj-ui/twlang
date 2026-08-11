@@ -33,19 +33,41 @@ __all__ = [
     "RuntimeRegistry",
     "validate_runtime_compatibility",
     "RuntimeValidationError",
+    "register_runtimes",
 ]
 
-# Register built-in adapters
-from .adapters.node_adapter import NodeRuntime
-from .adapters.python_adapter import PythonRuntime
-from .adapters.edge_adapter import EdgeRuntime
-from .adapters.edge_v8_adapter import EdgeV8Runtime
-from .adapters.wasm_adapter import WasmRuntime
+# v0.9.08 FIX #18: Registration moved to register_runtimes() to avoid
+# import side effects (circular imports, eager loading). Call explicitly:
+#   from tw_framework.tw_runtime import register_runtimes
+#   register_runtimes()
+# Or it's auto-called on first get_runtime() call.
+_REGISTERED = False
 
-RuntimeRegistry.register("nodejs", NodeRuntime)
-RuntimeRegistry.register("node", NodeRuntime)       # alias
-RuntimeRegistry.register("python", PythonRuntime)
-RuntimeRegistry.register("edge", EdgeV8Runtime)
-RuntimeRegistry.register("edge-v8", EdgeV8Runtime)  # alias
-RuntimeRegistry.register("edge-py", EdgeRuntime)  # legacy Python edge
-RuntimeRegistry.register("wasm", WasmRuntime)
+
+def register_runtimes():
+    """Register all built-in runtime adapters.
+
+    v0.9.08 FIX #18: Called lazily to avoid import-time side effects.
+    Safe to call multiple times (idempotent).
+    """
+    global _REGISTERED
+    if _REGISTERED:
+        return
+    from .adapters.node_adapter import NodeRuntime
+    from .adapters.python_adapter import PythonRuntime
+    from .adapters.edge_adapter import EdgeRuntime
+    from .adapters.edge_v8_adapter import EdgeV8Runtime
+    from .adapters.wasm_adapter import WasmRuntime
+
+    RuntimeRegistry.register("nodejs", NodeRuntime)
+    RuntimeRegistry.register("node", NodeRuntime)       # alias
+    RuntimeRegistry.register("python", PythonRuntime)
+    RuntimeRegistry.register("edge", EdgeV8Runtime)
+    RuntimeRegistry.register("edge-v8", EdgeV8Runtime)  # alias
+    RuntimeRegistry.register("edge-py", EdgeRuntime)    # legacy Python edge
+    RuntimeRegistry.register("wasm", WasmRuntime)
+    _REGISTERED = True
+
+
+# Auto-register on import (backward compatibility)
+register_runtimes()

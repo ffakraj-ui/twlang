@@ -40,6 +40,31 @@ from .framework import (
 
 logger = logging.getLogger(__name__)
 
+# FIX #118: AST cache to avoid re-reading + parsing on every request
+from collections import OrderedDict as _OD
+_AST_CACHE: "_OD[str, tuple]" = _OD()
+_AST_CACHE_MAX = 128
+_AST_CACHE_LOCK = threading.Lock()
+
+def _load_cached_ast(page_path: str):
+    """Load page AST with caching to avoid disk I/O on every request."""
+    try:
+        mtime = os.path.getmtime(page_path)
+    except OSError:
+        return compiler.load_page_ast_from_file(page_path)
+    with _AST_CACHE_LOCK:
+        entry = _AST_CACHE.get(page_path)
+        if entry and entry[0] == mtime:
+            _AST_CACHE.move_to_end(page_path)
+            return entry[1]
+    ast = compiler.load_page_ast_from_file(page_path)
+    with _AST_CACHE_LOCK:
+        _AST_CACHE[page_path] = (mtime, ast)
+        _AST_CACHE.move_to_end(page_path)
+        if len(_AST_CACHE) > _AST_CACHE_MAX:
+            _AST_CACHE.popitem(last=False)
+    return ast
+
 
 # ─── SSR Page Cache ───────────────────────────────────────────────────────────
 
@@ -280,7 +305,9 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
                         compressed = try_brotli_or_gzip(candidate)
                         if compressed:
                             cbody, enc = compressed
-                            if (enc == "br" and "br" in accept_enc) or (enc == "gz" and "gzip" in accept_enc):
+                            # FIX #116: Use exact token match (not substring)
+                        accept_tokens = {t.strip() for t in accept_enc.split(",")}
+                        if (enc == "br" and "br" in accept_tokens) or (enc == "gz" and "gzip" in accept_tokens):
                                 enc_header = "br" if enc == "br" else "gzip"
                                 self._send(200, cbody, ct,
                                            extra_headers=[
@@ -328,7 +355,7 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
         def _serve_page(self, match: RouteMatch, method: str, mw: dict, raw_path: str, request_headers: Dict[str, str]) -> None:
             page_path = match.page_info["path"]
             try:
-                page_ast = compiler.load_page_ast_from_file(page_path)
+                page_ast = _load_cached_ast(page_path)  # FIX #118: cached AST
             except Exception as err:
                 self._serve_500(format_compiler_error(page_path, err), mw)
                 return
@@ -343,11 +370,14 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
                     revalidate_ttl = None
 
             cache_key = self._build_page_cache_key(match, raw_path, request_headers, render_mode, page_ast)
+            # FIX #121: Invalid cache_size -> use default (512) instead of unlimited
             cache_size = getattr(page_ast, "cache_size", None)
             try:
-                cache_size = int(cache_size) if cache_size is not None else None
+                cache_size = int(cache_size) if cache_size is not None else 512
+                if cache_size < 0:
+                    cache_size = 512
             except (TypeError, ValueError):
-                cache_size = None
+                cache_size = 512
 
             # Static pages: try SSR cache first
             if render_mode in {"static", "edge"}:
@@ -368,12 +398,17 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
             status = response.get("status", 200)
             page_headers = response.get("headers", [])
 
-            # Cache rendered output for static/edge pages with revalidate
-            if render_mode in {"static", "edge"} and revalidate_ttl:
+            # FIX #117: Add Vary: Cookie when cache key includes cookie_hash
+            extra_cache_headers = []
+            if "cookie_hash" in str(cache_key) or "cookie:" in str(cache_key):
+                extra_cache_headers.append(("Vary", "Cookie"))
+
+            # FIX #120: revalidate 0 means "always stale" (revalidate every request)
+            if render_mode in {"static", "edge"} and revalidate_ttl is not None:
                 ssr_cache.set(
                     cache_key,
                     body_bytes,
-                    revalidate_ttl,
+                    revalidate_ttl if revalidate_ttl > 0 else 0.001,
                     namespace=match.route_path,
                     namespace_max=cache_size,
                 )
@@ -394,13 +429,19 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
                 extra_headers=[
                     ("X-TW-Cache", "MISS"),
                     ("X-TW-Render", render_mode),
-                ] + mw.get("headers", []) + page_headers,
+                ] + extra_cache_headers + mw.get("headers", []) + page_headers,
                 cookies=mw.get("cookies", []),
             )
 
+        _cached_404: str = ""
+
         def _serve_404(self, mw: dict) -> None:
             try:
-                custom = project.compile_special_page(404, dev_mode=False)
+                # FIX #123: Cache custom 404 page
+                custom = self._cached_404
+                if not custom:
+                    custom = project.compile_special_page(404, dev_mode=False) or ""
+                    self._cached_404 = custom
                 if custom:
                     self._send(404, custom.encode("utf-8"), "text/html; charset=utf-8",
                                extra_headers=mw.get("headers", []), cookies=mw.get("cookies", []))
@@ -430,9 +471,12 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
         def _send(self, status: int, body: bytes, content_type: str,
                   extra_headers: Optional[List] = None,
                   cookies: Optional[List] = None) -> None:
+            # FIX #122: For HEAD, Content-Length should be actual body size
+            body_len = len(body)
+            actual_body = body if self.command != "HEAD" else b""
             self.send_response(status)
             self.send_header("Content-Type", content_type)
-            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Content-Length", str(body_len))
             for name, value in (extra_headers or []):
                 self.send_header(name, value)
             for name, value in (cookies or []):
@@ -447,9 +491,9 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
                     ),
                 )
             self.end_headers()
-            if body:
+            if actual_body:
                 try:
-                    self.wfile.write(body)
+                    self.wfile.write(actual_body)
                 except (BrokenPipeError, ConnectionResetError):
                     pass
 
@@ -460,7 +504,7 @@ def make_production_handler(project: TWProject, output_dir: Optional[str], ssr_c
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True
-    daemon_threads = True
+    daemon_threads = False  # FIX #125: Allow graceful shutdown
 
 
 # ─── run_production_server ────────────────────────────────────────────────────
@@ -493,7 +537,15 @@ def run_production_server(
         or project.config.get("ssr.cache_max")
         or project.config.get("ssr_cache_max")
     )
-    ssr_cache = SSRCache(max_entries=int(config_cache_max) if config_cache_max is not None else 512)
+    # FIX #127: Handle invalid config_cache_max gracefully
+    try:
+        max_entries = int(config_cache_max) if config_cache_max is not None else 512
+        if max_entries <= 0:
+            max_entries = 512
+    except (TypeError, ValueError):
+        logger.warning("Invalid ssr.cache_max=%r; using default 512", config_cache_max)
+        max_entries = 512
+    ssr_cache = SSRCache(max_entries=max_entries)
 
     handler = make_production_handler(project, output_dir, ssr_cache)
 
@@ -511,6 +563,15 @@ def run_production_server(
     if output_dir and os.path.isdir(output_dir):
         log(f"   Static:    {os.path.abspath(output_dir)}")
     log("   SSR cache: enabled")
+    # FIX #126: SSL/TLS support via env vars
+    ssl_cert = os.environ.get("TW_SSL_CERT", "")
+    ssl_key = os.environ.get("TW_SSL_KEY", "")
+    if ssl_cert and ssl_key:
+        import ssl as _ssl
+        context = _ssl.SSLContext(_ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(ssl_cert, ssl_key)
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+        log("   SSL:      enabled")
     log("   Press Ctrl+C to stop\n")
 
     stop_event = threading.Event()
@@ -518,7 +579,7 @@ def run_production_server(
     def _shutdown(signum, frame) -> None:
         log("\nShutting down...")
         stop_event.set()
-        threading.Thread(target=server.shutdown, daemon=True).start()
+        threading.Thread(target=server.shutdown, daemon=False).start()  # FIX #128: Non-daemon for graceful shutdown
 
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
@@ -530,3 +591,56 @@ def run_production_server(
     finally:
         server.server_close()
         log("Server stopped.")
+
+
+# v0.9.08 FIX: Optional Redis-backed SSR cache for persistence
+class RedisSSRCache:
+    """Redis-backed SSR cache. Falls back to in-memory if Redis unavailable.
+    Set TW_REDIS_URL=redis://localhost:6379/0 to enable.
+    """
+    def __init__(self, redis_url=None, ttl=3600):
+        self._fallback = SSRCache()
+        self._redis = None
+        self._ttl = ttl
+        try:
+            import redis as _redis
+            url = redis_url or os.environ.get("TW_REDIS_URL", "")
+            if url:
+                self._redis = _redis.from_url(url, decode_responses=True)
+                self._redis.ping()
+        except Exception:
+            self._redis = None
+
+    def get(self, key):
+        if self._redis:
+            try:
+                import json as _json
+                val = self._redis.get("ssr:" + key)
+                if val: return _json.loads(val)
+            except Exception:
+                pass
+        return self._fallback.get(key)
+
+    def set(self, key, value, ttl=None):
+        if self._redis:
+            try:
+                import json as _json
+                self._redis.setex("ssr:" + key, ttl or self._ttl, _json.dumps(value))
+            except Exception:
+                pass
+        self._fallback.set(key, value, ttl)
+
+    def clear(self):
+        if self._redis:
+            try:
+                for k in self._redis.scan_iter("ssr:*"):
+                    self._redis.delete(k)
+            except Exception:
+                pass
+        self._fallback.clear()
+
+def get_ssr_cache():
+    """Get SSR cache - Redis if configured, in-memory fallback."""
+    if os.environ.get("TW_REDIS_URL"):
+        return RedisSSRCache()
+    return SSRCache()

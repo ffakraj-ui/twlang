@@ -149,15 +149,30 @@ class WasmStorage(StorageAPI):
 
     _permissions: WasmPermissions = WasmPermissions()
 
+    def __init__(self):
+        # v0.9.08 FIX #3: Initialize permissions per-instance (was class variable only)
+        self._permissions = WasmPermissions()
+
     def _resolve_safe_path(self, path: str) -> str:
         """Resolve a path within the sandbox, blocking path traversal."""
         sandbox = self._permissions.sandbox_dir
         full_path = os.path.abspath(os.path.join(sandbox, path))
-        # Security: ensure resolved path is inside sandbox
-        if not full_path.startswith(sandbox + os.sep) and full_path != sandbox:
+        # v0.9.08 FIX #4: Use realpath + commonpath (not startswith) for path traversal
+        # startswith fails on symlinks, case-insensitive paths, ../ normalization
+        sandbox_real = os.path.realpath(sandbox)
+        full_path = os.path.realpath(os.path.join(sandbox_real, path))
+        try:
+            common = os.path.commonpath([sandbox_real, full_path])
+            if common != sandbox_real:
+                raise PermissionError(
+                    f"WASM sandbox: path traversal blocked. "
+                    f"Cannot access: {path} (resolves outside sandbox)"
+                )
+        except ValueError:
+            # Different drives on Windows — definitely outside sandbox
             raise PermissionError(
                 f"WASM sandbox: path traversal blocked. "
-                f"Cannot access: {path} (resolves outside sandbox)"
+                f"Cannot access: {path} (different drive/root)"
             )
         return full_path
 
@@ -227,6 +242,9 @@ class WasmHttp(HttpAPI):
     """
 
     _permissions: WasmPermissions = WasmPermissions()
+
+    def __init__(self):
+        self._permissions = WasmPermissions()
 
     def fetch(self, url: str, options: Optional[dict] = None) -> dict:
         if not self._permissions.allow_net:
@@ -340,6 +358,9 @@ class WasmEnv(EnvAPI):
 
     _permissions: WasmPermissions = WasmPermissions()
 
+    def __init__(self):
+        self._permissions = WasmPermissions()
+
     def get(self, name: str, default: str = "") -> str:
         if not self._permissions.allow_env_var(name):
             return default
@@ -413,8 +434,9 @@ class WasmExecutor:
         runs it inside wasmtime's sandbox with WASI filesystem
         limited to the sandbox directory.
         """
-        # For now, wasmtime execution uses the same Python translation
-        # but runs inside wasmtime's engine for true sandboxing.
+        # v0.9.08 FIX #1: Be honest — wasmtime provides WASI fs sandboxing
+        # but Python→WASM compilation is a future enhancement.
+        # Current: wasmtime WASI config applied + restricted Python namespace.
         # The wasmtime engine provides:
         # 1. Memory isolation (WASM linear memory)
         # 2. WASI filesystem limited to preopened sandbox dir
@@ -433,7 +455,11 @@ class WasmExecutor:
         try:
             # Configure wasmtime engine with WASI
             config = _wasmtime.Config()
-            config.cache = True
+            # v0.9.08 FIX #5: cache property may not exist in all wasmtime versions
+            try:
+                config.cache = True
+            except (AttributeError, TypeError):
+                pass  # Not all wasmtime versions support cache config
             engine = _wasmtime.Engine(config)
 
             # Create WASI context with preopened sandbox directory
@@ -490,7 +516,7 @@ class WasmExecutor:
             "tw": twrt.tw,
             "request": request_data,
             "json": json,
-            "os": os,
+            # v0.9.08 FIX #2: os module removed from sandbox (security)
             "re": __import__("re"),
             "hashlib": hashlib,
             "hmac": hmac,
@@ -636,7 +662,7 @@ class WasmRuntime(BaseRuntime):
             RuntimeCapability.CACHE.value: True,                 # in-memory
             RuntimeCapability.ENV_VARS.value: len(self._permissions.allowed_env_vars()) > 0,
             RuntimeCapability.PERSISTENT_STORAGE.value: self._permissions.allow_fs,
-            RuntimeCapability.TIMERS.value: False,               # no timers
+            RuntimeCapability.TIMERS.value: False,               # no timers (v0.9.08: time.sleep not in sandbox namespace)
             RuntimeCapability.STREAMING.value: False,             # no streaming
         }
 

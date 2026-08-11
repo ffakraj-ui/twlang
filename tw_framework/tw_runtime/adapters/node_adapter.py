@@ -117,17 +117,23 @@ class NodeRuntime(BaseRuntime):
     def display_name(self) -> str:
         return "Node.js"
 
+    _cached_version: str = ""
+
     @property
     def version(self) -> str:
-        # Try to get Node.js version
+        # v0.9.08 FIX #15: Cache version (was spawning subprocess on every access!)
+        if self._cached_version:
+            return self._cached_version
         try:
             import subprocess
             result = subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
-                return result.stdout.strip().lstrip("v")
+                self._cached_version = result.stdout.strip().lstrip("v")
+                return self._cached_version
         except Exception:
             pass
-        return "unknown"
+        self._cached_version = "unknown"
+        return self._cached_version
 
     def capabilities(self) -> Dict[str, bool]:
         return {

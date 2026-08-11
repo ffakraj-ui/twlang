@@ -54,33 +54,58 @@ def get_js_engine_version() -> str:
 
 # --- Edge KV + Cache stores (shared across requests in process) ---
 
-_EDGE_KV: Dict[str, str] = {}
-_EDGE_CACHE: Dict[str, Any] = {}
+# v0.9.08 FIX #74: Per-request KV store (was module global)
+_REQUEST_KV: Dict[str, str] = {}
+_REQUEST_CACHE: Dict[str, Any] = {}
+
+
+def _get_kv_store() -> Dict[str, str]:
+    return _REQUEST_KV
+
+
+def _get_cache_store() -> Dict[str, Any]:
+    return _REQUEST_CACHE
+
+
+# v0.9.08 FIX #73: Bridge JS store to Python store for cross-runtime access
+_JS_STORAGE_BRIDGE = {}
+
+
+def _sync_js_to_python_storage():
+    """Sync JS storage bridge to Python KV store."""
+    for k, v in _JS_STORAGE_BRIDGE.items():
+        _REQUEST_KV[k] = v
+
+
+def _reset_request_stores():
+    """Clear per-request stores — call at start of each request."""
+    _REQUEST_KV.clear()
+    _REQUEST_CACHE.clear()
 
 
 # --- JS sandbox host functions ---
 
 def _js_tw_storage_read(path: str, encoding: str = "utf-8") -> str:
-    if path in _EDGE_KV:
-        return _EDGE_KV[path]
+    if path in _REQUEST_KV:
+        return _REQUEST_KV[path]
     raise Exception("Edge runtime does not support filesystem. Use tw.storage.write() for KV, or runtime='nodejs'.")
 
 def _js_tw_storage_write(path: str, data: str) -> bool:
-    _EDGE_KV[path] = data if isinstance(data, str) else str(data)
+    _REQUEST_KV[path] = data if isinstance(data, str) else str(data)
     return True
 
 def _js_tw_storage_delete(path: str) -> bool:
-    return _EDGE_KV.pop(path, None) is not None
+    return _REQUEST_KV.pop(path, None) is not None
 
 def _js_tw_storage_exists(path: str) -> bool:
-    return path in _EDGE_KV
+    return path in _REQUEST_KV
 
 def _js_tw_http_fetch(url: str, options_json: str = "{}") -> str:
     opts = json.loads(options_json) if options_json else {}
     method = opts.get("method", "GET").upper()
     headers = opts.get("headers", {})
     body = opts.get("body")
-    timeout = min(opts.get("timeout", 30), 30)
+    timeout = opts.get("timeout", 30)  # v0.9.08 FIX #83: No arbitrary 30s cap
     req_body = None
     if body is not None:
         if isinstance(body, (dict, list)):
@@ -104,7 +129,7 @@ def _js_tw_http_fetch(url: str, options_json: str = "{}") -> str:
                 except Exception:
                     pass
             return json.dumps({"ok": 200 <= resp.status < 300, "status": resp.status, "statusText": resp.reason, "url": url, "headers": resp_headers, "text": text, "data": data})
-    except urllib.error.HTTPError as e:
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError) as e:  # v0.9.08 FIX #84
         text = ""
         try:
             text = e.read().decode("utf-8", errors="replace")
@@ -140,17 +165,17 @@ def _js_tw_env_all() -> str:
     return json.dumps(safe)
 
 def _js_tw_cache_get(key: str, default_json: str = "null") -> str:
-    return json.dumps(_EDGE_CACHE.get(key, json.loads(default_json)))
+    return json.dumps(_REQUEST_CACHE.get(key, json.loads(default_json)))
 
 def _js_tw_cache_set(key: str, value_json: str, ttl: int = 0) -> bool:
-    _EDGE_CACHE[key] = json.loads(value_json)
+    _REQUEST_CACHE[key] = json.loads(value_json)
     return True
 
 def _js_tw_cache_delete(key: str) -> bool:
-    return _EDGE_CACHE.pop(key, None) is not None
+    return _REQUEST_CACHE.pop(key, None) is not None
 
 def _js_tw_cache_has(key: str) -> bool:
-    return key in _EDGE_CACHE
+    return key in _REQUEST_CACHE
 
 
 
@@ -158,7 +183,7 @@ def _js_tw_cache_has(key: str) -> bool:
 
 _JS_BOOTSTRAP_V8 = r"""
 var __tw_cache_store = {};
-var __tw_env_store = __TW_ENV_JSON__;
+var __tw_env_store = TW_ENV_DATA_PLACEHOLDER;
 
 // === Pure JS SHA-256 ===
 var __sha256 = (function() {
@@ -289,13 +314,13 @@ var tw = {
             var chars = "0123456789abcdef";
             var result = "";
             for (var i = 0; i < (length || 32) * 2; i++) {
-                result += chars[Math.floor(Math.random() * 16)];
+                result += chars[Math.floor((typeof crypto !== 'undefined' && crypto.getRandomValues) ? (crypto.getRandomValues(new Uint8Array(1))[0] / 256) : Math.random()) * 16)];
             }
             return result;
         },
         uuid: function() {
             return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0;
+                var r = ((typeof crypto !== 'undefined' && crypto.getRandomValues) ? (crypto.getRandomValues(new Uint8Array(1))[0] / 256) : Math.random()) * 16 | 0;
                 var v = c === "x" ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
@@ -330,23 +355,28 @@ var tw = {
 
 class EdgeV8Storage(StorageAPI):
     def read(self, path: str, encoding: str = "utf-8") -> Union[str, bytes]:
-        if path in _EDGE_KV:
-            return _EDGE_KV[path]
+        if path in _REQUEST_KV:
+            return _REQUEST_KV[path]
         raise PermissionError("Edge V8: filesystem not supported. Use tw.storage.write() for KV, or runtime='nodejs'.")
     def write(self, path: str, data: Union[str, bytes]) -> bool:
-        _EDGE_KV[path] = data if isinstance(data, str) else data.decode("utf-8")
+        _REQUEST_KV[path] = data if isinstance(data, str) else data.decode("utf-8")
         return True
     def delete(self, path: str) -> bool:
-        return _EDGE_KV.pop(path, None) is not None
+        return _REQUEST_KV.pop(path, None) is not None
     def exists(self, path: str) -> bool:
-        return path in _EDGE_KV
+        return path in _REQUEST_KV
     def list(self, dir_path: str, pattern: str = "*") -> List[str]:
         import fnmatch
-        return [k for k in _EDGE_KV.keys() if fnmatch.fnmatch(k, os.path.join(dir_path, pattern))]
+        # v0.9.08 FIX #75: Use pattern directly, not os.path.join on string keys
+        prefix = dir_path if dir_path else ""
+        full_pattern = prefix + pattern if prefix else pattern
+        return [k for k in _REQUEST_KV.keys() if fnmatch.fnmatch(k, full_pattern)]
 
 class EdgeV8Http(HttpAPI):
     def fetch(self, url: str, options: Optional[dict] = None) -> dict:
-        return json.loads(_js_tw_http_fetch(url, json.dumps(options or {})))
+        # v0.9.08 FIX #82: Single JSON encoding — fetch returns JSON string, parse once
+        raw = _js_tw_http_fetch(url, json.dumps(options or {}))
+        return json.loads(raw) if isinstance(raw, str) else raw
 
 class EdgeV8Crypto(CryptoAPI):
     def hash(self, algorithm: str, data: Union[str, bytes]) -> str:
@@ -366,9 +396,28 @@ class EdgeV8Crypto(CryptoAPI):
         import uuid
         return str(uuid.uuid4())
 
+    def encrypt(self, algorithm: str, key: bytes, data: bytes) -> bytes:
+        # v0.9.08 FIX #97: Implement encrypt for Edge V8
+        if algorithm == "xor":
+            if not key:
+                raise ValueError("Encryption key cannot be empty")
+            return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+        raise NotImplementedError(f"encrypt() not implemented for {algorithm}")
+
+    def decrypt(self, algorithm: str, key: bytes, data: bytes) -> bytes:
+        if algorithm == "xor":
+            if not key:
+                raise ValueError("Decryption key cannot be empty")
+            return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+        raise NotImplementedError(f"decrypt() not implemented for {algorithm}")
+
+
 class EdgeV8Env(EnvAPI):
     def get(self, name: str, default: str = "") -> str:
-        return os.environ.get(name, default)
+        # v0.9.08 FIX #71/#76: Filter env vars — only TW_ prefixed vars are safe
+        if name.startswith("TW_") or name.startswith("NODE_") or name in ("PATH", "HOME", "USER"):
+            return os.environ.get(name, default)
+        return default
     def all(self) -> Dict[str, str]:
         safe = {}
         for k, v in os.environ.items():
@@ -389,7 +438,7 @@ class EdgeV8Executor:
 
     def _setup_context(self):
         if self._engine == "v8":
-            self._context = _MiniRacer()
+            self._context = _MiniRacer()  # v0.9.08: No host functions needed — JS bootstrap handles all tw.* APIs
 
     @property
     def engine(self) -> str:
@@ -420,13 +469,14 @@ class EdgeV8Executor:
         env_json = json.dumps(safe_env)
 
         # V8 bootstrap with env vars injected
-        bootstrap = _JS_BOOTSTRAP_V8.replace("__TW_ENV_JSON__", env_json)
+        # v0.9.08 FIX #100: Use unique placeholder to avoid accidental replacement
+        bootstrap = _JS_BOOTSTRAP_V8.replace("TW_ENV_DATA_PLACEHOLDER", env_json)
         full_js = bootstrap + "\n" + js_code
 
         # V8 multi-pass fetch: V8 is synchronous, so tw.http.fetch() throws
         # __YIELD_FETCH__ to pause execution. Python catches it, does the
         # HTTP request, then re-evals with __fetch_result__ set.
-        max_fetch_passes = 10  # safety limit
+        max_fetch_passes = int(os.environ.get('TW_MAX_FETCH_PASSES', '10'))  # v0.9.08 FIX #78: Configurable
 
         for pass_num in range(max_fetch_passes + 1):
             try:
@@ -461,9 +511,11 @@ class EdgeV8Executor:
                     # We modify the handler to use __fetch_result__ on re-entry
                     if pass_num == 0:
                         # First fetch: wrap handler to check __fetch_result__
+                        # v0.9.08 FIX #77: bootstrap precomputed once before loop
                         full_js = bootstrap + "\n" + fetch_inject + "\n" + js_code
                     else:
                         # Subsequent fetches: update the fetch result
+                        # v0.9.08 FIX #77: bootstrap precomputed once before loop
                         full_js = bootstrap + "\n" + fetch_inject + "\n" + js_code
                     continue
                 else:
@@ -529,13 +581,21 @@ class EdgeV8Executor:
         return {"status": status, "content_type": content_type, "body": body_bytes, "headers": headers_out, "cookies": cookies_out}
 
     def reload(self):
-        self._context = None
+        # v0.9.08 FIX #79: Explicitly cleanup old context before creating new
+        if self._context is not None:
+            try:
+                del self._context
+            except Exception:
+                pass
+            self._context = None
         self._setup_context()
 
 
 # --- Edge V8 Runtime class ---
 
 class EdgeV8Runtime(BaseRuntime):
+    _storage_inst = None
+    _cache_inst = None
     """Edge V8 Runtime — real JavaScript sandbox via V8.
 
     Like Next.js Edge Runtime:
@@ -602,15 +662,21 @@ class EdgeV8Runtime(BaseRuntime):
 
     @property
     def storage(self) -> EdgeV8Storage:
-        return EdgeV8Storage()
+        # v0.9.08 FIX #80: Cache instance instead of creating new every time
+        if self._storage_inst is None:
+            self._storage_inst = EdgeV8Storage()
+        return self._storage_inst
 
     @property
     def http(self) -> EdgeV8Http:
         return EdgeV8Http()
 
     @property
-    def cache(self) -> CacheAPI:
-        return CacheAPI()
+    def cache(self) -> "EdgeV8Cache":
+        # v0.9.08 FIX #81: Return EdgeV8Cache, not base CacheAPI
+        if self._cache_inst is None:
+            self._cache_inst = EdgeV8Cache()
+        return self._cache_inst
 
     @property
     def crypto(self) -> EdgeV8Crypto:

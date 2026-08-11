@@ -788,6 +788,9 @@ def parse_env_file(path: str) -> Dict[str, str]:
                 end_idx = value.find(quote, 1)
                 if end_idx != -1:
                     value = value[1:end_idx]
+                    # FIX #140: Unescape escaped quotes
+                    value = value.replace("\\" + quote, quote)
+                    value = value.replace("\\\\", "\\")
                 else:
                     value = value.strip(quote)
             else:
@@ -3116,11 +3119,23 @@ def make_dev_handler(state: TWDevState) -> Any:
                 self.handle_events()
                 return
 
+            # v0.9.08 FIX: Streaming SSE endpoint
+            if path == "/__tw/stream":
+                self.handle_streaming_sse(path)
+                return
+
             # v0.9.08: ISR revalidation endpoint
             if path == "/__tw/revalidate" and method == "POST":
                 body_data = self.rfile.read(int(self.headers.get("Content-Length", 0)))
                 req = json.loads(body_data)
                 result = isr_module.request_revalidation(req.get("paths", []), req.get("secret"))
+                # v0.9.08 FIX: Actually rebuild the pages NOW
+                if result.get("success"):
+                    pr = state.project.project_root if hasattr(state, 'project') else "."
+                    od = "dist"
+                    rebuild_result = isr_module.process_pending_revalidations(pr, od)
+                    result["rebuilt"] = rebuild_result.get("rebuilt", 0)
+                    result["failed"] = rebuild_result.get("failed", [])
                 self.respond_bytes(200, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
                 return
 
@@ -3137,6 +3152,9 @@ def make_dev_handler(state: TWDevState) -> Any:
                 self.handle_hmr_websocket()
                 return
 
+            # v0.9.08 FIX: Enable HMR on first request
+            if not hmr_manager.enabled:
+                hmr_manager.enable()
             if path == "/__tw/health":
                 self.respond_bytes(200, b"ok", "text/plain; charset=utf-8")
                 return
@@ -3398,6 +3416,14 @@ def make_dev_handler(state: TWDevState) -> Any:
                 return
 
         def respond_bytes(self, status: int, payload: bytes, content_type: str, headers: Optional[List[Tuple[str, str]]] = None, cookies: Optional[List[Tuple[str, str]]] = None) -> None:
+            # v0.9.08 FIX: Inject HMR client script into HTML responses
+            if content_type and "text/html" in content_type and hmr_manager.enabled:
+                try:
+                    hmr_script = hmr_manager.get_client_script()
+                    if hmr_script and isinstance(payload, bytes):
+                        payload = payload.replace(b"</body>", hmr_script.encode("utf-8") + b"\n</body>", 1)
+                except Exception:
+                    pass
             # v0.8.51: gzip compression for large responses in dev server
             accept_encoding = self.headers.get("Accept-Encoding", "")
             compressible = (

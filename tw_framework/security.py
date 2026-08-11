@@ -115,7 +115,13 @@ def get_secure_headers(
 
 
 def render_secure_headers_html(csp_nonce: str = "") -> str:
-    """Render secure headers as <meta> tags for static HTML."""
+    """Render secure headers as <meta> tags for static HTML.
+
+    FIX #145: frame-ancestors CSP directive does NOT work in <meta> tags.
+    It only works as an HTTP header. For static HTML, we rely on
+    X-Frame-Options as a fallback. The full CSP (including frame-ancestors)
+    should be set as HTTP headers by the server (see get_secure_headers()).
+    """
     tags = []
     if csp_nonce:
         tags.append(f'<meta http-equiv="Content-Security-Policy" content="{html.escape(build_csp_header(nonce=csp_nonce))}">')

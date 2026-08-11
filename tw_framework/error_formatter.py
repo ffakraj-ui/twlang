@@ -23,7 +23,12 @@ def format_error(diag: Diagnostic, project_root: str) -> Any:
     lines.append("")
     lines.append(f"Severity: {diag.severity.upper()}")
     if diag.file_path:
-        rel_path = os.path.relpath(diag.file_path, project_root) if project_root else diag.file_path
+        # v0.9.08 FIX #14: os.path.relpath crashes on Windows with different drives
+        # (ValueError: path is on mount 'C:', start is on mount 'D:')
+        try:
+            rel_path = os.path.relpath(diag.file_path, project_root) if project_root else diag.file_path
+        except (ValueError, TypeError):
+            rel_path = diag.file_path
         lines.append(f"Project: {rel_path}")
         lines.append(f"Absolute: {os.path.abspath(diag.file_path)}")
     if diag.line:

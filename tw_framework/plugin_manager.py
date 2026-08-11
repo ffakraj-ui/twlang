@@ -16,6 +16,7 @@ Hooks:
 from __future__ import annotations
 import os
 import json
+import hashlib
 import re
 import threading
 from typing import Any, Dict, List, Optional, Callable
@@ -23,7 +24,7 @@ from typing import Any, Dict, List, Optional, Callable
 
 HOOKS = ["beforeBuild", "afterBuild", "beforeRequest", "afterRequest", "onRouteMatch"]
 
-PLUGIN_REGISTRY_URL = "https://raw.githubusercontent.com/ffakraj-ui/tw-plugin/main/registry.json"
+PLUGIN_REGISTRY_URL = "https://raw.githubusercontent.com/tw-origin/tw-plugins/main/registry.json"
 
 
 class PluginContext:
@@ -218,18 +219,12 @@ class PluginManager:
                 i += 1
             fn_body = code[start + 1:i]
 
-            def make_hook(body, name):
+            def make_hook(body, name, hook):
                 def hook_fn(ctx: PluginContext) -> None:
-                    ns = {"ctx": ctx, "plugin": _PluginAPI(), "tw": _PluginTWAPI(),
-                          "console": _PluginConsole(name), "JSON": _PluginJSON()}
-                    try:
-                        py = _translate_twp_to_python(body)
-                        exec(compile(py, "<plugin:" + name + ">", "exec"), ns)
-                    except Exception as err:
-                        ctx.error("Plugin " + name + " error: " + str(err))
+                    _run_plugin_in_node(name, hook, body, ctx)
                 return hook_fn
 
-            plugin.register_hook(hook_name, make_hook(fn_body, plugin.name))
+            plugin.register_hook(hook_name, make_hook(fn_body, plugin.name, hook_name))
 
     def trigger(self, hook: str, data: Optional[dict] = None) -> PluginContext:
         ctx = PluginContext(hook, data or {})
@@ -276,17 +271,26 @@ def install_plugin(name: str, plugins_dir: str = ".tw/plugins") -> dict:
     info = next((p for p in plugins if p["name"] == name), None)
     if not info:
         return {"success": False, "error": "Plugin '" + name + "' not found"}
-    base_url = "https://raw.githubusercontent.com/ffakraj-ui/tw-plugin/main"
+    base_url = "https://raw.githubusercontent.com/tw-origin/tw-plugins/main"
     plugin_url = info.get("url", "plugins/" + name + "/")
     os.makedirs(os.path.join(plugins_dir, name), exist_ok=True)
+    # v0.9.08 FIX: SHA-256 checksum verification
+    checksums = info.get("checksums", {})
     for fname in ["plugin.twp", "plugin.json"]:
         url = base_url + "/" + plugin_url + fname
         try:
             import urllib.request
             with urllib.request.urlopen(url, timeout=10) as resp:
                 content = resp.read()
+            expected_hash = checksums.get(fname)
+            if expected_hash:
+                actual_hash = hashlib.sha256(content).hexdigest()
+                if actual_hash != expected_hash:
+                    return {"success": False, "error": "Checksum mismatch for " + fname}
             with open(os.path.join(plugins_dir, name, fname), "wb") as f:
                 f.write(content)
+            with open(os.path.join(plugins_dir, name, "." + fname + ".sha256"), "w") as cf:
+                cf.write(hashlib.sha256(content).hexdigest())
         except Exception as err:
             return {"success": False, "error": "Download " + fname + " failed: " + str(err)}
     return {"success": True, "plugin": name, "version": info.get("version", "0.0.0")}
@@ -299,3 +303,65 @@ def remove_plugin(name: str, plugins_dir: str = ".tw/plugins") -> dict:
         shutil.rmtree(p)
         return {"success": True, "plugin": name}
     return {"success": False, "error": "Plugin '" + name + "' not installed"}
+
+
+# v0.9.08 FIX: Real Node.js plugin execution via vm sandbox
+def _run_plugin_in_node(plugin_name, hook, body, ctx):
+    """Run plugin hook in real Node.js vm sandbox.
+
+    Replaces regex-based JS->Python translation + exec().
+    Uses Node.js vm module for real JavaScript execution:
+    - Real JS parsing (arrow functions, classes, async/await, destructuring)
+    - 5-second timeout via vm.runInContext
+    - Restricted sandbox (no require, no process, no fs)
+    """
+    import subprocess as _sub
+    import json as _json
+
+    ctx_data = _json.dumps({
+        "pages": ctx.pages if ctx.pages else [],
+        "config": ctx.config if ctx.config else {},
+        "output_dir": ctx.output_dir,
+        "request": ctx.request if ctx.request else {},
+        "response": ctx.response if ctx.response else {},
+    })
+
+    runner_path = os.path.join(os.path.dirname(__file__), "_plugin_runner.js")
+
+    # Find node binary
+    try:
+        from .npm_manager import find_node
+        node_bin = find_node()
+    except Exception:
+        node_bin = "node"
+
+    if not node_bin:
+        ctx.warn("Node.js not found - plugin " + plugin_name + " skipped")
+        return
+
+    try:
+        result = _sub.run(
+            [node_bin, runner_path, plugin_name, hook, ctx_data],
+            input=body,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0 and result.stderr:
+            ctx.error("Plugin " + plugin_name + ": " + result.stderr.strip())
+        if result.stdout:
+            marker = "__TW_RESULT__"
+            if marker in result.stdout:
+                idx = result.stdout.find(marker)
+                try:
+                    res = _json.loads(result.stdout[idx + len(marker):].strip())
+                    if res.get("redirect"):
+                        ctx.redirect(res["redirect"]["url"], res["redirect"].get("status", 302))
+                except Exception:
+                    pass
+    except _sub.TimeoutExpired:
+        ctx.warn("Plugin " + plugin_name + " timed out in " + hook)
+    except FileNotFoundError:
+        ctx.warn("Node.js not available - plugin " + plugin_name + " skipped")
+    except Exception as err:
+        ctx.error("Plugin " + plugin_name + " error: " + str(err))

@@ -25,7 +25,7 @@ _FUNC_HEADER_RE = re.compile(
     (?P<async>\basync\b\s+)?
     (?P<kw>\bfunction\b|\bfn\b)\s+
     (?P<name>[A-Za-z_$][A-Za-z0-9_$]*)\s*
-    (?P<params>\([^)]*\))?\s*
+    (?P<params>\((?:[^()]|\([^()]*\))*\))?\s*
     \{
     """,
     re.VERBOSE,
@@ -68,7 +68,7 @@ def _scan_matching_brace(source: str, open_brace_index: int) -> Any:
 
         if mode in {"string_d", "string_s"}:
             if ch == "\\":
-                i += 2
+                i += 2 if i + 1 < len(source) else 1
                 continue
             if (mode == "string_d" and ch == '"') or (mode == "string_s" and ch == "'"):
                 mode = "code"
@@ -77,14 +77,42 @@ def _scan_matching_brace(source: str, open_brace_index: int) -> Any:
 
         if mode == "template":
             if ch == "\\":
-                i += 2
+                i += 2 if i + 1 < len(source) else 1
                 continue
             if ch == "`":
                 mode = "code"
+            elif ch == "$" and i + 1 < len(source) and source[i + 1] == "{":
+                mode = "code"
+                depth += 1
+                i += 2
+                continue
             i += 1
             continue
 
         # mode == "code"
+        if ch == "/" and i + 1 < len(source) and source[i + 1] not in ("/", "*"):
+            prev_char = source[i - 1] if i > 0 else "\n"
+            if prev_char in "(,=:[!&|?{;\n+-*%":
+                j = i + 1
+                in_class = False
+                while j < len(source):
+                    if source[j] == "\\":
+                        j += 2
+                        continue
+                    if source[j] == "[":
+                        in_class = True
+                    elif source[j] == "]":
+                        in_class = False
+                    elif source[j] == "/" and not in_class:
+                        j += 1
+                        while j < len(source) and source[j].isalpha():
+                            j += 1
+                        break
+                    elif source[j] == "\n":
+                        break
+                    j += 1
+                i = j
+                continue
         if ch == "/" and i + 1 < len(source) and source[i + 1] == "/":
             mode = "line_comment"
             i += 2
@@ -231,12 +259,12 @@ def _convert_es_import_to_cjs(import_stmt: str) -> str:
         return f'require("{m.group(1)}");'
     
     # import * as ns from "pkg"
-    m = re.match(r'^import\s+\*\s+as\s+(\w+)\s+from\s+["\']([^"\']+)["\']$', import_stmt)
+    m = re.match(r'^import\s+\*\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)\s+from\s+["\']([^"\']+)["\']$', import_stmt)
     if m:
         return f'const {m.group(1)} = require("{m.group(2)}");'
     
     # import defaultExport from "pkg"
-    m = re.match(r'^import\s+(\w+)\s+from\s+["\']([^"\']+)["\']$', import_stmt)
+    m = re.match(r'^import\s+([A-Za-z_$][A-Za-z0-9_$]*)\s+from\s+["\']([^"\']+)["\']$', import_stmt)
     if m:
         return f'const {m.group(1)} = require("{m.group(2)}");'
     
@@ -247,19 +275,21 @@ def _convert_es_import_to_cjs(import_stmt: str) -> str:
         return f'const {{ {named} }} = require("{m.group(2)}");'
     
     # import defaultExport, { named } from "pkg"
-    m = re.match(r'^import\s+(\w+)\s*,\s*\{([^}]+)\}\s+from\s+["\']([^"\']+)["\']$', import_stmt)
+    m = re.match(r'^import\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*,\s*\{([^}]+)\}\s+from\s+["\']([^"\']+)["\']$', import_stmt)
     if m:
         default_name = m.group(1)
         named = m.group(2).strip()
         pkg = m.group(3)
         return f'const {default_name} = require("{pkg}");\nconst {{ {named} }} = require("{pkg}");'
     
-    # Fallback: try to extract module path and require it
-    m = re.search(r'["\']([^"\']+)["\']', import_stmt)
+        # FIX #108: Fallback — strip comments before extracting string
+    cleaned = re.sub(r'//.*$', '', import_stmt).strip()
+    cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL).strip()
+    m = re.search(r'["\']([^"\']+)["\']', cleaned)
     if m:
         return f'require("{m.group(1)}");'
-    
-    return f'// Could not convert: {import_stmt}'
+
+    return f"// Could not convert: {import_stmt}"
 
 
 def compile_twm_module_to_cjs(source: str, *, module_id: str) -> Any:
@@ -336,8 +366,13 @@ def build_page_twm_bundle_js(
     for item in sources or []:
         if item.get("kind") == "file":
             path = item.get("path") or ""
-            with open(path, "r", encoding="utf-8") as f:
-                src = f.read()
+            # FIX #110: Handle FileNotFoundError gracefully
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    src = f.read()
+            except (FileNotFoundError, OSError) as e:
+                parts.append(f"// ERROR: Could not read {path}: {e}")
+                continue
             parts.append(compile_twm_module_to_js(src, module_id=path))
             parts.append("")
             continue
@@ -346,13 +381,27 @@ def build_page_twm_bundle_js(
             parts.append(compile_twm_module_to_js(src, module_id="<inline SCRIPT>"))
             parts.append("")
             continue
+        # FIX #111: Log unknown kinds instead of silently skipping
+        import logging as _logging
+        _logging.getLogger("tw_framework").warning(
+            "Unknown source kind %r in build_page_twm_bundle_js \u2014 skipped",
+            item.get("kind")
+        )
 
     parts.append("})();")
     return "\n".join(parts)
 
 
 def _js_string(value: str) -> Any:
-    return str(value).replace("\\", "\\\\").replace("'", "\\'")
+    # FIX #109: Also escape double quotes and newlines
+    s = str(value)
+    s = s.replace("\\", "\\\\")
+    s = s.replace("'", "\\'")
+    s = s.replace('"', '\\"')
+    s = s.replace("\n", "\\n")
+    s = s.replace("\r", "\\r")
+    s = s.replace("\t", "\\t")
+    return s
 
 
 __all__ = [

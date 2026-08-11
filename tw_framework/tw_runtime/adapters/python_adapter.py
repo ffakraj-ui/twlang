@@ -99,7 +99,7 @@ class PythonHttp(HttpAPI):
                     "text": text,
                     "data": data,
                 }
-        except urllib.error.HTTPError as e:
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError) as e:
             text = ""
             try:
                 text = e.read().decode("utf-8", errors="replace")
@@ -116,6 +116,24 @@ class PythonHttp(HttpAPI):
             }
 
 
+class _TransactionContext:
+    """Transaction context passed to transaction() callbacks.
+    v0.9.08 FIX: Provides execute/query/commit/rollback instead of raw DB object.
+    """
+    def __init__(self, conn):
+        self._conn = conn
+    def execute(self, sql, params=None):
+        c = self._conn.execute(sql, params or [])
+        return c.fetchall()
+    def query(self, sql, params=None):
+        c = self._conn.execute(sql, params or [])
+        return [dict(r) for r in c.fetchall()]
+    def commit(self):
+        self._conn.commit()
+    def rollback(self):
+        self._conn.rollback()
+
+
 class PythonDatabase(DatabaseAPI):
     """Python database adapter — uses sqlite3 (stdlib) by default.
 
@@ -128,7 +146,8 @@ class PythonDatabase(DatabaseAPI):
 
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
-            db_path = os.environ.get("TW_DB_PATH", ":memory:")
+            db_path = os.environ.get("TW_DB_PATH", os.path.join(os.getcwd(), ".tw", "data", "app.db"))
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
             self._conn = sqlite3.connect(db_path)
             self._conn.row_factory = sqlite3.Row
         return self._conn
@@ -148,7 +167,7 @@ class PythonDatabase(DatabaseAPI):
     def transaction(self, callback) -> Any:
         conn = self._get_conn()
         try:
-            result = callback(self)
+            result = callback(self._TransactionContext(self._get_conn()))
             conn.commit()
             return result
         except Exception:

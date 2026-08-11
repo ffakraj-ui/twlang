@@ -196,7 +196,7 @@ class Program:
     loaded_sheets: List[Any] = field(default_factory=list)
     loaded_json: List[Dict[str, Any]] = field(default_factory=list)
     source_path: str = ""
-    legacy_page: Any = None
+    legacy_page: Any = None  # DEPRECATED v0.9.08: kept for backward compat, will be removed in v0.10
 
     def to_dict(self) -> Dict[str, Any]:
         return {

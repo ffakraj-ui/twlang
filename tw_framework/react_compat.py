@@ -147,10 +147,36 @@ class ReactCompat:
         react_dom_path = os.path.join(
             self.project_root, "node_modules", "react-dom", "package.json"
         )
-        self._react_installed = (
-            os.path.exists(react_path) and os.path.exists(react_dom_path)
+        if not (os.path.exists(react_path) and os.path.exists(react_dom_path)):
+            self._react_installed = False
+            return False
+        # FIX #135: Check version compatibility
+        react_ver = self.get_react_version()
+        react_dom_ver = self._get_react_dom_version()
+        if react_ver and react_dom_ver:
+            r_major = react_ver.split(".")[0]
+            d_major = react_dom_ver.split(".")[0]
+            if r_major != d_major:
+                import logging
+                logging.getLogger("tw_framework").warning(
+                    "React %s and ReactDOM %s have mismatched major versions!",
+                    react_ver, react_dom_ver
+                )
+        self._react_installed = True
+        return True
+
+    def _get_react_dom_version(self) -> Optional[str]:
+        """Get installed react-dom version."""
+        react_dom_pkg = os.path.join(
+            self.project_root, "node_modules", "react-dom", "package.json"
         )
-        return self._react_installed
+        try:
+            import json
+            with open(react_dom_pkg, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data.get("version", "unknown")
+        except (OSError, json.JSONDecodeError):
+            return None
 
     def get_react_version(self) -> Optional[str]:
         """Get installed React version."""
@@ -232,21 +258,36 @@ class ReactCompat:
         )
 
     def detect_react_usage(self, source: str) -> bool:
-        """Detect if a .tw or .twm source uses React."""
-        indicators = [
+        """Detect if a .tw or .twm source uses React.
+
+        FIX #134: Reduced false positives.
+        Hook names (useState, useEffect, etc.) only match when React is
+        imported in the file. Bare `useState` without React import = no match.
+        """
+        strong_indicators = [
             "import React",
-            "from \"react\"",
+            'from "react"',
             "from 'react'",
-            "from \"react-dom\"",
+            'from "react-dom"',
             "from 'react-dom'",
             "React.createElement",
-            "useState",
-            "useEffect",
-            "useRef",
-            "useMemo",
-            "useCallback",
+            "ReactDOM.createRoot",
+            "React.useState",
+            "React.useEffect",
+            "React.useRef",
+            "React.useMemo",
+            "React.useCallback",
+            "__twReact",
+            "__twReactDOM",
         ]
-        return any(ind in source for ind in indicators)
+        if any(ind in source for ind in strong_indicators):
+            return True
+        # Weak indicators: only flag if React is imported somewhere
+        has_react_import = any(ind in source for ind in strong_indicators[:6])
+        if has_react_import:
+            weak = ["useState", "useEffect", "useRef", "useMemo", "useCallback"]
+            return any(ind in source for ind in weak)
+        return False
 
     def get_react_setup_hint(self) -> str:
         """Return setup instructions for React + TW."""

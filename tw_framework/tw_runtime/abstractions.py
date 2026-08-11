@@ -28,6 +28,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Union
 import json
 import os
+import time
 import hashlib
 import hmac
 import secrets
@@ -292,42 +293,16 @@ class TWAPI:
         self._runtime_info = RuntimeInfoAPI()
 
     def set_runtime(self, runtime) -> None:
-        """Set the active runtime. Adapters from the runtime override defaults."""
-        self._runtime = runtime
-        self._runtime_info._runtime = runtime
-        # Use the runtime's adapters if available
-        if hasattr(runtime, "storage") and runtime.storage is not None:
-            try:
-                self._storage = runtime.storage
-            except NotImplementedError:
-                pass
-        if hasattr(runtime, "http") and runtime.http is not None:
-            try:
-                self._http = runtime.http
-            except NotImplementedError:
-                pass
-        if hasattr(runtime, "db") and runtime.db is not None:
-            try:
-                self._db = runtime.db
-            except NotImplementedError:
-                pass
-        if hasattr(runtime, "cache") and runtime.cache is not None:
-            try:
-                self._cache = runtime.cache
-            except NotImplementedError:
-                pass
-        if hasattr(runtime, "crypto") and runtime.crypto is not None:
-            try:
-                self._crypto = runtime.crypto
-            except NotImplementedError:
-                pass
-        if hasattr(runtime, "env") and runtime.env is not None:
-            try:
-                self._env = runtime.env
-            except NotImplementedError:
-                pass
+        """Set the runtime and bind all API implementations.
+        v0.9.08 FIX: Uses loop instead of 6 copy-paste try/except blocks.
+        """
+        for attr in ("storage", "http", "db", "cache", "crypto", "env"):
+            if hasattr(runtime, attr) and getattr(runtime, attr) is not None:
+                try:
+                    setattr(self, "_" + attr, getattr(runtime, attr))
+                except NotImplementedError:
+                    pass
 
-    @property
     def storage(self) -> StorageAPI:
         return self._storage
 

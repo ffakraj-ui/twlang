@@ -69,7 +69,8 @@ def get_edge_db() -> EdgeDBProxy:
 def handle_db_proxy_request(body: dict) -> dict:
     """Handle incoming DB proxy requests (backend side)."""
     import sqlite3
-    db_path = os.environ.get("TW_DB_PATH", ":memory:")
+    db_path = os.environ.get("TW_DB_PATH", os.path.join(os.getcwd(), ".tw", "data", "app.db"))
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:

@@ -118,24 +118,68 @@ class RuntimeValidationError(Exception):
 def _find_api_usage(source: str) -> List[Tuple[str, str, int]]:
     """Scan source code for API usage.
 
+    v0.9.08 FIX #8/#9: Improved pattern matching + comment stripping.
+    - Uses regex word boundaries instead of substring matching
+    - Strips inline comments (// ... and # ...) before scanning
+    - Excludes tw.* common API calls from false positives
+
     Returns list of (api_name, required_capability, line_number).
     """
     findings = []
     lines = source.split("\n")
     for line_num, line in enumerate(lines, 1):
-        # Skip comments
-        stripped = line.strip()
-        if stripped.startswith("//") or stripped.startswith("#"):
+        # v0.9.08 FIX #9: Strip inline comments before scanning
+        # Remove // comments and # comments (but not inside strings)
+        code_part = _strip_inline_comment(line)
+        stripped = code_part.strip()
+        if not stripped or stripped.startswith("//") or stripped.startswith("#"):
             continue
-        # Check for tw.* APIs (these are always safe — they adapt to runtime)
-        # We only flag raw runtime-specific APIs
+
+        # v0.9.08 FIX #8: Use word-boundary matching, not substring
+        # This prevents false positives like "execute(" matching "exec("
         for api, capability in API_CAPABILITY_MAP.items():
-            if api in line:
+            # Build a regex pattern with word boundary before the API name
+            # This prevents "openDatabase(" from matching "open("
+            pattern = r'(?<![\w.])' + re.escape(api)
+            if re.search(pattern, code_part):
                 # Don't flag if it's inside a tw.storage.* call (common API)
-                if "tw.storage" in line and api in ("open(", "path.join", "os.path.join"):
+                if "tw.storage" in code_part and api in ("open(", "path.join", "os.path.join"):
+                    continue
+                # v0.9.08 FIX #8: Don't flag "import " inside tw.* import statements
+                if api == "import " and ("tw." in code_part or "from tw" in code_part):
                     continue
                 findings.append((api, capability, line_num))
     return findings
+
+
+def _strip_inline_comment(line: str) -> str:
+    """Strip inline // or # comments from a line, respecting string literals.
+
+    v0.9.08 FIX #9: Previously only full-line comments were skipped.
+    Now handles: let x = "fs.readFile"; // safe comment
+    """
+    result = []
+    in_string = False
+    string_char = None
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if in_string:
+            result.append(ch)
+            if ch == string_char and (i == 0 or line[i-1] != '\\\\'):
+                in_string = False
+        elif ch in ('"', "'", '`'):
+            in_string = True
+            string_char = ch
+            result.append(ch)
+        elif ch == '/' and i + 1 < len(line) and line[i+1] == '/':
+            break  # Inline comment starts
+        elif ch == '#':
+            break  # Python-style inline comment
+        else:
+            result.append(ch)
+        i += 1
+    return ''.join(result)
 
 
 def validate_runtime_compatibility(source: str, runtime_name: str,
@@ -187,6 +231,19 @@ def validate_runtime_compatibility(source: str, runtime_name: str,
             ))
 
     return errors
+
+
+def validate_runtime_compatibility_or_raise(source: str, runtime_name: str,
+                                                   file_path: str = "") -> None:
+    """Validate and raise if incompatible.
+
+    v0.9.08 FIX #19: Unlike validate_runtime_compatibility(), this RAISES
+    the first error instead of returning a list. Use this when you want
+    build to fail on incompatibility.
+    """
+    errors = validate_runtime_compatibility(source, runtime_name, file_path)
+    if errors:
+        raise errors[0]
 
 
 def _generate_solutions(api: str, capability: str, runtime_name: str) -> List[str]:

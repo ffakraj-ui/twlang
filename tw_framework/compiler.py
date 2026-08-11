@@ -2011,6 +2011,8 @@ def evaluate_expression(expr, context) -> Any:
         return None
     except Exception as err:
         # Do not silently swallow runtime errors (e.g. ZeroDivisionError) without any clue.
+        # FIX #142: TW_STRICT_EVAL=1 raises errors instead of silent fallback.
+        # When unset (default), TW gracefully degrades to static rendering.
         if os.environ.get("TW_STRICT_EVAL", "").strip().lower() in {"1", "true", "yes", "on"}:
             raise
         log(
@@ -5249,7 +5251,7 @@ def _inject_reactivity_runtime(html_text: str, page_source: str, state: dict) ->
     except Exception:
         if os.environ.get("TW_STRICT_EVAL", "").strip().lower() in {"1", "true", "yes", "on"}:
             raise
-        logger.exception("Failed to inject VDOM runtime; continuing without runtime script")
+        logger.warning("VDOM runtime injection failed — page will render as static. Set TW_STRICT_EVAL=1 to raise.")
         return html_text
 
 def _inject_on_load_inits(html_text: str, handlers: Any) -> Any:
@@ -5567,6 +5569,15 @@ def render_html(page, context, css_href) -> Any:
 
     final_doc = _inject_react_integration(final_doc, page, raw_source, context)
 
+    # v0.9.08 FIX: Inject prefetch script into built pages
+    try:
+        from .prefetch import get_prefetch_script
+        prefetch_js = get_prefetch_script()
+        if prefetch_js and "</body>" in final_doc:
+            final_doc = final_doc.replace("</body>", prefetch_js + "\n</body>", 1)
+    except Exception:
+        pass
+
     # v0.9.08: CSR mode — inject full React CSR runtime
     if getattr(page, "render_mode", "") == "csr":
         try:
@@ -5610,6 +5621,10 @@ def apply_layout_fragment(layout_template, body_html, context) -> Any:
     """
     rendered = layout_template.replace("{slot}", body_html)
     # Inner fragments should not re-inject global document placeholders
+    # FIX #143/#146: Log warning when inner layout placeholders are stripped
+    if "{head}" in rendered:
+        import logging as _log
+        _log.getLogger("tw_framework").warning("Inner layout has {head} placeholder \u2014 stripped instead of merged. Use {children} for content injection.")
     rendered = rendered.replace("{head}", "")
     rendered = rendered.replace("{styles}", "")
     rendered = rendered.replace("{scripts}", "")

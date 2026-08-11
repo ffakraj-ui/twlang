@@ -36,6 +36,10 @@ class EdgeStorage(StorageAPI):
 
     _kv: Dict[str, bytes] = {}
 
+    def __init__(self):
+        # v0.9.08 FIX #10: Per-instance KV store (was class variable = shared across all requests!)
+        self._kv = {}
+
     def read(self, path: str, encoding: str = "utf-8") -> Union[str, bytes]:
         # Try in-memory KV first
         if path in self._kv:
@@ -61,7 +65,9 @@ class EdgeStorage(StorageAPI):
 
     def list(self, dir_path: str, pattern: str = "*") -> List[str]:
         import fnmatch
-        return [k for k in self._kv.keys() if fnmatch.fnmatch(k, os.path.join(dir_path, pattern))]
+        # v0.9.08 FIX #10b: Use pattern directly, not os.path.join on string keys
+        full_pattern = (dir_path + pattern) if dir_path else pattern
+        return [k for k in self._kv.keys() if fnmatch.fnmatch(k, full_pattern)]
 
 
 class EdgeHttp(HttpAPI):
@@ -169,9 +175,10 @@ class EdgeEnv(EnvAPI):
     """
 
     def get(self, name: str, default: str = "") -> str:
-        # In edge mode, only expose safe env vars
-        val = os.environ.get(name, default)
-        return val
+        # v0.9.08 FIX #11: Filter env vars — only TW_/PUBLIC_/EDGE_/NODE_ENV are safe
+        if name.startswith(("TW_", "PUBLIC_", "EDGE_")) or name in ("NODE_ENV", "PYTHONUNBUFFERED"):
+            return os.environ.get(name, default)
+        return default
 
     def all(self) -> Dict[str, str]:
         # Only return non-sensitive env vars
@@ -220,7 +227,7 @@ class EdgeRuntime(BaseRuntime):
             RuntimeCapability.CRYPTO.value: True,               # ✅ hashlib
             RuntimeCapability.CACHE.value: True,                 # ✅ in-memory
             RuntimeCapability.ENV_VARS.value: True,             # ✅ (limited)
-            RuntimeCapability.PERSISTENT_STORAGE.value: True,    # ✅ KV (session)
+            RuntimeCapability.PERSISTENT_STORAGE.value: False,   # v0.9.08 FIX #12: in-memory KV is NOT persistent
             RuntimeCapability.TIMERS.value: False,              # ❌ No timers
             RuntimeCapability.STREAMING.value: False,           # ❌ No streaming
         }

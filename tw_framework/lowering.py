@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import asdict, is_dataclass
 
 from typing import Any
 
@@ -41,21 +42,16 @@ def lower_node(node) -> Any:
             router=dict(node.router),
             children=[lower_node(child) for child in node.children],
         )
-    raise TypeError(f"Unsupported AST node: {type(node)!r}")
+    raise TypeError(
+            f"Unsupported AST node type: {type(node).__name__} "
+            f"at line {getattr(node, 'line', '?')}, "
+            f"file {getattr(node, 'file_path', 'unknown')}"
+        )
 
 
 def lower_program(program: Program) -> IRProgram:
     return IRProgram(
-        meta={
-            "title": program.meta.title,
-            "layout": program.meta.layout,
-            "layouts": list(program.meta.layouts),
-            "render_mode": program.meta.render_mode,
-            "revalidate": program.meta.revalidate,
-            "redirect_to": program.meta.redirect_to,
-            "rewrite_to": program.meta.rewrite_to,
-            "responsive": program.meta.responsive,
-        },
+        meta=asdict(program.meta) if is_dataclass(program.meta) else dict(getattr(program.meta, "__dict__", {})),
         head={
             "metas": list(program.head.metas),
             "icon": program.head.icon,

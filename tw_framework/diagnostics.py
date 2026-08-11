@@ -30,31 +30,15 @@ class Diagnostic:
     traceback: str = ""
 
     @classmethod
-    def from_legacy(cls, item) -> Any:
-        return cls(
-            severity=getattr(item, "severity", "error"),
-            code=getattr(item, "code", "TW0000"),
-            message=getattr(item, "message", str(item)),
-            file_path=getattr(item, "file_path", "") or "",
-            line=getattr(item, "line", 0) or 0,
-            col=getattr(item, "col", 0) or 0,
-            suggestion=getattr(item, "suggestion", None),
-            notes=list(getattr(item, "notes", []) or []),
-            category=getattr(item, "category", "compiler") or "compiler",
-            relative_path=getattr(item, "relative_path", "") or "",
-            absolute_path=getattr(item, "absolute_path", "") or "",
-            source_snippet=getattr(item, "source_snippet", "") or "",
-            highlight=getattr(item, "highlight", "") or "",
-            reason=getattr(item, "reason", "") or "",
-            expected=getattr(item, "expected", "") or "",
-            found=getattr(item, "found", "") or "",
-            why=getattr(item, "why", "") or "",
-            doc_link=getattr(item, "doc_link", "") or "",
-            parser_state=getattr(item, "parser_state", "") or "",
-            traceback=getattr(item, "traceback", "") or "",
-            phase=getattr(item, "phase", None),
-            exception_type=getattr(item, "exception_type", None),
-        )
+    def from_legacy(cls, item: Any) -> "Diagnostic":
+        """Create Diagnostic from a legacy error/dict object.
+        v0.9.08 FIX: Uses vars() instead of 20 manual getattr() calls.
+        """
+        if isinstance(item, dict):
+            return cls(**{k: v for k, v in item.items() if k in cls.__dataclass_fields__})
+        attrs = vars(item) if hasattr(item, "__dict__") else {}
+        known = {k: v for k, v in attrs.items() if k in cls.__dataclass_fields__}
+        return cls(**known)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

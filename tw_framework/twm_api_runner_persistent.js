@@ -25,7 +25,11 @@ const { createRequire } = require("module");
 // ── Handler cache: compiled modules stay in memory ──────────────────────
 const handlerCache = new Map(); // compiledPath → { exports, error }
 
+// v0.9.08 FIX #87: Cache findProjectRoot result
+const _projectRootCache = new Map();
+
 function findProjectRoot(startPath) {
+    if (_projectRootCache.has(startPath)) return _projectRootCache.get(startPath);
   let current = path.resolve(startPath || process.cwd());
   if (!fs.existsSync(current)) current = path.dirname(current);
   if (fs.existsSync(current) && fs.statSync(current).isFile()) current = path.dirname(current);
@@ -37,6 +41,7 @@ function findProjectRoot(startPath) {
     ) return current;
     const parent = path.dirname(current);
     if (parent === current) return process.cwd();
+    _projectRootCache.set(startPath, result);
     current = parent;
   }
 }
@@ -53,7 +58,8 @@ function normalizeHeaderValue(headers, key) {
 
 function normalizeHttpData(rawText, headers) {
   const contentType = String(normalizeHeaderValue(headers, "content-type") || "").toLowerCase();
-  if (contentType.includes("application/json")) {
+  // v0.9.08 FIX #90: Exact match for application/json
+        if (contentType === "application/json" || contentType.startsWith("application/json+")) {
     try { return JSON.parse(rawText); } catch { return rawText; }
   }
   return rawText;
@@ -61,7 +67,7 @@ function normalizeHttpData(rawText, headers) {
 
 function createTimeoutSignal(timeoutMs) {
   const timeout = Number(timeoutMs || 0);
-  if (!Number.isFinite(timeout) || timeout <= 0) return {};
+  if (!Number.isFinite(timeout) || timeout <= 0) return { signal: null };  // v0.9.08 FIX #89
   if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
     return { signal: AbortSignal.timeout(timeout) };
   }
@@ -71,7 +77,13 @@ function createTimeoutSignal(timeoutMs) {
   return { signal: controller.signal, cleanup() { clearTimeout(timer); } };
 }
 
+// v0.9.08 FIX #88: Cache http helpers
+let _cachedHttpHelpers = null;
+let _cachedHttpHeaders = null;
+
 function buildHttpHelpers(defaultHeaders) {
+    if (_cachedHttpHelpers && _cachedHttpHeaders === defaultHeaders) return _cachedHttpHelpers;
+    _cachedHttpHeaders = defaultHeaders;
   async function request(url, options = {}) {
     if (typeof fetch !== "function") throw new Error("Global `fetch` is not available. Use Node.js 18+.");
     const opts = options && typeof options === "object" ? { ...options } : {};
@@ -110,7 +122,7 @@ function loadHandler(compiledPath) {
   }
   try {
     // Clear from require cache if previously loaded
-    try { delete require.cache[compiledPath]; } catch {}
+    try { delete require.cache[compiledPath]; } catch (e) { console.error('Cache delete failed:', e.message); }  // v0.9.08 FIX #94
     const projectRoot = findProjectRoot(compiledPath);
     const localRequire = createRequire(path.join(projectRoot, "__twm_dummy.js"));
     const exports = localRequire(compiledPath);
@@ -194,7 +206,10 @@ async function handleRequest(req) {
   let body_val = result;
 
   if (result && typeof result === "object" && !Array.isArray(result)) {
-    if (result.status) status = parseInt(result.status, 10) || 200;
+    if (result.status !== undefined && result.status !== null) {  // v0.9.08 FIX #91
+            status = parseInt(result.status, 10);
+            if (isNaN(status) || status < 0) status = 200;
+        }
     if (result.content_type) content_type = String(result.content_type);
     if (result.headers) {
       if (Array.isArray(result.headers)) headers_out = result.headers;
@@ -206,15 +221,19 @@ async function handleRequest(req) {
     }
     if (result.body !== undefined) body_val = result.body;
   } else if (Array.isArray(result)) {
-    body_val = result[0] || "";
-    if (result[1]) status = parseInt(result[1], 10) || 200;
+    body_val = (result[0] !== undefined && result[0] !== null) ? String(result[0]) : "";  // v0.9.08 FIX #95
+    if (result[1] !== undefined && result[1] !== null) {  // v0.9.08 FIX #95
+                status = parseInt(result[1], 10);
+                if (isNaN(status) || status < 0) status = 200;
+            }
     if (result[2]) headers_out = Object.entries(result[2]);
   }
 
   let body_bytes;
   if (typeof body_val === "string") {
     body_bytes = body_val;
-    if (content_type === "application/json; charset=utf-8") content_type = "text/plain; charset=utf-8";
+    // v0.9.08 FIX #96: Only flip if user did NOT explicitly set content type
+        if (content_type === "application/json; charset=utf-8" && !result.headers) content_type = "text/plain; charset=utf-8";
   } else if (typeof body_val === "object" && body_val !== null) {
     body_bytes = JSON.stringify(body_val);
   } else {
@@ -246,7 +265,11 @@ rl.on("line", async (line) => {
 
     // Normal request
     const response = await handleRequest(req);
-    process.stdout.write(JSON.stringify(response) + "\n");
+    // v0.9.08 FIX #92: Handle backpressure
+        const data = JSON.stringify(response) + "\n";
+        if (!process.stdout.write(data)) {
+            await new Promise(resolve => process.stdout.once("drain", resolve));
+        }
   } catch (err) {
     process.stdout.write(JSON.stringify({
       status: 500,

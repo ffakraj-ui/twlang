@@ -9,7 +9,7 @@ from .diagnostics import Diagnostic, DiagnosticBag
 logger = logging.getLogger(__name__)
 
 
-def _legacy() -> Any:
+def _get_compiler() -> Any:
     from . import compiler
 
     return compiler
@@ -17,11 +17,11 @@ def _legacy() -> Any:
 
 class SemanticAnalyzer:
     def _check_expression(self, expr, scope, diagnostics: DiagnosticBag, source_path: str, label: str) -> None:
-        compiler = _legacy()
+        compiler = _get_compiler()
         try:
             names = compiler.collect_expression_names(expr)
         except Exception:
-            logger.exception("Failed to collect expression names (%s) in %s: %r", source_path, label, expr)
+            logger.warning("Expression name collection failed (%s) in %s: %r — continuing with empty set", source_path, label, expr)
             names = set()
         for name in sorted(names):
             if name not in scope:
@@ -35,7 +35,7 @@ class SemanticAnalyzer:
                 )
 
     def _check_interpolations(self, text, scope, diagnostics: DiagnosticBag, source_path: str, label: str) -> None:
-        compiler = _legacy()
+        compiler = _get_compiler()
         if not isinstance(text, str):
             return
         for expr in compiler.extract_placeholder_expressions(text):
@@ -50,9 +50,9 @@ class SemanticAnalyzer:
                 # Type-check annotated let bindings at semantic level too
                 type_ann = getattr(node, "type_annotation", None)
                 if type_ann and type_ann != "any":
-                    compiler = _legacy()
+                    compiler = _get_compiler()
                     actual = compiler.infer_value_type(node.value)
-                    if actual == "null" and type_ann in {"object", "array", "null"}:
+                    if actual == "null" and type_ann == "null":
                         pass
                     elif actual != type_ann:
                         diagnostics.add(
@@ -135,7 +135,7 @@ class SemanticAnalyzer:
 
     def analyze(self, program: Program, context: Optional[Dict] = None) -> DiagnosticBag:
         diagnostics = DiagnosticBag()
-        compiler = _legacy()
+        compiler = _get_compiler()
 
         if program.legacy_page and program.source_path:
             try:
