@@ -2,7 +2,7 @@
 
 All notable changes to TW Framework are documented here.
 
-## [0.9.27] - 2026-08-12
+## [0.9.28] - 2026-08-12
 
 ### Added
 - Stability test suite: 580 new tests covering architecture and core modules

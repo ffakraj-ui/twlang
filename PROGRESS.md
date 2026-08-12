@@ -1,8 +1,8 @@
 # TW Framework — Progress
 
-## Current Version: v0.9.27
+## Current Version: v0.9.28
 
-### v0.9.27
+### v0.9.28
 - Added 580 stability tests
 - Fixed infrastructure.py Terraform rendering
 - Fixed edge_middleware.py CORS headers

@@ -155,6 +155,12 @@ _IMPORT_RE = re.compile(
     re.MULTILINE,
 )
 
+# Top-level directives like `runtime = "nodejs"` or `runtime = "edge"`
+_DIRECTIVE_RE = re.compile(
+    r"""^[ \t]*(?:runtime|export|revalidate|dynamic)\s*=\s*["'][^"']*["']""",
+    re.MULTILINE,
+)
+
 
 def parse_twm_functions(source: str) -> List[Dict[str, Any]]:
     """
@@ -174,6 +180,15 @@ def parse_twm_functions(source: str) -> List[Dict[str, Any]]:
     # ── Extract top-level import statements (v0.8.1) ────────────────────
     for m in _IMPORT_RE.finditer(src):
         imports.append(src[m.start():m.end()].strip())
+        consumed_spans.append((m.start(), m.end()))
+
+    # ── Extract top-level directives like `runtime = "nodejs"` ──────────
+    directives: List[Dict[str, str]] = []
+    for m in _DIRECTIVE_RE.finditer(src):
+        line = src[m.start():m.end()].strip()
+        dm = re.match(r"""(\w+)\s*=\s*["']([^"']*)["']""", line)
+        if dm:
+            directives.append({"key": dm.group(1), "value": dm.group(2)})
         consumed_spans.append((m.start(), m.end()))
 
     # ── Extract function declarations ───────────────────────────────────
@@ -218,7 +233,7 @@ def parse_twm_functions(source: str) -> List[Dict[str, Any]]:
             "Only `function`/`fn` declarations are supported so modules never auto-execute."
         )
 
-    return {"functions": functions, "imports": imports}
+    return {"functions": functions, "imports": imports, "directives": directives}
 
 
 def compile_twm_module_to_js(source: str, *, module_id: str) -> Any:

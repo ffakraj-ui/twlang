@@ -610,13 +610,26 @@ def run_production_server(
 
     handler = make_production_handler(project, output_dir, ssr_cache)
 
-    try:
-        server = ThreadedTCPServer((host, port), handler)
-    except OSError as err:
+    # Port auto-increment: if port is busy, try port+1, port+2, etc.
+    max_retries = 10
+    server = None
+    for attempt in range(max_retries):
+        try_port = port + attempt
+        try:
+            server = ThreadedTCPServer((host, try_port), handler)
+            if attempt > 0:
+                log(f"   Port {port} was busy, using port {try_port} instead")
+            port = try_port
+            break
+        except OSError:
+            if attempt == 0:
+                log(f"   Port {port} busy, trying {port + 1}...")
+            continue
+    if server is None:
         raise RuntimeError(
-            f"Could not bind to port {port}: {err}\n"
-            f"Try: TW_PORT={port + 1} tw serve"
-        ) from err
+            f"Could not bind to ports {port}-{port + max_retries - 1}.\n"
+            f"All ports are in use. Try: tw serve --port {port + max_retries}"
+        )
 
     log("🚀 TW Production Server")
     log(f"   Listening: http://{host}:{port}")

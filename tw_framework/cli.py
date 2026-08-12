@@ -1469,12 +1469,85 @@ def command_list(args) -> int:
     return 0
 
 
+
+
+def command_infrastructure(args) -> int:
+    """Generate Terraform IaC configuration for AWS."""
+    project_root = find_project_root(args.project_root)
+    try:
+        from .infrastructure import AWSConfig, TerraformGenerator
+    except ImportError:
+        log("✖ infrastructure module not available", level="error")
+        return 1
+
+    config = AWSConfig(region=args.region)
+    generator = TerraformGenerator(config)
+    tf_code = generator.generate_all()
+
+    out_dir = os.path.join(project_root, args.out_dir)
+    os.makedirs(out_dir, exist_ok=True)
+
+    # Write main.tf
+    main_tf = os.path.join(out_dir, "main.tf")
+    with open(main_tf, "w") as f:
+        f.write(tf_code)
+
+    log(f"✔ Infrastructure generated: {main_tf}")
+    log(f"  Provider: {args.provider}")
+    log(f"  Region: {args.region}")
+    log(f"  Components: VPC, ECS, ECR, ALB, S3, CloudFront, WAF, Redis")
+    return 0
+
+
+def command_health(args) -> int:
+    """Run health checks on the project."""
+    project_root = find_project_root(args.project_root)
+    try:
+        from .enterprise_features import HealthCheckManager
+        manager = HealthCheckManager()
+        checks = manager.run_all_checks()
+        passed = sum(1 for c in checks if c.get("status") == "healthy")
+        failed = sum(1 for c in checks if c.get("status") == "unhealthy")
+        for c in checks:
+            status = "✔" if c.get("status") == "healthy" else "✖"
+            log(f"  {status} {c.get('name', 'unknown')}: {c.get('message', '')}")
+        log(f"\n  {passed} healthy, {failed} unhealthy")
+        return 1 if failed > 0 else 0
+    except Exception as err:
+        if getattr(args, "debug", False):
+            raise
+        log(f"✖ {err}", level="error")
+        return 1
+
+
+def command_routes(args) -> int:
+    """List all routes in the project."""
+    project_root = find_project_root(args.project_root)
+    try:
+        from .app_router import AppRouter
+        router = AppRouter(os.path.join(project_root, "app"))
+        routes = router.discover_routes()
+        if not routes:
+            log("  No routes found. Create pages in app/ directory.")
+            return 0
+        log(f"  Found {len(routes)} route(s):\n")
+        for r in routes:
+            path = getattr(r, "path", str(r))
+            page = getattr(r, "page", "")
+            log(f"  {path:<30} {page}")
+        return 0
+    except Exception as err:
+        if getattr(args, "debug", False):
+            raise
+        log(f"✖ {err}", level="error")
+        return 1
+
+
 def build_parser() -> Any:
     parser = argparse.ArgumentParser(description="TW framework CLI")
+    parser.add_argument("--debug", action="store_true", help="Show full error details and stack traces")
+    parser.add_argument("--version", "-v", action="store_true", help="Show version and exit")
     parser.add_argument("--project-root", help="Manual project root override")
-    parser.add_argument("--debug", action="store_true", help="Print full tracebacks and internal state")
-    # FIX #143: Add --version flag so users can check installed version easily
-    parser.add_argument("--version", action="store_true", help="Show TW framework version and exit")
 
     subparsers = parser.add_subparsers(dest="command", required=False)
 
@@ -1506,6 +1579,7 @@ def build_parser() -> Any:
     doctor_parser.set_defaults(func=command_doctor)
 
     dev_parser = subparsers.add_parser("dev", help="Run the local dev server")
+    dev_parser.add_argument("project_root", nargs="?", default=None, help="Project root directory")
     add_host_port_args(
         dev_parser,
         host_default=framework.DEFAULT_DEV_HOST,
@@ -1531,7 +1605,6 @@ def build_parser() -> Any:
     build_parser.add_argument("--fail-on-warnings", action="store_true", help="Treat warnings as build failures")
     build_parser.add_argument("--strict", action="store_true", help="Strict build (= --fail-on-warnings + route collisions are errors)")
     build_parser.add_argument("--adapter", choices=["vercel", "netlify", "cloudflare"], help="Generate adapter-specific config files after build")
-    build_parser.add_argument("--debug", action="store_true", help="Print full tracebacks and internal state")
     build_parser.add_argument("--report", action="store_true", help="Generate build report after build")
     build_parser.set_defaults(func=command_build)
 
@@ -1639,13 +1712,30 @@ def build_parser() -> Any:
     list_parser.set_defaults(func=command_list)
 
     serve_parser = subparsers.add_parser("serve", help="Run the production server (SSR + API routes)")
+    serve_parser.add_argument("project_root", nargs="?", default=None, help="Project root directory")
     serve_parser.add_argument("--host", default=None, help="Bind host (default: 0.0.0.0)")
-    serve_parser.add_argument("--port", type=int, default=None, help="Bind port (default: 8000)")
+    serve_parser.add_argument("--port", type=int, default=None, help="Bind port (default: 8000, auto-increments if busy)")
     add_output_dir_arg(serve_parser, "Static output dir (optional)")
     serve_parser.add_argument("--no-build", action="store_true", help="Skip the build step and serve directly")
     add_no_minify_arg(serve_parser, "Disable HTML/CSS minification in the pre-build step")
     serve_parser.add_argument("--fail-on-warnings", action="store_true", help="Do not start server if build emits warnings")
     serve_parser.set_defaults(func=command_serve)
+
+
+    # ── infrastructure command ──────────────────────────────────────
+    infra_parser = subparsers.add_parser("infrastructure", aliases=["infra"], help="Generate Terraform IaC for AWS")
+    infra_parser.add_argument("--provider", default="aws", help="Cloud provider (aws, gcp, azure)")
+    infra_parser.add_argument("--region", default="ap-south-1", help="AWS region")
+    infra_parser.add_argument("--out-dir", default="infrastructure", help="Output directory")
+    infra_parser.set_defaults(func=command_infrastructure)
+
+    # ── health command ──────────────────────────────────────────────
+    health_parser = subparsers.add_parser("health", help="Run health checks on the project")
+    health_parser.set_defaults(func=command_health)
+
+    # ── routes command ───────────────────────────────────────────────
+    routes_parser = subparsers.add_parser("routes", help="List all routes in the project")
+    routes_parser.set_defaults(func=command_routes)
 
     return parser
 
@@ -1653,24 +1743,40 @@ def build_parser() -> Any:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-    # FIX #143: Handle --version flag
+
     if getattr(args, "version", False):
         from . import __version__
         print(f"tw-framework v{__version__}")
         return
+
     if not getattr(args, "command", None):
         parser.print_help()
         raise SystemExit(1)
-    # FIX #300: Catch exceptions and show clean error instead of ugly traceback
+
     try:
         result = args.func(args)
     except KeyboardInterrupt:
         log("\n✖ Interrupted by user", level="error")
         raise SystemExit(130)
+    except SystemExit:
+        raise
+    except FileNotFoundError as err:
+        if getattr(args, "debug", False):
+            raise
+        log(f"✖ File not found: {err.filename}", level="error")
+        raise SystemExit(1)
+    except PermissionError as err:
+        if getattr(args, "debug", False):
+            raise
+        log(f"✖ Permission denied: {err.filename}", level="error")
+        raise SystemExit(1)
     except Exception as err:
         if getattr(args, "debug", False):
             raise
-        log(f"✖ Error: {err}", level="error")
+        # Show short clean error by default
+        err_msg = str(err).split("\n")[0][:200]
+        log(f"✖ {err_msg}", level="error")
+        log("  Run with --debug for full details.", level="warning")
         raise SystemExit(1)
     if isinstance(result, int):
         raise SystemExit(result)
