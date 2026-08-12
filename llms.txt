@@ -1,6 +1,6 @@
 # TW Framework — Reference for Coding Assistants
 # Source: https://github.com/ffakraj-ui/twlang
-# Version: v0.9.28 (2026-08-12)
+# Version: v0.9.30 (2026-08-12)
 # Rule: If README and source code disagree, trust the source code and tests.
 
 ## 1. PROJECT OVERVIEW
@@ -53,7 +53,7 @@ Runtimes: nodejs (default), edge, python, wasm
 
 | File | Purpose |
 |------|---------|
-| `page.tw` | Page component |
+| `index.tw` / `page.tw` | Page component |
 | `layout.tw` | Layout |
 | `loading.tw` | Loading UI |
 | `error.tw` | Error boundary |

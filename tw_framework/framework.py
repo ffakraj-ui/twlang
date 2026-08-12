@@ -4133,7 +4133,7 @@ def get_affected_pages(changed_files: list) -> set:
     """Given changed files, return set of page paths needing rebuild (v0.8.37)."""
     affected = set()
     for cf in changed_files:
-        if cf.endswith('.tw') and 'page.tw' in cf:
+        if cf.endswith('.tw') and ('page.tw' in cf or 'index.tw' in cf):
             affected.add(cf)
         elif cf.endswith('.tw') and 'layout' in cf.lower():
             affected.add("*")

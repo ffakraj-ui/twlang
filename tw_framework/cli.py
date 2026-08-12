@@ -1762,16 +1762,22 @@ def main() -> None:
         raise
     except FileNotFoundError as err:
         if getattr(args, "debug", False):
+            import traceback
+            traceback.print_exc()
             raise
         log(f"✖ File not found: {err.filename}", level="error")
         raise SystemExit(1)
     except PermissionError as err:
         if getattr(args, "debug", False):
+            import traceback
+            traceback.print_exc()
             raise
         log(f"✖ Permission denied: {err.filename}", level="error")
         raise SystemExit(1)
     except Exception as err:
         if getattr(args, "debug", False):
+            import traceback
+            traceback.print_exc()
             raise
         # Show short clean error by default
         err_msg = str(err).split("\n")[0][:200]

@@ -57,6 +57,7 @@ ROUTE_TYPE_CATCH_ALL = "catch_all"
 # ─── Special Filenames ────────────────────────────────────────────────────
 
 PAGE_FILE = "page.tw"
+INDEX_FILE = "index.tw"  # Alternative to page.tw (index.tw takes priority)
 LAYOUT_FILE = "layout.tw"
 LOADING_FILE = "loading.tw"
 NOT_FOUND_FILE = "not-found.tw"
@@ -279,15 +280,27 @@ def discover_routes(home_dir: str) -> list:
         # Skip hidden dirs and internal dirs
         dirs[:] = [d for d in dirs if not d.startswith(".") and d != "node_modules"]
 
-        # FIX #400: Case-insensitive check for page.tw
+        # Check for page file: index.tw takes priority over page.tw
         _files_lower = {f.lower(): f for f in files}
-        if PAGE_FILE in files or PAGE_FILE.lower() in _files_lower:
+        has_index = INDEX_FILE in files or INDEX_FILE.lower() in _files_lower
+        has_page = PAGE_FILE in files or PAGE_FILE.lower() in _files_lower
+
+        if has_index or has_page:
+            # If both exist, index.tw wins — warn about page.tw being ignored
+            if has_index and has_page:
+                logger.warning(
+                    "Both index.tw and page.tw found in %s — index.tw takes priority, page.tw will be ignored",
+                    root,
+                )
+
+            # Determine which file to use
+            page_file_name = INDEX_FILE if has_index else PAGE_FILE
+
             # Build route segments from path relative to home
             rel_path = os.path.relpath(root, home_abs)
             if rel_path == ".":
                 segments = []
             else:
-                # FIX #397: Handle both os.sep and / for cross-platform
                 folder_parts = rel_path.replace("/", os.sep).split(os.sep)
                 segments = [classify_segment(p) for p in folder_parts if p]
 
@@ -297,10 +310,8 @@ def discover_routes(home_dir: str) -> list:
             layout_files = find_layouts_for_dir(root, home_abs)
 
             # Find special files (loading, not-found, error)
-            # Search from current dir up through layout dirs
             special = find_special_files(root)
             if not special["not_found"]:
-                # Check parent layout dirs
                 for li in reversed(layout_files):
                     if li.dir_path != root:
                         parent_special = find_special_files(li.dir_path)
@@ -309,7 +320,7 @@ def discover_routes(home_dir: str) -> list:
                             break
 
             route = RouteInfo(
-                file_path=os.path.join(root, PAGE_FILE),
+                file_path=os.path.join(root, page_file_name),
                 url_path=url,
                 segments=segments,
                 layout_files=[li.file_path for li in layout_files],
@@ -323,7 +334,7 @@ def discover_routes(home_dir: str) -> list:
         # Check for route.tw (API route)
         # FIX #382: If both page.tw and route.tw exist in same dir, warn and skip route.tw
         if ROUTE_FILE in files:
-            if PAGE_FILE in files:
+            if PAGE_FILE in files or INDEX_FILE in files:
                 logger.warning("Both page.tw and route.tw found in %s — route.tw will be ignored", root)
                 continue
             rel_path = os.path.relpath(root, home_abs)
@@ -511,7 +522,7 @@ def has_app_router_structure(home_dir: str) -> bool:
     if os.path.exists(os.path.join(home_dir, LAYOUT_FILE)):
         _app_router_structure_cache[home_abs] = True
         return True
-    if os.path.exists(os.path.join(home_dir, PAGE_FILE)):
+    if os.path.exists(os.path.join(home_dir, PAGE_FILE)) or os.path.exists(os.path.join(home_dir, INDEX_FILE)):
         _app_router_structure_cache[home_abs] = True
         return True
 
@@ -540,6 +551,7 @@ def has_legacy_structure(home_dir: str) -> bool:
 
 SPECIAL_FILES = {
     "page.tw": "page",
+    "index.tw": "page",
     "layout.tw": "layout",
     "loading.tw": "loading",
     "error.tw": "error",
@@ -819,7 +831,7 @@ def collect_static_params(home_dir: str) -> Dict[str, List[Dict]]:
     for root, dirs, files in os.walk(home_dir):
         dirs[:] = [d for d in dirs if not d.startswith("_") and not d.startswith(".")]
         for fname in files:
-            if fname == "page.tw" or fname == "page.py":
+            if fname == "page.tw" or fname == "index.tw" or fname == "page.py":
                 page_path = os.path.join(root, fname)
                 rel_path = os.path.relpath(root, home_dir)
 

@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: tw-framework
-Version: 0.9.28
+Version: 0.9.30
 Summary: TW framework CLI with create, dev, build, and deploy commands
 Author: TW MRMK, TW MLKRAJ, TW ASLAM, TW BADAL, TW ROHIT, TW RISHU
 Keywords: tw,tw-framework,twlang,framework,cli,static-site
@@ -52,7 +52,7 @@ tw build
 - Partial Prerendering
 - Server Actions with CSRF support
 - Plugin system with `.twp` format
-- CLI: create, dev, build, export, preview, serve, deploy
+- CLI: create, dev, build, export, preview, serve, deploy, infrastructure, health, routes
 
 ## Installation
 
@@ -61,6 +61,136 @@ pip install tw-framework
 pip install tw-framework[dev]
 pip install tw-framework[image]
 ```
+
+## Project Structure
+
+```
+my-site/
+  app/
+    index.tw            # Home page (/) — index.tw is alternative to page.tw
+    about/
+      index.tw          # /about — index.tw takes priority over page.tw
+    blog/
+      [slug]/
+        page.tw         # /blog/hello-world — page.tw also works
+    layout.tw           # Root layout
+    api/
+      users/
+        route.twm       # /api/users — API route
+  components/
+    Header.tw
+    Footer.tw
+  styles/
+    globals.tss
+  tw.config.json
+```
+
+### index.tw vs page.tw
+
+Both `index.tw` and `page.tw` are supported as page files. If both exist in the same directory, `index.tw` takes priority and a build-time warning is shown.
+
+## Page Syntax (.tw)
+
+```tw
+page home {
+  state count = 0
+  render {
+    <div>
+      <h1>Counter: {count}</h1>
+      <button onClick={count++}>Increment</button>
+    </div>
+  }
+}
+```
+
+## API Routes (.twm)
+
+```twm
+runtime = "nodejs"
+
+fn get(request) {
+  return {
+    status: 200,
+    json: { message: "Hello" }
+  }
+}
+```
+
+### Response Shapes
+
+| Shape | Description |
+|-------|-------------|
+| `{ status, json }` | JSON response (Next.js-style) |
+| `{ status, text }` | Plain text response |
+| `{ status, html }` | HTML response |
+| `{ status, body, headers }` | Custom body with headers |
+| `"string"` | Plain text (200 OK) |
+| `{ key: value }` | JSON (200 OK) |
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `tw create my-site` | Create new project |
+| `tw dev` | Start dev server |
+| `tw build` | Production build |
+| `tw export` | Static export |
+| `tw preview` | Preview production build |
+| `tw serve --port 3000` | Serve with SSR + API routes |
+| `tw deploy --provider vercel` | Deploy to Vercel |
+| `tw infrastructure` | Generate Terraform IaC |
+| `tw health` | Run health checks |
+| `tw routes` | List all routes |
+| `tw plugin add seo-booster` | Install plugin |
+| `tw install react lodash` | Install npm packages |
+| `tw check` | Type-check |
+| `tw ast` | Dump AST |
+| `tw --version` | Show version |
+| `tw --debug <command>` | Show full error details |
+
+## Error Handling
+
+### Common Errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Not a TW project directory` | No `tw.config.json` found | Run `tw create` or `tw init` |
+| `Port 8000 busy` | Another process using port | Server auto-increments to 8001, 8002, etc. |
+| `Handler load failed` | .twm module syntax error | Check function syntax |
+| `Method GET not allowed` | Missing handler function | Add `fn get(request) { ... }` |
+| `Node.js not detected` | Node.js not installed | Install Node.js v18+ |
+| `Both index.tw and page.tw found` | Both files in same dir | Delete one — index.tw takes priority |
+
+### Debug Mode
+
+Use `--debug` flag for full Python traceback:
+
+```bash
+tw --debug build
+tw --debug serve
+tw --debug dev
+```
+
+## Runtimes
+
+| Runtime | Directive | Use Case |
+|---------|-----------|----------|
+| Node.js | `runtime = "nodejs"` | Full npm packages, fs, native modules |
+| Edge V8 | `runtime = "edge"` | Fast, lightweight APIs |
+| Python | `runtime = "python"` | Python libraries, ML |
+| WASM | `runtime = "wasm"` | Sandboxed, untrusted code |
+
+## Special Files
+
+| File | Purpose |
+|------|---------|
+| `index.tw` / `page.tw` | Page component |
+| `layout.tw` | Layout wrapper |
+| `loading.tw` | Loading UI |
+| `error.tw` | Error boundary |
+| `not-found.tw` | 404 page |
+| `route.twm` | API route |
+| `middleware.tw` | Edge middleware |
 
 ## License
 

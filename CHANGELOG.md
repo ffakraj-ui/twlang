@@ -2,7 +2,25 @@
 
 All notable changes to TW Framework are documented here.
 
-## [0.9.28] - 2026-08-12
+## [0.9.30] - 2026-08-13
+
+### Added
+- `index.tw` is now supported as an alternative to `page.tw`. Both work identically as page files.
+- When both `index.tw` and `page.tw` exist in the same directory, `index.tw` takes priority and a build-time warning is shown.
+- Updated all documentation files with new features, CLI commands, error documentation, and response shapes.
+
+### Changed
+- `app_router.py`: `discover_routes()` now checks for both `index.tw` and `page.tw`.
+- `framework.py`: route artifact generation also recognizes `index.tw`.
+- README.md: comprehensive update with index.tw docs, error table, response shapes, CLI commands.
+- IMPLEMENTED_FEATURES.md: all 21 architecture modules listed with descriptions.
+- API_TESTING_GUIDE.md: response shapes, runtime directives, error table.
+- DEPLOYMENT.md: infrastructure command, port auto-increment.
+- RUNTIMES.md: response shapes for all runtimes.
+- SECURITY.md: updated with scrypt+HMAC, thread safety.
+- PROGRESS.md: v0.9.28-0.9.30 entries added.
+
+## [0.9.29] - 2026-08-12
 
 ### Added
 - Stability test suite: 580 new tests covering architecture and core modules

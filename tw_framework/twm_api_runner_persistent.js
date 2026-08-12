@@ -145,7 +145,7 @@ async function handleRequest(req) {
     return {
       status: 500,
       content_type: "application/json; charset=utf-8",
-      body: JSON.stringify({ error: "Handler load failed", detail: entry.error.message }),
+      body: JSON.stringify({ error: "Handler load failed", detail: entry.error.message, stack: entry.error.stack }),
       headers: [],
       cookies: [],
     };
@@ -192,7 +192,7 @@ async function handleRequest(req) {
     return {
       status: 500,
       content_type: "application/json; charset=utf-8",
-      body: JSON.stringify({ error: "Handler execution failed", detail: err.message, stack: process.env.NODE_ENV === "development" ? err.stack : undefined }),
+      body: JSON.stringify({ error: "Handler execution failed", detail: err.message, stack: err.stack }),
       headers: [],
       cookies: [],
     };
@@ -206,7 +206,7 @@ async function handleRequest(req) {
   let body_val = result;
 
   if (result && typeof result === "object" && !Array.isArray(result)) {
-    if (result.status !== undefined && result.status !== null) {  // v0.9.08 FIX #91
+    if (result.status !== undefined && result.status !== null) {
             status = parseInt(result.status, 10);
             if (isNaN(status) || status < 0) status = 200;
         }
@@ -218,6 +218,21 @@ async function handleRequest(req) {
     if (result.cookies) {
       if (Array.isArray(result.cookies)) cookies_out = result.cookies;
       else if (typeof result.cookies === "object") cookies_out = Object.entries(result.cookies);
+    }
+    // Support Next.js-style { json: {...} } response shape
+    if (result.json !== undefined) {
+      body_val = result.json;
+      content_type = "application/json; charset=utf-8";
+    }
+    // Support { text: "..." } response shape
+    if (result.text !== undefined) {
+      body_val = result.text;
+      content_type = "text/plain; charset=utf-8";
+    }
+    // Support { html: "..." } response shape
+    if (result.html !== undefined) {
+      body_val = result.html;
+      content_type = "text/html; charset=utf-8";
     }
     if (result.body !== undefined) body_val = result.body;
   } else if (Array.isArray(result)) {

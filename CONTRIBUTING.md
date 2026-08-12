@@ -13,9 +13,9 @@ pytest
 ## Running Tests
 
 ```bash
-pytest
-pytest tests/test_stability.py -v
-pytest tests/test_stability_core.py -v
+pytest                           # All tests
+pytest tests/test_stability.py -v      # Architecture module tests
+pytest tests/test_stability_core.py -v  # Core module tests
 ```
 
 ## Submitting Changes
@@ -25,6 +25,16 @@ pytest tests/test_stability_core.py -v
 3. Make changes, add tests
 4. Run `pytest` to verify
 5. Submit a pull request
+
+## Debug Mode
+
+Use `--debug` to get full error details during development:
+
+```bash
+tw --debug build
+tw --debug serve
+tw --debug dev
+```
 
 ## Authors
 

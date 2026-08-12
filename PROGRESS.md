@@ -1,8 +1,26 @@
 # TW Framework — Progress
 
-## Current Version: v0.9.28
+## Current Version: v0.9.30
+
+### v0.9.30
+- Added index.tw as alternative to page.tw (index.tw takes priority)
+- Build-time warning when both index.tw and page.tw exist
+- Updated all .md files with new features, commands, and error documentation
+
+### v0.9.30
+- Fixed API routes with runtime directive returning 500 error
+- Added json/text/html response shape support
+- Fixed --debug flag to show full Python traceback
+- JS runner now always includes stack traces in error responses
 
 ### v0.9.28
+- Fixed .twm runtime directive parsing
+- Added port auto-increment for tw serve
+- Added tw infrastructure, tw health, tw routes commands
+- Added --debug and --version flags
+- Improved CLI error messages
+
+### v0.9.27
 - Added 580 stability tests
 - Fixed infrastructure.py Terraform rendering
 - Fixed edge_middleware.py CORS headers
@@ -33,7 +51,7 @@
 - Added PPR, cache tiers, bundle optimizer
 
 ### v0.9.18
-- Fixed runtime bugs (BaseRuntime, EdgeV8Cache, WASM)
+- Fixed BaseRuntime.execute(), EdgeV8Cache, WASM env filtering
 
 ### v0.9.17
 - Rewrote documentation
