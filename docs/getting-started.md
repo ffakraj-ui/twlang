@@ -77,3 +77,14 @@ tw preview
 
 - [Syntax Reference](./syntax-reference.md) — full `.tw` / `.tss` language guide
 - Run `tw doctor` any time to check your project for common issues
+
+## New CLI Commands (v0.9.28+)
+
+| Command | Description |
+|---------|-------------|
+| `tw infrastructure` | Generate Terraform IaC for AWS |
+| `tw health` | Run health checks |
+| `tw routes` | List all routes |
+| `tw serve --port 3000` | Serve with port auto-increment |
+| `tw --debug <command>` | Show full error traceback |
+| `tw --version` / `-v` | Show version |

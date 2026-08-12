@@ -2,6 +2,26 @@
 
 All notable changes to TW Framework are documented here.
 
+## [0.9.32] - 2026-08-13
+
+### Fixed
+- **Critical**: `twm_api_runner_persistent.js` line 44 — `findProjectRoot()` used undefined variable `result` instead of `current`, causing `ReferenceError: result is not defined` for ALL API routes with `runtime = "nodejs"` directive. This was the root cause of the 500 error on every `.twm` API route.
+- Also checked and fixed same bug in `twm_api_runner.js` (non-persistent runner).
+
+## [0.9.31] - 2026-08-13
+
+### Fixed
+- Updated all 281 documentation files in `docs/` directory:
+  - Replaced old version references (v0.5.x, v0.6.x, v0.7.x, v0.8.x) with current version
+  - Added `index.tw` mentions to routing, project structure, and getting-started docs
+  - Replaced `TW_PORT` environment variable with `--port` flag in deployment docs
+  - Added new CLI commands (`tw infrastructure`, `tw health`, `tw routes`) to CLI reference
+  - Added API response shapes (`json`, `text`, `html`) to API route documentation
+  - Added runtime directive documentation to all API-related docs
+  - Updated error reference with new error types and debug mode
+  - Updated FAQ with index.tw, port auto-increment, and response shape questions
+  - Updated best-practices and troubleshooting guides
+
 ## [0.9.30] - 2026-08-13
 
 ### Added

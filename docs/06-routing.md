@@ -61,9 +61,9 @@ export function GET(request) {
 
 ---
 
-## App Router (v0.7.0+)
+## App Router (v0.9.30+)
 
-TW Framework v0.7.0 introduces the **App Router** — a file-system based routing
+TW Framework v0.9.30 introduces the **App Router** — a file-system based routing
 system where layouts are TW components (not HTML templates) and routes are
 defined by `page.tw` files in nested directories.
 

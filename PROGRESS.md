@@ -1,13 +1,13 @@
 # TW Framework — Progress
 
-## Current Version: v0.9.30
+## Current Version: v0.9.32
 
-### v0.9.30
+### v0.9.32
 - Added index.tw as alternative to page.tw (index.tw takes priority)
 - Build-time warning when both index.tw and page.tw exist
 - Updated all .md files with new features, commands, and error documentation
 
-### v0.9.30
+### v0.9.32
 - Fixed API routes with runtime directive returning 500 error
 - Added json/text/html response shape support
 - Fixed --debug flag to show full Python traceback

@@ -3,7 +3,7 @@ TW Framework — Technical Reference
 ================================================================================
 
 Source: github.com/ffakraj-ui/twlang (default branch: main)
-Version: v0.9.30 (2026-08-12)
+Version: v0.9.32 (2026-08-12)
 
 ================================================================================
 0. WHAT TW IS

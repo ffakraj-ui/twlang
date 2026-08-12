@@ -257,3 +257,25 @@ def rate_limited_fetch(url, max_requests=10, window=60):
 4. **Cache aggressively**. External APIs are slow and rate-limited.
 5. **Log API calls**. Track latency and error rates.
 6. **Validate responses**. Do not trust external API schemas.
+
+## Response Shapes (v0.9.29+)
+
+All response shapes supported by `.twm` API routes:
+
+| Shape | Description |
+|-------|-------------|
+| `{ status, json }` | JSON response (Next.js-style) |
+| `{ status, text }` | Plain text response |
+| `{ status, html }` | HTML response |
+| `{ status, body, headers }` | Custom body with headers |
+| `"string"` | Plain text (200 OK) |
+| `{ key: value }` | JSON (200 OK) |
+
+### Runtime Directives
+
+| Directive | Engine |
+|-----------|--------|
+| `runtime = "nodejs"` | Node.js worker (default) |
+| `runtime = "edge"` | V8 Isolate |
+| `runtime = "python"` | Python in-process |
+| `runtime = "wasm"` | wasmtime sandbox |

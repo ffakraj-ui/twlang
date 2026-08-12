@@ -41,7 +41,7 @@ function findProjectRoot(startPath) {
     ) return current;
     const parent = path.dirname(current);
     if (parent === current) return process.cwd();
-    _projectRootCache.set(startPath, result);
+    _projectRootCache.set(startPath, current);
     current = parent;
   }
 }

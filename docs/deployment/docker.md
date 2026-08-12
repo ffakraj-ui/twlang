@@ -27,6 +27,6 @@ docker compose up --build
 | Variable | Default | Purpose |
 |---|---|---|
 | `TW_HOST` | `0.0.0.0` | Server bind address |
-| `TW_PORT` | `8000` | Server port |
+| `--port` | `8000` | Server port |
 
 Change the port mapping in `docker run -p <host-port>:8000` or in `docker-compose.yml` if you need a different external port.

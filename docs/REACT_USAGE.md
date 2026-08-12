@@ -1,6 +1,6 @@
 # React Usage Guide
 
-TW Framework v0.8.1 adds React compatibility. You can use React alongside TW's native VDOM for islands of interactivity, while keeping Zero-JS for static pages.
+TW Framework v0.9.30 adds React compatibility. You can use React alongside TW's native VDOM for islands of interactivity, while keeping Zero-JS for static pages.
 
 ## Installation
 

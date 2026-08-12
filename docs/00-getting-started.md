@@ -31,15 +31,15 @@ my-site/
   middleware.tw          # middleware
   [home]/                 # App Router root
     layout.tw            # root layout
-    page.tw              # home page
+    index.tw (or index.tw / page.tw)              # home page
     not-found.tw         # 404 page
     style.tss            # global stylesheet
-    about/page.tw        # /about
-    blog/page.tw         # /blog
-    blog/[slug]/page.tw  # /blog/:slug
+    about/index.tw / page.tw        # /about
+    blog/index.tw / page.tw         # /blog
+    blog/[slug]/index.tw / page.tw  # /blog/:slug
     blog/posts.json      # blog data
-    counter/page.tw      # reactive counter
-    contact/page.tw      # contact form
+    counter/index.tw / page.tw      # reactive counter
+    contact/index.tw / page.tw      # contact form
     components/           # Navbar, Footer, Button, Card
     api/                  # contact, users API routes
 ```
@@ -89,3 +89,14 @@ tw deploy --provider vercel --prod
 
 Supports: vercel, netlify, cloudflare, github-pages, docker.
 Use `--dry-run` to preview.
+
+## New CLI Commands (v0.9.28+)
+
+| Command | Description |
+|---------|-------------|
+| `tw infrastructure` | Generate Terraform IaC for AWS |
+| `tw health` | Run health checks |
+| `tw routes` | List all routes |
+| `tw serve --port 3000` | Serve with port auto-increment |
+| `tw --debug <command>` | Show full error traceback |
+| `tw --version` / `-v` | Show version |

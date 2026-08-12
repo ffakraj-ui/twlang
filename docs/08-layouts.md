@@ -101,7 +101,7 @@ Check:
 
 ---
 
-## App Router Layouts (v0.7.0+)
+## App Router Layouts (v0.9.30+)
 
 The App Router introduces **TW-component layouts** — layouts are `.tw` files
 written in TW syntax (not raw HTML templates) and use the `children` keyword

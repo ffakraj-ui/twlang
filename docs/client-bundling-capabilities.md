@@ -3,9 +3,9 @@
 This document honestly describes what TW Framework's client-side bundler can and
 cannot do, and how it compares to Next.js's webpack/turbopack.
 
-## esbuild Integration (v0.8.1) — Real Bundling ✅
+## esbuild Integration (v0.9.30) — Real Bundling ✅
 
-TW Framework v0.8.1 integrates **esbuild** as its client-side bundler. esbuild is
+TW Framework v0.9.30 integrates **esbuild** as its client-side bundler. esbuild is
 an extremely fast JavaScript bundler (written in Go) that handles:
 
 - **CJS → ESM conversion** — CommonJS packages are properly converted
@@ -63,7 +63,7 @@ Even with esbuild, some things are NOT supported:
 
 ## Comparison with Next.js
 
-| Feature | TW v0.8.1 (esbuild) | TW (fallback) | Next.js |
+| Feature | TW v0.9.30 (esbuild) | TW (fallback) | Next.js |
 |---------|---------------------|--------------|---------|
 | NPM install | ✅ `tw install` | ✅ | ✅ `npm install` |
 | Server-side (.twm) | ✅ Full Node.js | ✅ | ✅ Full Node.js |

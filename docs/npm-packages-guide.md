@@ -1,6 +1,6 @@
 # NPM Packages & External Dependencies
 
-TW Framework v0.8.1 adds full npm package management — just like Next.js. You can install, remove, and list npm packages directly from the TW CLI.
+TW Framework v0.9.30 adds full npm package management — just like Next.js. You can install, remove, and list npm packages directly from the TW CLI.
 
 ## Installing Packages
 

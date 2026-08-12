@@ -88,3 +88,25 @@ export async function GET(request) {
 | 404 | Not Found |
 | 429 | Too Many Requests |
 | 500 | Internal Server Error |
+
+## Response Shapes (v0.9.29+)
+
+All response shapes supported by `.twm` API routes:
+
+| Shape | Description |
+|-------|-------------|
+| `{ status, json }` | JSON response (Next.js-style) |
+| `{ status, text }` | Plain text response |
+| `{ status, html }` | HTML response |
+| `{ status, body, headers }` | Custom body with headers |
+| `"string"` | Plain text (200 OK) |
+| `{ key: value }` | JSON (200 OK) |
+
+### Runtime Directives
+
+| Directive | Engine |
+|-----------|--------|
+| `runtime = "nodejs"` | Node.js worker (default) |
+| `runtime = "edge"` | V8 Isolate |
+| `runtime = "python"` | Python in-process |
+| `runtime = "wasm"` | wasmtime sandbox |

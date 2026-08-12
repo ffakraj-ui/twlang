@@ -302,3 +302,26 @@ sh: line 1: tw: command not found
 If you see `true` appearing as a CSS value, this is the multi-line value bug (pre-v0.4.3).
 
 **Fix:** Upgrade to v0.4.3+ or keep CSS values on a single line.
+
+## New Error Reference (v0.9.28+)
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Not a TW project directory` | No `tw.config.json` found | Run `tw create` or `tw init` |
+| `Port 8000 busy` | Another process using port | Server auto-increments to 8001+ |
+| `Handler load failed` | .twm module syntax error | Check function syntax, use `--debug` |
+| `Method GET not allowed` | Missing handler function | Add `fn get(request) { ... }` |
+| `Node.js not detected` | Node.js not installed | Install Node.js v18+ |
+| `result is not defined` | Invalid response shape | Use `{ status, json }` format |
+| `Both index.tw and page.tw found` | Both files in same dir | Delete one — index.tw takes priority |
+| `Top-level statements not allowed` | Code outside function in .twm | Move code inside `fn` block |
+
+### Debug Mode
+
+Use `--debug` flag for full Python traceback:
+
+```bash
+tw --debug build
+tw --debug serve
+tw --debug dev
+```

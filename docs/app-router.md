@@ -1,4 +1,4 @@
-# App Router (v0.7.0+)
+# App Router (v0.9.30+)
 
 TW Framework's App Router is a file-system based routing and layout system
 inspired by Next.js App Router. Layouts are **TW components**, not raw HTML
@@ -11,20 +11,20 @@ templates. They nest automatically based on your directory structure.
 ```
 [home]/
 ├── layout.tw              ← Root layout (wraps everything)
-├── page.tw                ← Home page (URL: /)
+├── index.tw (or index.tw / page.tw)                ← Home page (URL: /)
 ├── (main)/                ← Route group (excluded from URL)
 │   ├── layout.tw          ← Layout for all (main) pages
-│   ├── page.tw             ← URL: / (route group doesn't add to URL)
+│   ├── index.tw / page.tw             ← URL: / (route group doesn't add to URL)
 │   ├── blog/
-│   │   ├── page.tw         ← URL: /blog
+│   │   ├── index.tw / page.tw         ← URL: /blog
 │   │   └── [slug]/          ← Dynamic route
 │   │       ├── layout.tw   ← Nested layout for blog posts
-│   │       └── page.tw      ← URL: /blog/:slug
+│   │       └── index.tw / page.tw      ← URL: /blog/:slug
 │   └── about/
-│       └── page.tw         ← URL: /about
+│       └── index.tw / page.tw         ← URL: /about
 ├── admin/                  ← Separate layout tree
 │   ├── layout.tw           ← Admin layout (no (main) wrapper)
-│   └── page.tw             ← URL: /admin
+│   └── index.tw / page.tw             ← URL: /admin
 └── api/                    ← API routes
     └── apps/
         └── route.tw        ← URL: /api/apps
@@ -82,10 +82,10 @@ body {
 
 ### 4. Page
 
-Pages are `.tw` files named `page.tw`. They contain the actual page content.
+Pages are `.tw` files named `index.tw / page.tw`. They contain the actual page content.
 
 ```
-// [home]/(main)/about/page.tw
+// [home]/(main)/about/index.tw / page.tw
 
 page {
     title "About Us"
@@ -105,7 +105,7 @@ body {
 Folder names in square brackets become dynamic URL segments.
 
 ```
-// [home]/(main)/blog/[slug]/page.tw
+// [home]/(main)/blog/[slug]/index.tw / page.tw
 
 page {
     title "Blog Post"
@@ -189,14 +189,14 @@ layout sharing without affecting the URL.
 [home]/
 ├── (main)/              ← URL: / (not /main)
 │   ├── layout.tw        ← Shared layout (navbar, footer)
-│   ├── page.tw          ← URL: /
-│   └── about/page.tw    ← URL: /about
+│   ├── index.tw / page.tw          ← URL: /
+│   └── about/index.tw / page.tw    ← URL: /about
 ├── (auth)/              ← URL: / (not /auth)
 │   ├── layout.tw        ← Different layout (no navbar)
-│   └── login/page.tw    ← URL: /login
+│   └── login/index.tw / page.tw    ← URL: /login
 ```
 
-Both `(main)/page.tw` and `(auth)/login/page.tw` have different layouts but
+Both `(main)/index.tw / page.tw` and `(auth)/login/index.tw / page.tw` have different layouts but
 their URLs don't include the group name.
 
 ## Dynamic Routes `[slug]`
@@ -204,14 +204,14 @@ their URLs don't include the group name.
 ### Single parameter
 
 ```
-[home]/blog/[slug]/page.tw  →  URL: /blog/:slug
-[home]/app/[id]/page.tw     →  URL: /app/:id
+[home]/blog/[slug]/index.tw / page.tw  →  URL: /blog/:slug
+[home]/app/[id]/index.tw / page.tw     →  URL: /app/:id
 ```
 
 ### Catch-all
 
 ```
-[home]/[...path]/page.tw  →  URL: /*path
+[home]/[...path]/index.tw / page.tw  →  URL: /*path
 ```
 
 Catch-all matches any number of segments:
@@ -233,7 +233,7 @@ Given this structure:
 │   └── blog/
 │       └── [slug]/
 │           ├── layout.tw              ← Blog post layout
-│           └── page.tw               ← Page content
+│           └── index.tw / page.tw               ← Page content
 ```
 
 Composition order:
@@ -267,7 +267,7 @@ Result:
 
 | File | Purpose |
 |------|---------|
-| `page.tw` | A page route — creates a URL |
+| `index.tw / page.tw` | A page route — creates a URL |
 | `layout.tw` | A layout wrapper — wraps child pages |
 | `loading.tw` | Loading state — shown during navigation (discovered, runtime pending) |
 | `not-found.tw` | 404 page — shown when route not found (discovered, runtime pending) |
@@ -330,7 +330,7 @@ qualify for Zero-JS.
 
 The App Router is fully backward compatible with the legacy structure:
 
-- If `[home]/page.tw` or `[home]/layout.tw` exists → App Router mode
+- If `[home]/index.tw / page.tw` or `[home]/layout.tw` exists → App Router mode
 - If `[home]/` or `[home]/layouts/` exists → Legacy mode
 - The framework auto-detects which system to use
 
@@ -339,7 +339,7 @@ project, then move pages one by one.
 
 ## Comparison: Legacy vs App Router
 
-| Feature | Legacy (v0.6.x) | App Router (v0.7.0) |
+| Feature | Legacy (v0.9.x) | App Router (v0.9.30) |
 |---------|------------------|---------------------|
 | Layout format | Raw HTML template | TW component |
 | Layout slot | `{slot}` placeholder | `children` keyword |
@@ -350,9 +350,9 @@ project, then move pages one by one.
 | Head management | `{head}` placeholder | `head { }` block in layout |
 | Backward compatible | — | ✅ Yes |
 
-## Client-Side Navigation (v0.7.1+)
+## Client-Side Navigation (v0.9.1+)
 
-TW Framework v0.7.1 adds SPA-style client-side navigation. When a page uses
+TW Framework v0.9.1 adds SPA-style client-side navigation. When a page uses
 the `link` router key, the framework ships a lightweight client-side router
 that intercepts link clicks and fetches the next page via `fetch()` instead
 of doing a full page reload.
@@ -425,7 +425,7 @@ Pages without `link` or `goto` router keys remain Zero-JS — no router
 runtime is shipped. Only pages that use client-side navigation get the
 ~2KB router runtime.
 
-## generateStaticParams (v0.7.1+)
+## generateStaticParams (v0.9.1+)
 
 The `generateStaticParams` directive lets you pre-render dynamic routes
 at build time from a JSON data file.
@@ -433,7 +433,7 @@ at build time from a JSON data file.
 ### Usage
 
 ```
-// [home]/blog/[slug]/page.tw
+// [home]/blog/[slug]/index.tw / page.tw
 
 page {
     title "Blog Post"
@@ -480,7 +480,7 @@ directory**. For example:
 [home]/
 ├── blog/
 │   └── [slug]/
-│       ├── page.tw          ← generateStaticParams "./posts.json"
+│       ├── index.tw / page.tw          ← generateStaticParams "./posts.json"
 │       └── posts.json        ← Resolved relative to [slug]/ directory
 ```
 
@@ -514,7 +514,7 @@ If `generateStaticParams` is not specified, the framework falls back to
 the legacy `load_dynamic_items` behavior (loading a JSON file with the
 same name as the `.tw` file, e.g. `[slug].json` → `[slug].tw`).
 
-## route.tw — API Routes (v0.7.1+)
+## route.tw — API Routes (v0.9.1+)
 
 In App Router mode, `route.tw` files create API endpoints. They use the
 same `.twm` module syntax as legacy `route.twm` files.
@@ -523,7 +523,7 @@ same `.twm` module syntax as legacy `route.twm` files.
 
 ```
 [home]/
-├── page.tw                     ← Home page (/)
+├── index.tw / page.tw                     ← Home page (/)
 └── api/
     ├── apps/
     │   └── route.tw            ← GET /api/apps

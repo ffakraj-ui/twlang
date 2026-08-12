@@ -40,14 +40,14 @@
 
 ## Planned Features
 
-### v0.5.0
+### v0.9.30
 - Image optimization pipeline
 - Client-side router (SPA mode)
 - Internationalization (i18n) built-in
 - Plugin system for custom compiler extensions
 - Hot Module Replacement (HMR) in dev server
 
-### v0.6.0
+### v0.9.30
 - Built-in analytics dashboard
 - A/B testing framework
 - Edge middleware

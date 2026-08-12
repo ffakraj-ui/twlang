@@ -21,10 +21,10 @@ This generates:
 ```
 [home]/
 ├── layout.tw           ← Root layout (wraps every page)
-├── page.tw             ← Home page (URL: /)
-├── about/page.tw       ← URL: /about
-├── counter/page.tw     ← URL: /counter
-├── contact/page.tw     ← URL: /contact
+├── index.tw (or index.tw / page.tw)             ← Home page (URL: /)
+├── about/index.tw / page.tw       ← URL: /about
+├── counter/index.tw / page.tw     ← URL: /counter
+├── contact/index.tw / page.tw     ← URL: /contact
 ├── not-found.tw        ← 404 page
 ├── api/
 │   ├── contact/route.tw   ← POST /api/contact
@@ -36,7 +36,7 @@ This generates:
 
 The framework auto-detects which routing system to use:
 
-- If `[home]/page.tw` or `[home]/layout.tw` exists → **App Router mode**
+- If `[home]/index.tw / page.tw` or `[home]/layout.tw` exists → **App Router mode**
 - If `[home]/` exists → **Legacy mode**
 
 Both modes work simultaneously. You can migrate gradually.
@@ -125,7 +125,7 @@ Place `layout.tw` in subdirectories — they automatically wrap child pages:
 │   └── blog/
 │       ├── layout.tw      ← Blog layout (article wrapper)
 │       └── [slug]/
-│           └── page.tw    ← Page content
+│           └── index.tw / page.tw    ← Page content
 ```
 
 Composition order (outermost to innermost):
@@ -167,14 +167,14 @@ Folders wrapped in parentheses are **route groups** — they organize pages for 
 [home]/
 ├── (main)/              ← URL: / (not /main)
 │   ├── layout.tw        ← Shared layout (navbar, footer)
-│   ├── page.tw          ← URL: /
-│   └── about/page.tw    ← URL: /about
+│   ├── index.tw / page.tw          ← URL: /
+│   └── about/index.tw / page.tw    ← URL: /about
 ├── (auth)/              ← Different layout (no navbar)
 │   ├── layout.tw
-│   └── login/page.tw    ← URL: /login
+│   └── login/index.tw / page.tw    ← URL: /login
 ```
 
-Both `(main)/page.tw` and `(auth)/login/page.tw` have different layouts but their URLs don't include the group name.
+Both `(main)/index.tw / page.tw` and `(auth)/login/index.tw / page.tw` have different layouts but their URLs don't include the group name.
 
 ### When to Use Route Groups
 
@@ -191,14 +191,14 @@ Folder names in square brackets become dynamic URL segments.
 ### Single Parameter
 
 ```
-[home]/blog/[slug]/page.tw  →  URL: /blog/:slug
-[home]/app/[id]/page.tw     →  URL: /app/:id
+[home]/blog/[slug]/index.tw / page.tw  →  URL: /blog/:slug
+[home]/app/[id]/index.tw / page.tw     →  URL: /app/:id
 ```
 
 ### Catch-All Routes
 
 ```
-[home]/[...path]/page.tw  →  URL: /*path
+[home]/[...path]/index.tw / page.tw  →  URL: /*path
 ```
 
 Matches any number of segments:
@@ -210,7 +210,7 @@ Matches any number of segments:
 Pre-render dynamic routes at build time from a JSON data file:
 
 ```
-// [home]/blog/[slug]/page.tw
+// [home]/blog/[slug]/index.tw / page.tw
 
 page {
     title "Blog Post"
@@ -433,7 +433,7 @@ Icons render as inline SVG at build time. No client-side JavaScript is needed. S
 
 | File | Purpose |
 |------|---------|
-| `page.tw` | A page route — creates a URL |
+| `index.tw / page.tw` | A page route — creates a URL |
 | `layout.tw` | A layout wrapper — wraps child pages |
 | `not-found.tw` | 404 page — shown when route not found |
 | `route.tw` | API route — creates an API endpoint |
@@ -463,13 +463,13 @@ body {
 
 ## 9. Comparison: Legacy vs App Router
 
-| Feature | Legacy (v0.6.x) | App Router (v0.7.0+) |
+| Feature | Legacy (v0.9.x) | App Router (v0.9.30+) |
 |---------|------------------|---------------------|
 | Layout format | Raw HTML template | TW component |
 | Layout slot | `{slot}` placeholder | `children` keyword |
 | Nested layouts | Manual chain (`layout "base > docs"`) | Automatic by directory |
 | Route groups | Not supported | `(folder)` syntax |
-| Dynamic routes | `[slug].tw` file | `[slug]/page.tw` folder |
+| Dynamic routes | `[slug].tw` file | `[slug]/index.tw / page.tw` folder |
 | API routes | `route.twm` | `route.tw` (or `route.twm`) |
 | Client-side nav | `link` (redirect) | `link` (SPA navigation) |
 | Pre-rendering | JSON file same name | `generateStaticParams` directive |
@@ -484,9 +484,9 @@ body {
 
 Create `[home]/layout.tw` (App Router layout) alongside your existing `[home]/layouts/main.tw` (legacy layout).
 
-### Step 2: Add page.tw files
+### Step 2: Add index.tw / page.tw files
 
-For each page in `[home]/`, create a corresponding `[home]/page.tw` or `[home]/about/page.tw`.
+For each page in `[home]/`, create a corresponding `[home]/index.tw / page.tw` or `[home]/about/index.tw / page.tw`.
 
 ### Step 3: Use `children` instead of `{slot}`
 

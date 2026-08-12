@@ -5,7 +5,7 @@
 TW Framework is a Python-based full-stack web framework with App Router, Zero-JS static sites, multi-runtime API routes, and a custom DSL.
 
 - Package: `tw-framework` on PyPI
-- Version: 0.9.30
+- Version: 0.9.32
 - Python: >=3.9
 - Core Dependencies: None (pure Python stdlib)
 - License: MIT
@@ -15,7 +15,7 @@ TW Framework is a Python-based full-stack web framework with App Router, Zero-JS
 | File | Description |
 |------|-------------|
 | README.md | Quick start, features, CLI commands, error handling |
-| CHANGELOG.md | Version history (v0.9.09 to v0.9.30) |
+| CHANGELOG.md | Version history (v0.9.09 to v0.9.32) |
 | CONTRIBUTING.md | Development setup and contribution guide |
 | DEPLOYMENT.md | Deployment providers and infrastructure |
 | IMPLEMENTED_FEATURES.md | Complete feature list (21 architecture modules) |
