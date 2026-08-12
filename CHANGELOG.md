@@ -1,5 +1,63 @@
 # Changelog
 
+## v0.9.17 — "DOCS OVERHAUL" (All .md files rewritten from source code)
+
+### Documentation — Complete Rewrite Based on Actual Source Code
+All documentation files rewritten by reading the actual Python source code (28,724 lines across tw_framework/). No guessing, no assumptions — every fact verified against the code.
+
+**Files rewritten:**
+- **README.md** (12,861 chars) — Full rewrite with real CLI commands, project structure, page directives, render modes, middleware, security, deployment, env vars, configuration
+- **llms.txt** (23,957 chars) — Complete AI assistant reference with 22 sections covering every aspect of the framework
+- **llms-full.txt** (14,378 chars) — Full project metadata with pyproject.toml, package.json, CLI, config, runtime matrix, security, middleware, build pipeline, module boundaries
+- **llms-full_part1.txt** (11,511 chars) — Technical reference with syntax, TSS, TWM, middleware, app router, security, server, build pipeline, multi-runtime, env vars, deployment, plugins
+- **RUNTIMES.md** — Runtime matrix, common API layer, Edge V8 details, env vars
+- **SECURITY.md** — CSP, sanitization, CSRF, server security, Edge V8 sandbox, middleware security
+- **DEPLOYMENT.md** — Zero-config deployment, providers, production server, env vars
+- **DOCUMENTATION.md** — Overview, installation, file types, key concepts, references
+- **IMPLEMENTED_FEATURES.md** — Complete feature inventory by module
+- **PROGRESS.md** — Version history, test results, bug fix statistics
+- **PLUGINS.md** — Plugin format, lifecycle hooks, ExtensionManager API
+- **CONTRIBUTING.md** — Development setup, project structure, testing, code style
+
+**Key docs/ files rewritten:**
+- **docs/00-getting-started.md** — Install, create, dev, build, preview, serve, deploy
+- **docs/13-environment-variables.md** — All env vars with defaults, security filtering
+- **docs/29-security.md** — CSP, sanitization, CSRF, server headers, Edge V8 sandbox
+- **docs/14-build-pipeline.md** — 11-stage pipeline, build commands, constants, optimizations
+- **docs/25-api-routes.md** — TWM syntax, runtime selection, tw.* API, request/response format
+- **docs/09-middleware.md** — Rule-based and function-based middleware, all rules, context object
+
+### Version Bump
+0.9.16 → 0.9.17 across all config files, README, llms.txt files
+
+### Test Results
+- 610 passed, 9 skipped, 0 failed
+
+
+## v0.9.16 — "FINAL POLISH" (Security + Thread Safety + Missing Files)
+
+### edge_v8_adapter.py — Security & Reliability
+- **#624/#626**: Replaced insecure XOR encryption with scrypt-based authenticated encryption (salt + HMAC-SHA256 tag + key-derived stream cipher). XOR kept as legacy fallback only.
+- **#641**: `reload()` now calls `gc.collect()` after V8 context teardown — prevents memory leaks on hot-reload
+- **#648**: `execute_handler` now runs V8 eval in a daemon thread with 30s timeout — prevents infinite loops from hanging requests. Returns HTTP 504 on timeout.
+- **#650**: `EdgeV8Storage` — all methods now wrapped in `_KV_LOCK` (threading.Lock) — prevents race conditions on concurrent requests
+- **Cache TTL**: `_js_tw_cache_set` and `_js_tw_cache_get` now properly track and check TTL expiry on Python side too
+- **Error sanitization**: Internal file paths in error messages sanitized to prevent information leakage
+
+### Missing Package Files Created
+- **`py.typed`** — PEP 561 marker for type checkers (mypy, pyright)
+- **`__main__.py`** — Enables `python -m tw_framework` invocation
+- **`__version__.py`** — Standalone version file (`__version__`, `__author__`, `__email__`)
+- **`middleware.py`** — Auth middleware utilities (`AuthMiddleware`, `require_auth`, `require_role`, `MiddlewareChain`)
+- **`extensions.py`** — Thin re-export of `ExtensionManager` and `PluginManager` from `plugin_runtime.py`
+
+### Version Bump
+0.9.15 → 0.9.16 across all config files, README, llms.txt files
+
+### Test Results
+- 610 passed, 9 skipped, 0 failed
+
+
 ## v0.9.15 — PyPI Release Prep (Dependencies + Docs + llms.txt)
 
 ### pyproject.toml

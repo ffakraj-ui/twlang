@@ -1,144 +1,102 @@
-# TW Framework Improved v5
+# TW Framework — Implemented Features
 
-Implemented in this pass:
+## Core Framework
+- Custom DSL with lexer, parser, compiler (6863-line compiler.py)
+- App Router with nested layouts, dynamic routes, catch-all, route groups
+- 6 render modes: static, server, edge, interactive, dynamic, csr
+- Component system with scoped CSS, typed props, children slots
+- TSS stylesheet system with CSS variables and dark mode
+- Reactive state management with VDOM (~19KB runtime)
+- Server actions with CSRF support
+- Streaming SSR with skeleton loaders
+- Incremental Static Regeneration (ISR)
 
-- Stronger routing
-  - nested routes
-  - route groups via folders like `(marketing)`
-  - catch-all routes `[...slug].tw`
-  - optional catch-all routes `[[...slug]].tw`
-  - page-level `redirect`
-  - page-level `rewrite`
-  - custom `404.tw` and `500.tw` remain supported
+## CLI (1680 lines)
+- 22+ commands: create, init, dev, build, export, preview, serve, deploy
+- Plugin management: add, list, search
+- npm package management: install, add, remove, list
+- Debug tools: ast, ir, tokens, check, run
+- Health check: doctor, info, clean
+- Global flags: --project-root, --debug, --version
 
-- Static hosting quality-of-life
-  - `pretty_urls: true` in `tw.config` → `/about` outputs as `dist/about/index.html` (clean URLs on static hosts)
-  - dev server also accepts `/about/index.html` requests
+## Multi-Runtime (5 runtimes)
+- Node.js (persistent worker, full npm ecosystem)
+- Edge V8 (real V8 isolate via py_mini_racer)
+- Python (in-process, ML-ready)
+- WASM (wasmtime sandbox)
+- Edge legacy (Python fallback)
+- Common tw.* API layer (storage, http, crypto, cache, env)
 
-- Nested layouts (multi-layer)
-  - `layout "base > docs"` or repeated `layout` directives
-  - first layout = outer document, remaining layouts = inner wrappers (fragments around `{slot}`)
-  - **App Router (v0.7.0+)**: layouts are TW components (`layout.tw` files), nest automatically by directory structure, use `children` keyword instead of `{slot}`. See `docs/app-router.md`
+## Server (744 lines)
+- Production SSR server with threaded TCP
+- SSR cache (in-memory LRU + Redis)
+- Brotli/gzip pre-compressed file negotiation
+- ETag and Cache-Control headers
+- WebSocket support
+- Health check endpoint
+- Graceful shutdown (SIGTERM/SIGINT)
+- AST cache with TTL
+- Request body size limiting
+- Security headers on all responses
 
-- App Router (v0.7.0+)
-  - File-system based routing with `page.tw` files
-  - Route groups `(folder)` excluded from URL
-  - Dynamic routes `[slug]` as folder names
-  - Catch-all routes `[...slug]`
-  - Layouts as TW components with `children` keyword
-  - Nested layout composition (root → innermost)
-  - Special files: `loading.tw`, `not-found.tw`, `error.tw`, `route.tw`
-  - Auto-detection: App Router mode vs Legacy mode
-  - Fully backward compatible with `[home]/` + `[home]/layouts/`
+## Security (388 lines)
+- CSP nonce generation and header builder
+- HTML/URL/attribute sanitization with double-escape protection
+- CSRF token generation and validation
+- Null byte removal
+- Env var filtering for Edge runtime
+- Authenticated encryption (scrypt + HMAC-SHA256)
+- V8 execution timeout (30s)
 
-- Theme (Dark/Light/System)
-  - `theme: system|dark|light` in `tw.config`
-  - adds `data-theme` on `<html>` + `window.__twToggleTheme()` / `window.__twSetTheme(mode)`
+## Middleware
+- Rule-based: match, header, methods, auth, rate_limit, user_agent, origin
+- Function-based: fn before(ctx), fn after(ctx)
+- Path security: deny_traversal, deny_null_bytes, regex, extensions
+- Token bucket rate limiting
 
-- Search (static-friendly)
-  - `search: true` in `tw.config`
-  - build outputs `dist/_tw/search-index.json`
-  - pages auto-include a small search runtime exposing `window.__twSearch(query)`
+## Module Boundaries (337 lines)
+- Import classification: SERVER, CLIENT, SHARED
+- Source code analysis with caching
+- Dynamic import() and require() scanning
+- Boundary violations with severity field
+- ImportInfo with is_dynamic flag
 
-- Components improvements
-  - components can live in nested folders under `[home]/components/**`
-  - component resolver will auto-find `Button.tw` even if it's in a subfolder (best with unique names)
-  - recursive component rendering now throws a clear compiler error (prevents `maximum recursion depth exceeded`)
-  - Capitalized HTML tags like `Section {}` are now auto-treated as `<section>` (compiler won't assume missing `components/Section.tw`)
-  - component load/recursion errors now report the callsite file + line/column when possible
+## Plugin System
+- .twp plugin format
+- 5 lifecycle hooks
+- ExtensionManager with event emission
+- Plugin discovery and dependency tracking
 
-- DX / error-proofing
-  - placeholders now support moustache style: `{{brandName}}` (gets interpolated same as `{brandName}`)
-  - writing `<nav>` style tags now shows a clear compiler error + fix hint
-  - `.tss` numeric shorthands like `padding 12 18` now become `padding: 12px 18px;`
+## Build Pipeline
+- 11-stage pipeline (lexing → output)
+- Parallel compilation (--workers)
+- HMR via WebSocket
+- Bundle analysis (--analyze)
+- Build reports (--report)
+- Dead code detection
+- Tree shaking
+- Code splitting
+- Minification (HTML, CSS, JS)
+- Production optimizations (brotli, SRI hashes)
 
-- Rendering metadata
-  - `page { render static | server | edge }`
-  - `page { revalidate 60 }`
-  - route manifest output in `dist/_tw/route-manifest.json`
+## Image Optimization
+- WebP variant generation
+- Responsive srcset
+- Lazy loading
+- Auto alt text from filename
+- Multiple format support (requires Pillow)
 
-- API routes
-  - automatic `/api/*` endpoint mapping from `[home]/api/*.tw`
-  - method blocks: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`
-  - response directives: `status`, `json`, `text`, `html`, `redirect`, `header`, `cookie`
+## Deployment
+- Zero-config deployment to Vercel, Netlify, Cloudflare, GitHub Pages, Docker
+- Auto-generated configs
+- --dry-run preview mode
 
-- Middleware
-  - `middleware.tw`
-  - `use { match ... }`
-  - `auth`, `redirect`, `rewrite`, `header`, `cookie`
+## Testing
+- 610 tests, 9 skipped, 0 failed
+- pytest-based test suite
 
-- Environment variables
-  - `.env`
-  - `.env.local`
-  - `.env.production`
-  - exposed in templates/API as `env.KEY`
-  - `.twm` runtime helpers: `env.get()`, `env.require()`, `secrets.get()`, `secrets.require()`
-
-- Server-side `.twm` runtime helpers
-  - `async fn` handlers supported
-  - built-in `http.get/post/put/patch/delete`
-  - `pkg.require("package-name")` for project-installed npm packages
-  - Firebase Admin helper via `firebase.app()/firestore()/auth()`
-
-- Performance and output
-  - HTML/CSS minify
-  - JS chunk minify
-  - route manifest
-  - API manifest
-  - asset fingerprinting for copied assets
-  - gzip output
-  - brotli output when `brotli` package is available
-
-- SEO output
-  - `sitemap.xml`
-  - `robots.txt`
-  - `rss.xml`
-  - canonical auto-generation when `site_url` exists
-  - JSON-LD via `head.seo.json_ld`
-
-- Deploy support
-  - Vercel
-  - Cloudflare Pages
-  - Netlify
-  - GitHub Pages workflow file
-  - Dockerfile
-
-- CLI
-  - `tw build --watch`
-  - `tw build --analyze`
-  - `tw build --clean`
-  - `tw build --prod`
-
-Important notes:
-
-- `render server` and `render edge` are implemented as framework-level route metadata plus dev/runtime behavior. Static export still emits HTML output for compatibility.
-- API routes are fully available in the dev server. Static build emits API manifests, but dynamic APIs still require a runtime host.
-- Middleware is active in the dev server and designed around route guarding, rewrites, headers, and cookies.
-
-
-## ES6 Import Syntax (v0.8.43+)
-
-TW supports ES6-style named imports for client-side JavaScript libraries in `.tw` files:
-
-\`\`\`tw
-import { startCountdown } from "@/lib/countdown"
-import { formatData, parseJSON } from "@/lib/utils"
-\`\`\`
-
-### Supported Features
-- Named imports: `import { fn1, fn2 } from "@/lib/file"`
-- File extensions: `.js`, `.ts`, `.mjs` (auto-detected)
-- Path alias: `@/` maps to `[home]/`
-- Works alongside component imports (`import "Navbar"`)
-- Imported functions usable in `script` blocks
-
-### Not Supported
-- `.twm` files in ES6 imports (use `load` directive instead)
-- Default imports (`import fn from "..."`)
-- Namespace imports (`import * as ns from "..."`)
-
-### Implementation
-- `IMPORT_ES6_RE` regex in `compiler.py` matches the syntax
-- `_parse_es6_import()` function parses named imports and resolves file paths
-- `_ES6_IMPORTS` list tracks imported functions for dependency graph
-- `extract_directives_from_source` updated to track ES6 imports
+## Package Structure
+- py.typed (PEP 561 type marker)
+- __main__.py (python -m tw_framework)
+- __version__.py (standalone version info)
+- Optional dependencies via pyproject.toml extras

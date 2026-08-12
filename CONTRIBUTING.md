@@ -1,32 +1,84 @@
-# Contributing
+# TW Framework — Contributing
 
-## AST model overview
+## Development Setup
 
-This repo currently has two AST representations:
+```bash
+# Clone the repo
+git clone https://github.com/ffakraj-ui/twlang.git
+cd twlang/twlang-main-v2/twlang-main
 
-- the legacy compiler AST in `tw_framework/compiler.py`, centered around classes such as `PageNode` and the legacy `ElementNode`
-- the newer structured AST in `tw_framework/ast_nodes.py`, centered around `Program`, `PageMeta`, and the newer node dataclasses
+# Install in development mode
+pip install -e .
 
-Both exist because the compiler/runtime still depend on the legacy parser output in several places, while the newer pipeline powers `tw ast`, semantic analysis, lowering, IR generation, and JSON serialization.
+# Install dev dependencies
+pip install tw-framework[dev]
 
-## The bridge
+# Run tests
+pytest tests/ --tb=short -q
 
-The bridge between both worlds lives in `tw_framework/parser.py`.
+# Run specific test
+pytest tests/test_module_boundaries.py -v
+```
 
-- `parse_text()` and `parse_file()` still call the legacy tokenizer/parser from `compiler.py`
-- `from_legacy_page()` converts the resulting `PageNode` into a modern `Program`
-- `_convert_node()` recursively maps legacy node shapes into `ast_nodes.py` dataclasses
+## Project Structure
 
-If you add a new node/property to the legacy parser, update `_convert_node()` and `from_legacy_page()` at the same time. If you only update one side, the modular pipeline and CLI JSON outputs will drift apart.
+```
+twlang-main/
+  tw_framework/           # Main package
+    __init__.py           # Version, public API
+    __main__.py           # python -m tw_framework entry
+    __version__.py        # Standalone version info
+    py.typed              # PEP 561 type marker
+    cli.py                # CLI commands (1680 lines)
+    compiler.py           # Compilation pipeline (6863 lines)
+    framework.py          # Project, middleware, build (4913 lines)
+    server.py             # Production server (744 lines)
+    reactivity.py         # VDOM, state, actions (936 lines)
+    app_router.py         # Routing (534 lines)
+    security.py           # Security (388 lines)
+    module_boundaries.py  # Import classification (337 lines)
+    twm_parser.py         # TWM parser (418 lines)
+    client_bundler.py     # JS bundling (975 lines)
+    middleware.py          # Auth middleware utilities
+    extensions.py          # ExtensionManager re-export
+    tw_runtime/            # Multi-runtime system
+      __init__.py
+      base.py
+      registry.py
+      abstractions.py
+      validator.py
+      adapters/
+        node_adapter.py
+        python_adapter.py
+        edge_v8_adapter.py
+        edge_adapter.py
+        wasm_adapter.py
+    tw_auth/               # Auth system
+      session.py
+      middleware.py
+      client.py
+      runtime.py
+  tests/                  # Test suite (610 tests)
+  docs/                   # Documentation
+  pyproject.toml          # Package config
+  package.json            # Node.js config
+```
 
-## Practical guidance
+## Testing
 
-- when debugging parser/compiler disagreements, inspect both the legacy object and the `Program` output
-- if a feature is only wired in `compiler.py`, do not assume it automatically appears in `tw ast` or the lowering pipeline
-- if a feature is only added to `ast_nodes.py`, do not assume the runtime builder can consume it yet
+- Always run tests before submitting: `pytest tests/ --tb=short -q`
+- Current: 610 passed, 9 skipped, 0 failed
+- Tests cover compiler, router, server, security, module boundaries, runtime
 
-## Safe workflow
+## Code Style
 
-- add or update tests in `tests/` with every parser/compiler change
-- prefer small compatibility shims over broad rewrites unless you are intentionally removing the legacy path
-- document new directives or filename conventions in `docs/spec/tw-grammar.md`
+- Python 3.9+ (uses `from __future__ import annotations`)
+- Type hints encouraged (py.typed marker present)
+- Docstrings for public functions
+- No external dependencies in core (pure stdlib)
+
+## Versioning
+
+- Semantic versioning: 0.9.x
+- Each version fixes a batch of bugs
+- CHANGELOG.md tracks all changes

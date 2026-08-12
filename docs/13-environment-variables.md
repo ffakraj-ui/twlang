@@ -1,128 +1,48 @@
 # Environment Variables
 
-## Security Model
+## Configuration Variables
 
-TW Framework has a strict environment variable policy:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TW_REDIS_URL` | — | Redis URL for distributed SSR cache |
+| `TW_MAX_FETCH_PASSES` | 10 | Max HTTP fetch calls per Edge V8 request (1-50) |
+| `TW_SSR_CACHE_MAX` | 512 | Max SSR cache entries |
+| `TW_AST_CACHE_MAX` | 128 | Max AST cache entries |
+| `TW_AST_CACHE_TTL` | 300 | AST cache TTL in seconds |
+| `TW_MAX_BODY_SIZE` | 10MB | Max request body size |
+| `NODE_ENV` | — | Node.js environment (exposed to Edge runtime) |
 
-- **All env vars are server-only by default**
-- Only vars explicitly allow-listed reach page render context
-- This prevents accidental secret leakage into generated HTML
+## Env Var Security
 
-## Allow-listing Variables
+Environment variables are filtered for Edge runtime — only `TW_`, `PUBLIC_`, and `EDGE_` prefixed variables (plus `NODE_ENV`) are exposed to the JavaScript sandbox.
 
-In `tw.config`:
-
+### In Python runtime:
+```python
+tw.env.get("TW_API_KEY")  # Returns value if TW_ prefixed
+tw.env.get("SECRET_KEY")  # Returns default — not TW_ prefixed
+tw.env.all()               # Returns only safe vars
 ```
-env {
-  public "API_URL"
-  public "SITE_NAME"
-  public "GA_TRACKING_ID"
-}
+
+### In .env file:
+```
+SITE_NAME=My Site
+TW_API_KEY=secret123
+PUBLIC_ANALYTICS_ID=UA-123456
+DATABASE_URL=postgresql://...  # NOT exposed to Edge runtime
 ```
 
-Only these variables are available in `.tw` page rendering:
+## Using Env Vars in Pages
 
 ```tw
-let apiUrl = "{API_URL}"
+page {
+    title "Dashboard"
+    render server
+}
 
 body {
-    h1 "{SITE_NAME}"
-    script {
-        // GA_TRACKING_ID is available
-        console.log("{GA_TRACKING_ID}");
-    }
+    h1 "Welcome to {{site_name}}"
+    p "API Key: {{tw_api_key}}"
 }
 ```
 
-## .env File
-
-Create a `.env` file at the project root:
-
-```
-API_URL=https://api.example.com
-SITE_NAME=My Site
-JWT_SECRET=supersecret
-DATABASE_URL=postgres://...
-```
-
-### .env.local
-
-For local development, create `.env.local`:
-
-```
-API_URL=http://localhost:3000/api
-DEBUG=true
-```
-
-### Comments in .env
-
-```
-API_URL=https://api.example.com  # API endpoint
-SECRET_KEY=abc123               # Don't share this
-```
-
-## Env Type Validation
-
-TW can validate env var types in `tw.config`:
-
-```
-env {
-  public "API_URL"
-  public "MAX_ITEMS"
-
-  schema {
-    API_URL { type "string" required true }
-    MAX_ITEMS { type "number" default "10" }
-    PORT { type "number" default "3000" }
-  }
-}
-```
-
-### Types
-
-| Type | Validation |
-|---|---|
-| `string` | Any string value |
-| `number` | Must be numeric |
-| `bool` | `true`, `false`, `1`, `0` |
-
-### Required vs Optional
-
-```
-schema {
-    API_KEY { type "string" required true }    // Build fails if missing
-    CACHE_TTL { type "number" default "60" }   // Optional, uses default
-}
-```
-
-## Loading Order
-
-1. `.env.local` (if exists)
-2. `.env`
-3. `os.environ` (system env vars)
-
-Later files override earlier ones.
-
-## In TWM Modules
-
-Server-side `.twm` modules have access to ALL env vars (not just public ones):
-
-```js
-// [home]/api/data.twm
-export function GET() {
-    const dbUrl = process.env.DATABASE_URL;  // Available server-side
-    const apiKey = process.env.API_KEY;      // Available server-side
-    return { status: 200, json: { data: [] } };
-}
-```
-
-## Warning: Missing Env Vars
-
-If a required env var is missing, `tw doctor` reports it:
-
-```
-⚠ Missing required env var: API_KEY
-⚠ Missing required env var: DATABASE_URL
-```
-
-Build will fail with `--strict` flag.
+Env vars are available in server-rendered pages via `request.env` in middleware and API routes.

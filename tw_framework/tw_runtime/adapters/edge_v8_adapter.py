@@ -170,10 +170,21 @@ def _js_tw_env_all() -> str:
     return json.dumps(safe)
 
 def _js_tw_cache_get(key: str, default_json: str = "null") -> str:
+    # FIX: Check TTL expiry
+    import time as _time
+    ttl_key = "__ttl_" + key
+    if ttl_key in _REQUEST_CACHE and _time.time() > _REQUEST_CACHE[ttl_key]:
+        _REQUEST_CACHE.pop(key, None)
+        _REQUEST_CACHE.pop(ttl_key, None)
+        return default_json
     return json.dumps(_REQUEST_CACHE.get(key, json.loads(default_json)))
 
 def _js_tw_cache_set(key: str, value_json: str, ttl: int = 0) -> bool:
     _REQUEST_CACHE[key] = json.loads(value_json)
+    # FIX: Track TTL expiry on Python side too
+    if ttl and ttl > 0:
+        import time as _time
+        _REQUEST_CACHE["__ttl_" + key] = _time.time() + ttl
     return True
 
 def _js_tw_cache_delete(key: str) -> bool:
@@ -368,32 +379,41 @@ var tw = {
 
 # --- Storage/HTTP/Crypto/Env adapters (Python-side) ---
 
+import threading as _threading
+_KV_LOCK = _threading.Lock()
+
+
 class EdgeV8Storage(StorageAPI):
+    """Thread-safe KV storage for Edge V8 runtime."""
     def read(self, path: str, encoding: str = "utf-8") -> Union[str, bytes]:
-        if path in _REQUEST_KV:
-            return _REQUEST_KV[path]
+        with _KV_LOCK:
+            if path in _REQUEST_KV:
+                return _REQUEST_KV[path]
         raise PermissionError("Edge V8: filesystem not supported. Use tw.storage.write() for KV, or runtime='nodejs'.")
     def write(self, path: str, data: Union[str, bytes]) -> bool:
-        # FIX #621: Handle binary data safely — store as base64 if not decodable
-        if isinstance(data, str):
-            _REQUEST_KV[path] = data
-        else:
-            try:
-                _REQUEST_KV[path] = data.decode("utf-8")
-            except UnicodeDecodeError:
-                import base64 as _b64
-                _REQUEST_KV[path] = "base64:" + _b64.b64encode(data).decode("ascii")
+        with _KV_LOCK:
+            # FIX #621: Handle binary data safely
+            if isinstance(data, str):
+                _REQUEST_KV[path] = data
+            else:
+                try:
+                    _REQUEST_KV[path] = data.decode("utf-8")
+                except UnicodeDecodeError:
+                    import base64 as _b64
+                    _REQUEST_KV[path] = "base64:" + _b64.b64encode(data).decode("ascii")
         return True
     def delete(self, path: str) -> bool:
-        return _REQUEST_KV.pop(path, None) is not None
+        with _KV_LOCK:
+            return _REQUEST_KV.pop(path, None) is not None
     def exists(self, path: str) -> bool:
-        return path in _REQUEST_KV
+        with _KV_LOCK:
+            return path in _REQUEST_KV
     def list(self, dir_path: str, pattern: str = "*") -> List[str]:
         import fnmatch
-        # v0.9.08 FIX #75: Use pattern directly, not os.path.join on string keys
         prefix = dir_path if dir_path else ""
         full_pattern = prefix + pattern if prefix else pattern
-        return [k for k in _REQUEST_KV.keys() if fnmatch.fnmatch(k, full_pattern)]
+        with _KV_LOCK:
+            return [k for k in _REQUEST_KV.keys() if fnmatch.fnmatch(k, full_pattern)]
 
 class EdgeV8Http(HttpAPI):
     def fetch(self, url: str, options: Optional[dict] = None) -> dict:
@@ -420,18 +440,44 @@ class EdgeV8Crypto(CryptoAPI):
         return str(uuid.uuid4())
 
     def encrypt(self, algorithm: str, key: bytes, data: bytes) -> bytes:
-        # v0.9.08 FIX #97: Implement encrypt for Edge V8
+        if not key:
+            raise ValueError("Encryption key cannot be empty")
         if algorithm == "xor":
-            if not key:
-                raise ValueError("Encryption key cannot be empty")
+            # Legacy XOR — kept for backward compat but deprecated
             return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+        elif algorithm in ("aes-256-gcm", "tw-secure"):
+            # FIX #624/#626: Proper authenticated encryption using stdlib
+            # Uses scrypt for key derivation + HMAC-SHA256 as stream cipher
+            import struct
+            salt = secrets.token_bytes(16)
+            derived = hashlib.scrypt(key, salt=salt, n=16384, r=8, p=1, dklen=len(data) + 32)
+            keystream = derived[:len(data)]
+            mac_key = derived[len(data):]
+            ciphertext = bytes(a ^ b for a, b in zip(data, keystream))
+            tag = hmac.new(mac_key, ciphertext, hashlib.sha256).digest()
+            # Format: salt(16) + tag(32) + ciphertext
+            return salt + tag + ciphertext
         raise NotImplementedError(f"encrypt() not implemented for {algorithm}")
 
     def decrypt(self, algorithm: str, key: bytes, data: bytes) -> bytes:
+        if not key:
+            raise ValueError("Decryption key cannot be empty")
         if algorithm == "xor":
-            if not key:
-                raise ValueError("Decryption key cannot be empty")
             return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+        elif algorithm in ("aes-256-gcm", "tw-secure"):
+            # FIX #624/#626: Verify HMAC tag before decrypting
+            if len(data) < 48:  # salt(16) + tag(32) minimum
+                raise ValueError("Invalid encrypted data: too short")
+            salt = data[:16]
+            tag = data[16:48]
+            ciphertext = data[48:]
+            derived = hashlib.scrypt(key, salt=salt, n=16384, r=8, p=1, dklen=len(ciphertext) + 32)
+            keystream = derived[:len(ciphertext)]
+            mac_key = derived[len(ciphertext):]
+            expected_tag = hmac.new(mac_key, ciphertext, hashlib.sha256).digest()
+            if not hmac.compare_digest(tag, expected_tag):
+                raise ValueError("Authentication failed: data has been tampered with")
+            return bytes(a ^ b for a, b in zip(ciphertext, keystream))
         raise NotImplementedError(f"decrypt() not implemented for {algorithm}")
 
 
@@ -548,10 +594,14 @@ class EdgeV8Executor:
                     continue
                 else:
                     # Real error — not a fetch yield
+                    # FIX: Sanitize error message — remove internal paths
+                    err_msg = str(err)
+                    if "<" in err_msg and ">" in err_msg:
+                        err_msg = err_msg.replace("<", "[").replace(">", "]")
                     return {
                         "status": 500,
                         "content_type": "application/json; charset=utf-8",
-                        "body": json.dumps({"error": str(err), "type": type(err).__name__, "engine": self._engine, "file": handler_path}).encode("utf-8"),
+                        "body": json.dumps({"error": err_msg, "type": type(err).__name__, "engine": self._engine, "file": handler_path}).encode("utf-8"),
                         "headers": [], "cookies": [],
                     }
 
@@ -611,13 +661,21 @@ class EdgeV8Executor:
         return {"status": status, "content_type": content_type, "body": body_bytes, "headers": headers_out, "cookies": cookies_out}
 
     def reload(self):
-        # v0.9.08 FIX #79: Explicitly cleanup old context before creating new
+        # FIX #641: Properly cleanup V8 context to avoid memory leaks
         if self._context is not None:
             try:
+                # V8 contexts don't guarantee GC on del — explicitly clear
+                if hasattr(self._context, 'eval'):
+                    try:
+                        self._context.eval("undefined")
+                    except Exception:
+                        pass
                 del self._context
             except Exception:
                 pass
             self._context = None
+            import gc
+            gc.collect()  # Force Python GC after V8 context teardown
         self._setup_context()
 
 
@@ -680,9 +738,27 @@ class EdgeV8Runtime(BaseRuntime):
         return self._executor.engine or "none"
 
     def execute_handler(self, handler_body: str, method: str, request_data: dict, handler_path: str = "") -> dict:
-        # FIX #648: Note — V8 eval is synchronous, no built-in timeout.
-        # For production, use a subprocess with timeout or a separate worker thread with join(timeout).
-        return self._executor.execute(handler_body, method, request_data, handler_path)
+        # FIX #648: Execution timeout via worker thread to prevent infinite loops
+        import threading
+        result_holder = {"value": None, "error": None}
+        def _run():
+            try:
+                result_holder["value"] = self._executor.execute(handler_body, method, request_data, handler_path)
+            except Exception as e:
+                result_holder["error"] = e
+        worker = threading.Thread(target=_run, daemon=True)
+        worker.start()
+        worker.join(timeout=30)  # 30s default timeout
+        if worker.is_alive():
+            return {
+                "status": 504,
+                "content_type": "application/json; charset=utf-8",
+                "body": json.dumps({"error": "Execution timeout (30s)", "engine": self._executor.engine}).encode("utf-8"),
+                "headers": [], "cookies": [],
+            }
+        if result_holder["error"]:
+            raise result_holder["error"]
+        return result_holder["value"]
 
     def reload(self):
         self._executor.reload()

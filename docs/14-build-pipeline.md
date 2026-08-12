@@ -2,100 +2,76 @@
 
 ## Overview
 
-When you run `tw build`, TW Framework:
+The TW Framework compiler is a 11-stage pipeline that transforms `.tw` and `.tss` source files into static HTML, CSS, and JS in `dist/`.
 
-1. Reads `tw.config`
-2. Discovers all pages in `[home]/`
-3. Tokenizes each `.tw` file (lexer)
-4. Parses tokens into AST (parser)
-5. Resolves layouts and components
-6. Compiles AST to HTML
-7. Compiles `.tss` files to CSS
-8. Compiles `.twm` modules to JS
-9. Generates route manifest
-10. Generates search index
-11. Applies production optimizations
-12. Writes output to `dist/`
+## Stages
 
-## --prod Flag
+### 1. Lexing (lexer.py)
+Tokenizes `.tw` source code into tokens (keywords, strings, identifiers, operators).
 
-`tw build --prod` enables:
+### 2. Parsing (parser.py)
+Builds an AST from tokens. Supports:
+- Page blocks (`page { ... }`)
+- Elements (`div { ... }`)
+- Components (`component Name { ... }`)
+- Conditionals (`if`/`else`)
+- Loops (`each items as item { ... }`)
+- Let bindings (`let x = 42`)
+- Script blocks
+- Head blocks (meta, seo)
 
-- HTML minification
-- CSS minification
-- JS minification
-- Gzip precompression (`.gz` files)
-- Brotli precompression (`.br` files)
-- Content-hashed filenames
-- HTML references auto-updated to match hashed filenames (v0.4.3+)
+### 3. Semantic Analysis (semantic.py)
+Type checking, scope resolution, error detection.
 
-## Code Splitting
+### 4. IR Lowering (lowering.py)
+Converts AST to intermediate representation (IR) for optimization.
 
-TW automatically splits JavaScript:
+### 5. HTML Rendering (render_html.py)
+Generates static HTML from IR.
 
-- **Runtime chunk** — shared reactive runtime (~2KB), loaded once
-- **Page chunks** — per-page JS (event handlers, bindings)
-- **API chunks** — `.twm` module handlers
+### 6. CSS Rendering
+Compiles TSS stylesheets, applies scoped CSS to components.
 
-Only pages that use `on:` or `bind:` directives get JS chunks. Static pages get zero JS.
+### 7. JS Bundling (client_bundler.py)
+Bundles client-side JavaScript, code splitting, tree shaking.
 
-## Incremental Cache
+### 8. Dead Code Detection (dead_code.py)
+Finds unused pages, components, APIs, middleware.
 
-TW caches compiled pages in `.tw/` directory. On subsequent builds:
+### 9. Tree Shaking (tree_shaking.py)
+Removes unused exports from client bundles.
 
-- Unchanged pages are loaded from cache
-- Only modified pages are recompiled
-- Use `--force` to bypass cache
+### 10. Minification
+HTML, CSS, and JS minification for production.
 
-## Dead Code Detection
+### 11. Output
+Writes final files to `dist/`.
 
-During build, TW can detect:
-- Orphaned pages (not linked anywhere)
-- Unused components
-- Unused layouts
-- Unused middleware rules
-
-Use `tw dead` to run detection separately.
-
-## Tree Shaking
-
-Unused exports from `.twm` modules are removed during production builds.
-
-## Build Report
-
-Use `--report` flag to generate a build report:
+## Build Commands
 
 ```bash
-tw build --prod --report
+tw build                    # Default build
+tw build --prod             # Production optimizations (brotli, SRI)
+tw build --watch            # Rebuild on change (HMR)
+tw build --analyze          # Bundle analysis
+tw build --report           # Build report
+tw build --strict           # Treat warnings as errors
+tw build --adapter vercel   # Vercel output format
+tw build --workers 4        # Parallel compilation
 ```
 
-Report includes:
-- Pages compiled
-- Build duration
-- Output size breakdown
-- Cache hit/miss ratio
-- Performance metrics
+## Build Constants
 
-## Build Analyze
+- `BUILD_MANIFEST_VERSION = 2`
+- `DEPENDENCY_GRAPH_VERSION = 2`
+- `CHUNKS_URL_PREFIX = "/_tw/static/chunks/"`
+- `DEFAULT_WORKERS = max(1, min(32, os.cpu_count() or 1))`
 
-Use `--analyze` for detailed analysis:
+## Production Optimizations
 
-```bash
-tw build --prod --analyze
-```
-
-Shows:
-- Bundle sizes per page
-- Dependency graph
-- Code splitting chunks
-- Performance score
-
-## Parallel Workers
-
-Use `--workers <n>` for parallel compilation:
-
-```bash
-tw build --prod --workers 4
-```
-
-Default: number of CPU cores.
+With `--prod`:
+- Brotli pre-compression of static assets (requires `pip install tw-framework[compression]`)
+- SRI (Subresource Integrity) hashes for CSS/JS
+- HTML/CSS/JS minification
+- Dead code elimination
+- Tree shaking

@@ -1,137 +1,86 @@
 # Security
 
-## Environment Variables
+## Overview
 
-All env vars are server-only by default. Only allow-listed vars reach page HTML:
+TW Framework includes built-in security features at the framework level — no external libraries required.
 
-```
-// tw.config
-env { public "API_URL" }
-```
+## Content Security Policy (CSP)
 
-This prevents accidental leakage of secrets like `DATABASE_URL` or `JWT_SECRET` into generated HTML.
+```python
+from tw_framework.security import generate_csp_nonce, build_csp_header
 
-## Path Traversal Protection
-
-Middleware path rules block directory traversal attacks:
-
-```tw
-rule "secure-paths" {
-    match "/api/**"
-    path {
-        deny_traversal true
-        deny_null_bytes true
-    }
-}
+nonce = generate_csp_nonce()
+csp = build_csp_header(nonce, {
+    "script-src": ["'self'", "'nonce-{}".format(nonce)],
+    "style-src": ["'self'", "'unsafe-inline'"],
+})
+# → "default-src 'self'; script-src 'self' 'nonce-abc123'; ..."
 ```
 
-- `deny_traversal` — blocks `../` in URLs
-- `deny_null_bytes` — blocks null bytes in paths
+CSP directives are deduplicated automatically. `upgrade-insecure-requests` is included by default.
+
+## HTML Sanitization
+
+```python
+from tw_framework.security import sanitize_html, sanitize_url, sanitize_attribute
+
+sanitize_html("<script>alert('xss')</script>")  # Escapes all tags
+sanitize_url("javascript:alert(1)")               # Returns empty string
+sanitize_attribute("href", "javascript:alert(1)")  # Returns ""
+```
+
+Double-escape prevention: if input is already escaped (`&`), it won't be double-escaped.
 
 ## CSRF Protection
 
-TW generates and verifies CSRF tokens:
+```python
+from tw_framework.security import generate_csrf_token, validate_csrf_token
 
-```tw
-form {
-    on:submit "submitForm()"
-    input { type "hidden", name "_csrf", value "{csrf_token}" }
-}
+token = generate_csrf_token()
+# ... send token to client ...
+is_valid = validate_csrf_token(received_token, token)
 ```
 
-CSRF tokens are signed and time-limited (2-hour expiry by default).
+Uses constant-time comparison to prevent timing attacks.
 
-## Security Headers
+## Server Security Headers
 
-Set via middleware or `tw.config`:
+All responses from `tw serve` include:
+- `X-Frame-Options: SAMEORIGIN`
+- `X-Content-Type-Options: nosniff`
 
-```tw
-rule "security-headers" {
-    match "/**"
-    header "X-Content-Type-Options" "nosniff"
-    header "X-Frame-Options" "DENY"
-    header "X-XSS-Protection" "1; mode=block"
-    header "Referrer-Policy" "strict-origin-when-cross-origin"
-}
-```
+## Request Body Size Limit
 
-Or in `tw.config`:
+Default: 10MB. Configurable via `TW_MAX_BODY_SIZE` environment variable.
+Returns HTTP 413 on oversized requests.
 
-```
-headers {
-  rule {
-    source "/**"
-    set "X-Content-Type-Options" "nosniff"
-    set "X-Frame-Options" "DENY"
-  }
-}
-```
+## Edge V8 Sandbox Security
 
-## Cookie Security
+- Real V8 isolate — no filesystem, no subprocess, no native modules
+- Environment variables filtered (only `TW_`, `PUBLIC_`, `EDGE_` prefixes)
+- Request data double-JSON-encoded to prevent JS injection
+- 30s execution timeout (returns HTTP 504 on timeout)
+- Thread-safe KV storage (threading.Lock)
+- Authenticated encryption (scrypt + HMAC-SHA256, not XOR)
+- Max fetch passes limit (default 10, configurable 1-50)
+- Error messages sanitized (internal paths removed)
 
-Cookies set by API routes support:
+## Middleware Security
 
-| Option | Description |
-|---|---|
-| `httpOnly` | Prevents JS access to cookie |
-| `secure` | Only sent over HTTPS |
-| `maxAge` | Expiry in seconds |
-| `sameSite` | `strict`, `lax`, or `none` |
+### Auth
+- Cookie-based authentication
+- JWT authentication (via `jwt_secret` or `jwt_secret_env`)
 
-```js
-return {
-    status: 200,
-    cookies: [
-        { name: "session", value: token, httpOnly: true, secure: true, maxAge: 3600 }
-    ]
-};
-```
+### Rate Limiting
+- Token bucket algorithm
+- Configurable: requests, window, identity, bucket_segments
 
-## CORS
+### Path Security
+- `deny_traversal` — blocks `../` in paths
+- `deny_null_bytes` — blocks null bytes
+- `single_segment_max` — limits path depth
+- `extensions` — restricts file types
+- `regex` — custom path validation
 
-```tw
-rule "cors" {
-    match "/api/**"
-    origin {
-        allow ["https://mysite.com"]
-        allow_referer true
-    }
-    header "Access-Control-Allow-Origin" "https://mysite.com"
-    header "Access-Control-Allow-Methods" "GET, POST, PUT, DELETE"
-}
-```
-
-## Rate Limiting
-
-Protect against brute force:
-
-```tw
-rule "login-protection" {
-    match "/api/auth/login"
-    rate_limit { requests 5, window 60 }
-}
-```
-
-## User Agent Blocking
-
-```tw
-rule "block-bots" {
-    match "/**"
-    user_agent {
-        block ["bot", "crawler", "spider"]
-        empty_is_blocked true
-    }
-}
-```
-
-## Origin/Referer Validation
-
-```tw
-rule "csrf-protection" {
-    match "/api/**"
-    origin {
-        allow ["https://mysite.com"]
-        require true
-    }
-}
-```
+### CORS
+- `origin` rules: allow, require, allow_referer

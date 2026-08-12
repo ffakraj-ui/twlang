@@ -1,14 +1,15 @@
-# TW Framework — Project Metadata (v0.9.15)
+# TW Framework — Project Metadata (v0.9.17)
 # Source: https://github.com/ffakraj-ui/twlang
-# Generated: 2026-08-10
+# Generated: 2026-08-12
 
 ## pyproject.toml
 
 - Name: tw-framework
-- Version: 0.9.15
+- Version: 0.9.17
 - Description: TW framework CLI with create, dev, build, and deploy commands
 - Requires-Python: >=3.9
-- Dependencies: [] (core framework has no hard third-party dependencies)
+- Authors: KANISHK KUMAR (mlkraj290@gmail.com)
+- Dependencies: [] (core framework has zero hard third-party dependencies — pure Python stdlib)
 - Optional dependencies:
   - dev = ["pytest>=7"] — testing
   - image = ["Pillow>=10"] — image optimization, srcset generation
@@ -18,51 +19,76 @@
   - wasm = ["wasmtime>=10"] — WebAssembly sandbox runtime
   - all = [all above combined]
 - Scripts: tw = "tw_framework.cli:main"
+- Package data: ["*.js", "py.typed"]
+- Entry point: python -m tw_framework (via __main__.py)
+- Type marker: py.typed (PEP 561)
 
 ## package.json
 
 - Name: twlang-main
 - Private: true
-- Version: 0.9.15
+- Version: 0.9.17
 - Engines: node >= 18
+- devDependencies: esbuild ^0.28.2
+- Scripts: dev, build, export, preview, clean, doctor, info, deploy (all call tw <cmd>)
 
 ## Project Structure
 
 - Project root marker: tw.config file
 - Source folder: [home]/ (literal brackets — App Router root)
 - Components: [home]/components/*.tw
-- Layouts: [home]/layout.tw
+- Layouts: [home]/layout.tw (nested — each directory can have its own)
 - Pages: [home]/page.tw, [home]/about/page.tw, etc.
 - Dynamic routes: [home]/blog/[slug]/page.tw
+- Catch-all routes: [home]/[...slug]/page.tw
+- Optional catch-all: [home]/[[...slug]]/page.tw
+- Route groups: [home]/(group)/page.tw (no URL segment)
 - API routes: [home]/api/*/route.tw
 - Libraries: [home]/lib/*.js
 - Styles: [home]/style.tss
 - Static files: public/ (served as-is)
 - Build output: dist/
+- Cache dir: .tw/cache/
+- Manifest dir: .tw/manifest/
+- Middleware: middleware.tw (at project root, [home]/, or [home]/middleware/index.tw)
 
 ## File Extensions
 
 - .tw — pages, components, layouts (TW markup)
 - .tss — stylesheets (TW Style System)
 - .twm — API routes, server-side modules (TW Module)
+- .twp — plugins (TW Plugin)
 - .js/.ts — client-side libraries
 - .json — data files for dynamic routes
 
-## CLI Commands
+## CLI Commands (from cli.py — 1680 lines)
 
-- tw create <name> — create new project
-- tw dev — start dev server (127.0.0.1:3000)
-- tw build — build to dist/
-- tw serve — production SSR server
-- tw preview — preview built site
-- tw install <pkg> — install npm package
+- tw create <name> — create new project (--directory)
+- tw init [name] — initialize in current dir (--force)
+- tw dev — start dev server at 127.0.0.1:3000 (--host, --port, --no-open, --no-minify, --workers)
+- tw build — build to dist/ (--prod, --watch, --analyze, --clean, --adapter, --report, --strict, --workers, --debug)
+- tw export — export static site (--out-dir, --workers, --no-minify)
+- tw preview — preview built site at port 4173 (--host, --port, --no-build)
+- tw serve — production SSR server at 0.0.0.0:8000 (--host, --port, --out-dir, --no-build)
+- tw deploy — deploy to cloud (--provider, --vercel, --cloudflare, --prod, --dry-run)
 - tw clean — clear cache
 - tw doctor — health check
 - tw info — project info
-- tw export — export static site
-- tw deploy — deploy
+- tw ast <file> — show AST (--out, --diagnostics)
+- tw ir <file> — show IR (--out, --diagnostics)
+- tw run <file> — run file (--out, --diagnostics)
+- tw tokens <file> — show tokens (--out)
+- tw check <file> — check syntax (--include-ast, --include-ir)
+- tw login — login to deploy provider (--provider, --vercel-token)
+- tw install <pkg> — install npm package (--dev, --exact)
+- tw add <pkg> — add npm package (--dev, --exact)
+- tw remove <pkg> — remove npm package
+- tw list — list npm packages (--detailed)
+- tw plugin add/list/search — plugin management
 
-## tw.config Options
+Global flags: --project-root, --debug, --version
+
+## tw.config Options (indentation-based key:value)
 
 - name: site name
 - site_url: base URL (required for sitemap/RSS)
@@ -81,51 +107,262 @@
 
 - render static — SSG, build-time HTML (default)
 - render server — SSR, per-request server render
-- render edge — edge runtime
-- render interactive — React client-side hydration
-- render dynamic — auto-detect based on page content
+- render edge — edge runtime via V8 sandbox
+- render interactive — TW native VDOM (~3KB), reactive on demand
+- render dynamic — auto-detect static vs server
+- render csr — full React CSR, client-side hydration
 
-## Import Syntax
+## Page Block Directives
 
-- import "Navbar" — component import from [home]/components/ (OPTIONAL — auto-discovery works)
-- import { fn } from "@/lib/file" — ES6 library import from [home]/lib/
-- load "@/data.json" — JSON data load
-- load "@/style.tss" — stylesheet load
-- load "@/lib/auth" — .twm module load
+- title — string
+- render — static | server | edge | interactive | dynamic | csr
+- revalidate — number (seconds) or string like "60s" (ISR)
+- cache_by — cookie:name, header:name, query, or custom
+- cache_size — integer (max entries per namespace, default 512)
+- generateStaticParams — string path to JSON data file
+- redirect — string URL
+- rewrite — string URL
+- layout — string (DEPRECATED — use file-based layout.tw)
 
-## Component System
+## Runtime Directives (.twm files)
 
-- Components in [home]/components/ are **auto-discovered** — no import needed
-- File name = component name: Button.tw → use as `Button {}`
-- Props via `let` keyword in component file
-- `import "Button"` also works but is optional
-- Scoped CSS: ComponentName.tss auto-scoped via data-tw-{hash}
+- runtime = "nodejs" (default) — persistent Node.js worker
+- runtime = "node" — alias for nodejs
+- runtime = "edge" — V8 sandbox via py_mini_racer
+- runtime = "edge-v8" — alias for edge
+- runtime = "python" — Python in-process
+- runtime = "wasm" — wasmtime sandbox
+- runtime = "edge-py" — legacy Python edge fallback
 
-## Script Blocks
+## Common API Layer (tw.* — available in all runtimes)
 
-- Inline: `script { console.log("hello") }` — raw JS
-- {prop} interpolation works in scripts (v0.9.15+)
-- External: `script { src "@/lib/file.js" }` — @/ resolved, file copied to dist/ (v0.9.15+)
-- External URL: `script { src "https://cdn.example.com/lib.js" }`
+- tw.storage.read(path) — read from storage
+- tw.storage.write(path, data) — write to storage
+- tw.storage.delete(path) — delete from storage
+- tw.storage.exists(path) — check existence
+- tw.http.fetch(url, options) — HTTP fetch, returns {ok, status, statusText, headers, text, data}
+- tw.http.get(url, headers, timeout) — GET shortcut
+- tw.http.post(url, body, headers, timeout) — POST shortcut
+- tw.http.put(url, body, headers, timeout) — PUT shortcut
+- tw.http.delete(url, headers, timeout) — DELETE shortcut
+- tw.crypto.hash("sha256", data) — hash data
+- tw.crypto.hmac("sha256", key, message) — HMAC
+- tw.crypto.random(length) — cryptographically secure random hex
+- tw.crypto.uuid() — UUID v4
+- tw.crypto.encrypt("tw-secure", key, data) — authenticated encryption (scrypt + HMAC-SHA256)
+- tw.crypto.decrypt("tw-secure", key, data) — authenticated decryption
+- tw.cache.get(key, defaultVal) — get from cache
+- tw.cache.set(key, value, ttl) — set cache with optional TTL
+- tw.cache.delete(key) — delete from cache
+- tw.cache.has(key) — check cache
+- tw.cache.clear() — clear all cache
+- tw.env.get(name, defaultVal) — get filtered env var
+- tw.env.all() — get all safe env vars
+- tw.env.has(name) — check env var
+- tw.runtime.name() — runtime name
+- tw.runtime.version() — runtime version
+- tw.runtime.capabilities() — capability map
+- tw.runtime.supports(cap) — check capability
 
-## Key Features (v0.9.15)
+## Runtime Capabilities (RuntimeCapability enum)
 
-- App Router with nested layouts
-- Zero JS by default (static HTML + CSS)
-- React compatibility (render interactive)
-- NPM package support (tw install)
-- esbuild bundling for client-side imports
-- Dynamic routes with generateStaticParams
-- Image optimization (image tag vs img tag)
-- Scoped CSS for components (.tss files)
-- Dev server error overlay
-- Incremental build with cache
-- Opt-in sitemap.xml, robots.txt, rss.xml
-- XSL stylesheet for stylish sitemap
-- Auto image alt from filename
-- Dark/light theme support
-- Middleware (auth, headers, rewrites)
-- API routes (.twm files)
-- WebSocket support
-- Code splitting
-- Tree shaking
+- FILESYSTEM
+- NETWORK
+- NATIVE_MODULES
+- SUBPROCESS
+- DATABASE
+- CRYPTO
+- CACHE
+- ENV_VARS
+- PERSISTENT_STORAGE
+- TIMERS
+- STREAMING
+
+## Runtime Capability Matrix
+
+| Runtime | Filesystem | Network | Native Modules | Subprocess | Database | Crypto | Cache | Env Vars | Persistent Storage | Timers | Streaming |
+|---------|-----------|---------|----------------|------------|----------|--------|-------|----------|-------------------|--------|------------|
+| Node.js | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y |
+| Edge V8 | N | Y | N | N | N | Y | Y | Y | N | N | N |
+| Python | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y |
+| WASM | N | N | N | N | N | Y | Y | Y | N | N | N |
+| Edge (legacy) | N | Y | N | N | N | Y | Y | Y | N | N | N |
+
+## Security Features (security.py — 388 lines)
+
+- generate_csp_nonce() — cryptographically secure nonce
+- build_csp_header(nonce, extra_directives) — CSP with directive dedup
+- sanitize_html(html) — XSS prevention, double-escape protection
+- sanitize_js_string(js) — JS string sanitization
+- sanitize_url(url) — blocks javascript: and data: URLs
+- sanitize_attribute(attr, value) — href/src sanitization
+- generate_csrf_token() — CSRF token generation
+- validate_csrf_token(token, expected) — CSRF validation
+- Server security headers: X-Frame-Options: SAMEORIGIN, X-Content-Type-Options: nosniff
+- Request body size limit (default 10MB, TW_MAX_BODY_SIZE)
+- Env var filtering (TW_, PUBLIC_, EDGE_ prefixes only for Edge runtime)
+- V8 execution timeout (30s via daemon thread)
+- Authenticated encryption (scrypt + HMAC-SHA256, not XOR)
+- Null byte removal from inputs
+
+## SSR Cache (server.py)
+
+- SSRCache(max_entries=512) — in-memory LRU with TTL, thread-safe (threading.Lock)
+- RedisSSRCache(redis_url, ttl=3600) — Redis-backed, falls back to SSRCache
+- Cache namespaces with configurable max entries per namespace
+- TW_SSR_CACHE_MAX env var for cache size
+- TW_REDIS_URL env var for Redis connection
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| TW_REDIS_URL | — | Redis URL for distributed SSR cache |
+| TW_MAX_FETCH_PASSES | 10 | Max HTTP fetch calls per Edge V8 request (1-50) |
+| TW_SSR_CACHE_MAX | 512 | Max SSR cache entries |
+| TW_AST_CACHE_MAX | 128 | Max AST cache entries |
+| TW_AST_CACHE_TTL | 300 | AST cache TTL in seconds |
+| TW_MAX_BODY_SIZE | 10MB | Max request body size |
+
+## Middleware System (framework.py)
+
+### Middleware file locations (checked in order):
+1. middleware.tw at project root
+2. [home]/middleware.tw
+3. [home]/middleware/index.tw
+
+### Rule-based middleware:
+- match — path pattern (/dashboard/**, /api/**)
+- header — add response headers
+- methods — restrict HTTP methods
+- path — prefixes, contains, extensions, regex, single_segment_max, deny_traversal, deny_null_bytes
+- user_agent — allow/block/empty_is_blocked
+- origin — CORS: allow/require/allow_referer
+- auth — cookie-based, JWT (secret or jwt_secret_env)
+- rate_limit — requests, window, identity, bucket_segments (token bucket)
+- deny — deny access
+- redirect — redirect URL
+- rewrite — rewrite URL
+- response — status, json, html, text, content_type, headers, cookies
+
+### Function-based middleware:
+- fn before(ctx) { ... } — executed before request, can return redirect/rewrite/response
+- fn after(ctx) { ... } — executed after request, can modify response
+
+## Plugin System (plugin_runtime.py, plugin_manager.py)
+
+### Plugin format: .twp files
+### Lifecycle hooks:
+- beforeBuild — modify build config before compilation
+- afterBuild — post-build transformations
+- beforeRoute — route-level modifications
+- afterRoute — post-route processing
+- beforeRequest — per-request hooks
+
+### ExtensionManager methods:
+- refresh() — discover and load extensions
+- discover_extension_paths() — find .twp files
+- dependency_paths() — get extension dependency paths
+- emit(event_name, **payload) — emit event to all hooks
+- register_hook(event_name, handler, extension_name) — register a hook
+
+## Build Pipeline (compiler.py — 6863 lines)
+
+### Stages:
+1. Lexing (lexer.py) — tokenize .tw source
+2. Parsing (parser.py) — build AST
+3. Semantic analysis (semantic.py) — type checking, scope resolution
+4. IR lowering (lowering.py) — intermediate representation
+5. HTML rendering (render_html.py) — generate static HTML
+6. CSS rendering — scoped stylesheets, TSS compilation
+7. JS bundling (client_bundler.py) — client-side runtime, code splitting
+8. Dead code detection (dead_code.py) — unused pages, components, APIs
+9. Tree shaking (tree_shaking.py) — remove unused exports
+10. Minification — HTML, CSS, JS minification
+11. Output — write to dist/
+
+### Build constants:
+- BUILD_MANIFEST_VERSION = 2
+- DEPENDENCY_GRAPH_VERSION = 2
+- CHUNKS_URL_PREFIX = "/_tw/static/chunks/"
+- DEFAULT_WORKERS = max(1, min(32, os.cpu_count() or 1))
+- BUILD_MANIFEST_VERSION = 2
+
+### Build options:
+- --workers — parallel compilation
+- --watch — rebuild on file change (HMR via WebSocket)
+- --analyze — bundle analysis
+- --report — build report
+- --strict — treat warnings as errors
+- --adapter — vercel/netlify/cloudflare output format
+- --prod — production optimizations (brotli, SRI hashes)
+
+## App Router (app_router.py — 534 lines)
+
+### Route segment types:
+- Static: about/ → /about
+- Dynamic: [slug]/ → /:slug
+- Catch-all: [...slug]/ → /*
+- Optional catch-all: [[...slug]]/ → /*?
+- Route group: (group)/ — no URL segment
+
+### Special files:
+- page.tw — page component
+- layout.tw — layout (wraps child pages, supports nesting)
+- not-found.tw — 404 page
+- error.tw — error page
+- loading.tw — loading page
+- route.tw — API route (in api/ directory)
+
+### Layout chain:
+Layouts are nested — find_layouts_for_dir() walks up from page directory to [home]/, collecting all layout.tw files. children slot is replaced by child page content.
+
+## Module Boundaries (module_boundaries.py — 337 lines)
+
+### Classifications:
+- SERVER — .twm files, lib/ modules, database, filesystem, secrets
+- CLIENT — npm packages, browser APIs, DOM, WebSocket clients
+- SHARED — types, validation, pure utilities
+
+### ImportClassifier methods:
+- classify_import(import_path) — classify by import path
+- classify_module_source(source, file_path) — classify by source code analysis (with caching)
+- validate_imports(imports) — check for boundary violations (TW2000/TW2001)
+- get_client_imports(imports) — filter for client bundles
+- get_server_imports(imports) — filter for server modules
+- scan_source_imports(source, file_path) — scan for import/require/dynamic import()
+
+### Data structures:
+- ImportInfo: path, line, col, file, context, boundary, is_dynamic
+- BoundaryViolation: code, message, file, line, col, suggestion, severity
+
+## Deployment
+
+### Providers:
+- local, vercel, cloudflare, netlify, github-pages, docker
+
+### Auto-generated configs:
+- Vercel: vercel.json with build command and routes
+- Netlify: netlify.toml with build and redirects
+- Cloudflare: _redirects and headers
+- GitHub Pages: .nojekyll and base path
+- Docker: Dockerfile with Python runtime
+
+### Deploy command:
+tw deploy --provider vercel --prod --dry-run
+
+## Testing
+
+- pip install tw-framework[dev]
+- pytest tests/ --tb=short -q
+- Current: 610 passed, 9 skipped, 0 failed
+
+## Version History
+
+- v0.9.17 — Final Polish: security hardening, thread safety, missing files
+- v0.9.15 — PyPI release prep: optional dependencies, docs, llms.txt
+- v0.9.14 — Edge V8 + Module Boundaries + Runtime Init (bugs 601-700)
+- v0.9.13 — 6 core module fixes (bugs 401-540)
+- v0.9.12 — App Router + Server + Compiler (bugs 301-400)
+- v0.9.11 — Compiler + CLI (bugs 201-300)
+- v0.9.10 — React compat, prefetch, version fixes (bugs 1-3)
