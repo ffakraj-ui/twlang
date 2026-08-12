@@ -1,0 +1,17 @@
+page {
+    title "TW Framework Documentation"
+    layout "main"
+    render static
+}
+
+load "@./style/global.tss"
+
+head {
+    meta { charset "utf-8" }
+    meta { name "viewport", content "width=device-width, initial-scale=1" }
+    meta { name "description", content "TW Framework - Documentation for the zero-JS web framework" }
+}
+
+body {
+    div { class "docs-container" }
+}

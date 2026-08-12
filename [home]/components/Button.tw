@@ -1,0 +1,4 @@
+let label "Button"
+let link ""
+
+a { href "{link}" text "{label}" }

@@ -1,0 +1,18 @@
+{
+  "name": "twlang-main",
+  "private": true,
+  "version": "0.9.26",
+  "scripts": {
+    "dev": "tw dev",
+    "build": "tw build",
+    "export": "tw export",
+    "preview": "tw preview",
+    "clean": "tw clean",
+    "doctor": "tw doctor",
+    "info": "tw info",
+    "deploy": "tw deploy"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

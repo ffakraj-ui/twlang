@@ -1,0 +1,275 @@
+load "@../style/documentation.tss"
+
+section {
+
+    class "documentation"
+
+    div {
+
+        class "section-header"
+
+        span {
+
+            class "badge"
+
+            text "Documentation"
+
+        }
+
+        h2 "Learn Every Part of TW Language"
+
+        p {
+
+            text "Explore guides, examples and references to master TW Language from beginner to advanced."
+
+        }
+
+    }
+
+    div {
+
+        class "docs-grid"
+
+        div {
+
+            class "doc-card"
+
+            h3 "Getting Started"
+
+            p {
+
+                text "Install TW Language and create your first project."
+
+            }
+
+            a "Read Guide" {
+
+                href "/docs/getting-started"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "Language Syntax"
+
+            p {
+
+                text "Learn page, BODY, components, attributes and core syntax."
+
+            }
+
+            a "Explore Syntax" {
+
+                href "/docs/syntax"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "Components"
+
+            p {
+
+                text "Create reusable UI with clean and maintainable components."
+
+            }
+
+            a "View Components" {
+
+                href "/docs/components"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "Layouts"
+
+            p {
+
+                text "Build reusable layouts for every page."
+
+            }
+
+            a "Open Layout Docs" {
+
+                href "/docs/layouts"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "TSS Styling"
+
+            p {
+
+                text "Style your application using the TW Style System."
+
+            }
+
+            a "Learn TSS" {
+
+                href "/docs/tss"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "Compiler"
+
+            p {
+
+                text "Understand the TW compiler pipeline from source to HTML."
+
+            }
+
+            a "Compiler Docs" {
+
+                href "/docs/compiler"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "CLI"
+
+            p {
+
+                text "Use tw init, tw dev, tw build and other commands."
+
+            }
+
+            a "CLI Reference" {
+
+                href "/docs/cli"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "Routing"
+
+            p {
+
+                text "Automatic file-based routing for modern websites."
+
+            }
+
+            a "Routing Guide" {
+
+                href "/docs/routing"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "Deployment"
+
+            p {
+
+                text "Deploy your project to Vercel and other platforms."
+
+            }
+
+            a "Deploy Now" {
+
+                href "/docs/deployment"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "Examples"
+
+            p {
+
+                text "Ready-to-use templates and complete project examples."
+
+            }
+
+            a "Browse Examples" {
+
+                href "/examples"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "API"
+
+            p {
+
+                text "Reference for framework APIs and utilities."
+
+            }
+
+            a "Open API Docs" {
+
+                href "/docs/api"
+
+            }
+
+        }
+
+        div {
+
+            class "doc-card"
+
+            h3 "Best Practices"
+
+            p {
+
+                text "Recommended project structure and coding standards."
+
+            }
+
+            a "Read More" {
+
+                href "/docs/best-practices"
+
+            }
+
+        }
+
+    }
+
+}

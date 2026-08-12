@@ -1,0 +1,64 @@
+# TW Framework — Project Metadata (v0.9.27)
+# Source: https://github.com/ffakraj-ui/twlang
+
+## pyproject.toml
+
+- Name: tw-framework
+- Version: 0.9.27
+- Requires-Python: >=3.9
+- Authors: TW MRMK, TW MLKRAJ, TW ASLAM, TW BADAL, TW ROHIT, TW RISHU
+- Dependencies: [] (core framework has no hard third-party dependencies)
+- Optional dependencies:
+  - dev = ["pytest>=7"]
+  - image = ["Pillow>=10"]
+- License: MIT
+
+## Framework Structure
+
+- Language: Custom DSL (.tw, .tss, .twm, .twp)
+- Entry point: `tw` (CLI)
+- Python modules: 96+ files in `tw_framework/`
+- Tests: 1190 tests (30 test files)
+- Render modes: static, server, edge, interactive, dynamic, csr
+- Runtimes: Node.js, Edge V8, Python, WASM
+
+## Key Modules
+
+| Module | Purpose |
+|--------|---------|
+| compiler.py | Main compilation pipeline |
+| parser.py | AST parsing |
+| app_router.py | File-based routing |
+| server.py | HTTP server, SSR, streaming |
+| cli.py | Command-line interface |
+| security.py | CSP, CSRF, sanitization |
+| reactivity.py | State management, VDOM |
+| ppr.py | Partial prerendering |
+| cache_tiers.py | Four-tier cache system |
+| hooks.py | useOptimistic, useActionState, etc. |
+| rsc_payload.py | RSC payload format |
+| edge_middleware.py | Edge middleware |
+| enhanced_actions.py | Server actions |
+| infrastructure.py | Terraform IaC generator |
+
+## Version History
+
+- v0.9.09 — Initial release
+- v0.9.10 — React compat fixes
+- v0.9.11 — Compiler and CLI fixes
+- v0.9.12 — App router and server fixes
+- v0.9.13 — Reactivity, parser, security fixes
+- v0.9.14 — Edge V8, module boundaries fixes
+- v0.9.15 — PyPI release preparation
+- v0.9.16 — Security hardening, thread safety
+- v0.9.17 — Documentation rewrite
+- v0.9.18 — Runtime fixes
+- v0.9.19 — PPR, cache tiers, bundle optimizer
+- v0.9.20 — Feature architecture, enhanced actions
+- v0.9.21 — Module expansions
+- v0.9.22 — Further module expansions
+- v0.9.23 — RSC payload, hooks, metadata, edge middleware
+- v0.9.24 — PPR boundaries, cache directive, ESBuild
+- v0.9.25 — Instant navigation, DevTools, parallel routes, enterprise
+- v0.9.26 — Stability fixes, missing imports
+- v0.9.27 — Stability test suite, infrastructure and CORS fixes

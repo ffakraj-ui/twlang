@@ -1,0 +1,203 @@
+load "@../style/features.tss"
+
+section {
+
+    class "features"
+
+    div {
+
+        class "section-title"
+
+        span {
+
+            class "badge"
+
+            text "Features"
+
+        }
+
+        h2 "Everything You Need"
+
+        p {
+
+            text "TW Language combines a modern language, compiler and framework into one powerful ecosystem."
+
+        }
+
+    }
+
+    div {
+
+        class "feature-grid"
+
+        div {
+
+            class "feature-card"
+
+            h3 "⚡ Fast Compiler"
+
+            p {
+
+                text "Compile projects in milliseconds with optimized output."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "🧩 Components"
+
+            p {
+
+                text "Create reusable UI components with a clean and readable syntax."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "🎨 TSS"
+
+            p {
+
+                text "Write beautiful styles using the native TW styling system."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "📱 Responsive"
+
+            p {
+
+                text "Build responsive websites without extra complexity."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "🌍 SEO Ready"
+
+            p {
+
+                text "Generate clean HTML optimized for search engines."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "🚀 Static Generation"
+
+            p {
+
+                text "Generate lightning-fast static websites."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "🔌 Plugin System"
+
+            p {
+
+                text "Extend the compiler using powerful plugins."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "🛣 Routing"
+
+            p {
+
+                text "Automatic file-based routing for modern projects."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "📦 API"
+
+            p {
+
+                text "Build APIs alongside your frontend application."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "⚙ Middleware"
+
+            p {
+
+                text "Intercept requests before rendering pages."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "📄 Static Pages"
+
+            p {
+
+                text "Create blogs, landing pages and documentation with ease."
+
+            }
+
+        }
+
+        div {
+
+            class "feature-card"
+
+            h3 "❤️ Open Source"
+
+            p {
+
+                text "Built for developers and powered by the community."
+
+            }
+
+        }
+
+    }
+
+}

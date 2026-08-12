@@ -1,0 +1,3 @@
+fn get(request) {
+  return { json: { message: "Hello from TW API" } }
+}

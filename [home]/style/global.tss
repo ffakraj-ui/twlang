@@ -1,0 +1,45 @@
+* { margin 0; padding 0; box-sizing border-box }
+body { font-family -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; bg #0d1117; color #c9d1d9; line-height 1.6 }
+a { color #58a6ff; text-decoration none }
+a:hover { text-decoration underline }
+.docs-container { display flex; min-height 100vh }
+.docs-sidebar { width 280px; bg #161b22; border-right 1px solid #30363d; padding 20px; overflow-y auto; position fixed; height 100vh; z-index 10 }
+.docs-content { flex 1; margin-left 280px; padding 40px; max-width 960px }
+.docs-header { border-bottom 1px solid #30363d; padding-bottom 20px; margin-bottom 30px }
+.docs-header h1 { font-size 32px; color #f0f6fc; margin-bottom 8px }
+.docs-header p { color #8b949e; font-size 16px }
+.docs-grid { display grid; grid-template-columns repeat(auto-fill, minmax(280px, 1fr)); gap 16px; margin-bottom 30px }
+.docs-card { bg #161b22; border 1px solid #30363d; border-radius 8px; padding 20px; transition border-color 0.2s }
+.docs-card:hover { border-color #58a6ff }
+.docs-card h3 { font-size 18px; color #58a6ff; margin-bottom 8px }
+.docs-card p { font-size 14px; color #8b949e; line-height 1.5 }
+.docs-card .badge { display inline-block; padding 2px 8px; bg #238636; color #fff; border-radius 12px; font-size 11px; font-weight 600; margin-bottom 8px }
+.docs-card .badge-new { bg #1f6feb }
+.docs-sidebar-brand { font-size 22px; font-weight 700; color #f0f6fc; margin-bottom 4px }
+.docs-sidebar-version { font-size 12px; color #8b949e; margin-bottom 20px; padding-bottom 12px; border-bottom 1px solid #30363d }
+.docs-sidebar-section { margin-bottom 16px }
+.docs-sidebar-section h3 { font-size 12px; text-transform uppercase; color #8b949e; letter-spacing 0.5px; margin-bottom 6px; padding-left 12px }
+.docs-sidebar-link { display block; padding 5px 12px; color #c9d1d9; font-size 13px; border-radius 4px; margin-bottom 2px }
+.docs-sidebar-link:hover { bg #21262d; color #58a6ff; text-decoration none }
+.docs-sidebar-link-active { bg #21262d; color #58a6ff; border-left 2px solid #58a6ff }
+.docs-section { margin-bottom 40px }
+.docs-section h2 { font-size 24px; color #f0f6fc; margin-bottom 16px; padding-bottom 8px; border-bottom 1px solid #30363d }
+.docs-section h3 { font-size 20px; color #f0f6fc; margin-top 24px; margin-bottom 12px }
+.docs-section p { margin-bottom 12px; color #c9d1d9 }
+.docs-section ul { margin-bottom 16px; padding-left 20px }
+.docs-section li { margin-bottom 6px; color #c9d1d9 }
+.docs-section code { bg #21262d; padding 2px 6px; border-radius 4px; font-size 14px; color #f0883e }
+.docs-section pre { bg #161b22; border 1px solid #30363d; border-radius 8px; padding 16px; overflow-x auto; margin-bottom 16px }
+.docs-section pre code { bg none; padding 0; color #c9d1d9 }
+.docs-table { width 100%; border-collapse collapse; margin-bottom 16px }
+.docs-table th { text-align left; padding 10px 12px; bg #21262d; color #f0f6fc; border 1px solid #30363d; font-size 14px }
+.docs-table td { padding 10px 12px; border 1px solid #30363d; color #c9d1d9; font-size 14px }
+.docs-footer { border-top 1px solid #30363d; padding-top 20px; margin-top 40px; color #8b949e; font-size 14px }
+.docs-hero { bg linear-gradient(135deg, #161b22, #0d1117); border 1px solid #30363d; border-radius 12px; padding 40px; margin-bottom 30px; text-align center }
+.docs-hero h1 { font-size 36px; color #f0f6fc; margin-bottom 12px }
+.docs-hero p { font-size 18px; color #8b949e; max-width 600px; margin 0 auto }
+.docs-hero .btn { display inline-block; padding 10px 24px; bg #238636; color #fff; border-radius 6px; font-size 16px; font-weight 600; margin-top 20px }
+.docs-hero .btn:hover { bg #2ea043; text-decoration none }
+.docs-nav { display flex; justify-content space-between; margin-top 40px; padding-top 20px; border-top 1px solid #30363d }
+.docs-nav a { color #58a6ff; font-size 14px }
+@media (max-width: 768px) { .docs-sidebar { display none } .docs-content { margin-left 0; padding 20px } }

@@ -1,0 +1,132 @@
+page {
+    title "Contact | Veridian Systems"
+    layout "main"
+    render static
+}
+
+load "@../style/site.tss"
+
+head {
+    seo {
+        description "Contact Veridian Systems through the enquiry form, email, or direct phone action."
+        og_title "Contact | Veridian Systems"
+        og_description "Professional contact page with direct actions and enquiry form."
+    }
+}
+
+BODY {
+    main {
+        section {
+            class "page-hero"
+
+            div {
+                class "container page-hero-copy"
+
+                span "Contact" {
+                    class "eyebrow"
+                }
+
+                h1 "Start the conversation professionally."
+                p "This page gives you direct business contact actions plus a project enquiry form. The form prepares an email draft in the visitor mail app so the site works cleanly without extra backend setup."
+            }
+        }
+
+        section {
+            class "section"
+
+            div {
+                class "container contact-grid"
+
+                aside {
+                    class "contact-card"
+
+                    span "Direct actions" {
+                        class "contact-label"
+                    }
+
+                    h3 "Reach out in the way that is fastest for you."
+                    p "Use the links below or fill the project enquiry form. Every action is wired so the page does not feel incomplete."
+
+                    div {
+                        class "contact-actions"
+
+                        a "hello@veridiansystems.com" {
+                            href "mailto:hello@veridiansystems.com"
+                            class "btn btn-secondary"
+                        }
+
+                        a "+91 1800 123 456" {
+                            href "tel:+911800123456"
+                            class "btn btn-ghost"
+                        }
+                    }
+
+                    ul {
+                        class "info-list"
+                        li "Business hours: Monday to Saturday, 9:00 AM to 6:00 PM"
+                        li "Response window: Usually within one working day"
+                        li "Best for: Websites, redesigns, business pages, and brand presentation"
+                    }
+                }
+
+                div {
+                    class "contact-form"
+
+                    span "Enquiry flow" {
+                        class "contact-label"
+                    }
+
+                    h3 "Use the contact actions that already work."
+                    p "Instead of leaving empty buttons, this page gives clear live actions for email, phone, and page navigation. You can later replace these details with your real business data."
+
+                    div {
+                        class "card-grid"
+
+                        article {
+                            class "service-card"
+                            h3 "Send an email"
+                            p "Use the email button to open your mail app and send project details directly."
+                            a "Open email" {
+                                href "mailto:hello@veridiansystems.com?subject=Project%20enquiry"
+                                class "btn btn-primary"
+                            }
+                        }
+
+                        article {
+                            class "service-card"
+                            h3 "Schedule a call"
+                            p "Use the direct phone action when you want a faster discussion."
+                            a "Call now" {
+                                href "tel:+911800123456"
+                                class "btn btn-secondary"
+                            }
+                        }
+
+                        article {
+                            class "service-card"
+                            h3 "Review our work"
+                            p "If you want more confidence before reaching out, open the work page and service breakdown."
+                            a "Open work page" {
+                                href "/work"
+                                class "btn btn-ghost"
+                            }
+                        }
+                    }
+
+                    div {
+                        class "highlight-panel"
+
+                        h3 "Suggested message format"
+                        ul {
+                            class "info-list"
+                            li "Your name and business name"
+                            li "What kind of site or redesign you need"
+                            li "Important pages, features, and timeline"
+                            li "Preferred contact number or email"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

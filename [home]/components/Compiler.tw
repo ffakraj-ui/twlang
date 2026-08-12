@@ -1,0 +1,147 @@
+load "@../style/compiler.tss"
+
+section {
+
+    class "compiler-lab"
+
+    div {
+
+        class "compiler-header"
+
+        span {
+
+            class "badge"
+
+            text "Compiler Lab"
+
+        }
+
+        h2 "Compiler pipeline, diagnostics, aur smoke checks ek hi panel mein."
+
+        p {
+
+            text "Yeh reusable block website showcase ke liye nahi, balki framework testing ke liye hai. Ismein sample input, expected compiler phases, aur error-report shape ko direct review kiya ja sakta hai."
+
+        }
+
+    }
+
+    div {
+
+        class "compiler-grid"
+
+        article {
+
+            class "compiler-card"
+
+            h3 "Input fixture"
+
+            p "Small `.tw` sample jo parser, semantic checks, aur renderer tino touch karta hai."
+
+            pre {
+                class "compiler-code"
+                code {
+                    text "
+page { title \"Lab\" layout \"main\" render static }
+let heading = \"Compiler\"
+BODY {
+  section {
+    class \"panel\"
+    h2 \"Compiler heading\"
+  }
+}
+"
+                }
+            }
+
+        }
+
+        article {
+
+            class "compiler-card"
+
+            h3 "Expected phases"
+
+            div {
+                class "phase-stack"
+
+                div {
+                    class "phase-row"
+                    strong "01"
+                    span "tokenize"
+                }
+
+                div {
+                    class "phase-row"
+                    strong "02"
+                    span "parse"
+                }
+
+                div {
+                    class "phase-row"
+                    strong "03"
+                    span "analyze"
+                }
+
+                div {
+                    class "phase-row"
+                    strong "04"
+                    span "lower"
+                }
+
+                div {
+                    class "phase-row"
+                    strong "05"
+                    span "render"
+                }
+            }
+
+        }
+
+        article {
+
+            class "compiler-card"
+
+            h3 "Diagnostics shape"
+
+            p "Ab structured output mein severity, code, line, column, phase, aur suggestion sab include kiya ja sakta hai."
+
+            div {
+                class "diagnostic-list"
+
+                div {
+                    class "diagnostic-item diagnostic-error"
+                    strong "error • TW1000"
+                    p "Syntax ya parser failure ko exact phase ke saath pakdo."
+                }
+
+                div {
+                    class "diagnostic-item diagnostic-warning"
+                    strong "warning • TW2001"
+                    p "Missing title, undefined symbols, aur weak authoring hints ko alag rakho."
+                }
+
+                div {
+                    class "diagnostic-item diagnostic-info"
+                    strong "summary"
+                    p "CLI check output mein total counts aur phase-wise grouping inspect karo."
+                }
+            }
+
+        }
+
+    }
+
+    div {
+
+        class "compiler-footer"
+
+        p {
+
+            text "Goal simple hai: website polish se zyada framework observability. Agar parser, AST, IR, ya renderer fail kare, test page se immediately trace milna chahiye."
+
+        }
+
+    }
+
+}

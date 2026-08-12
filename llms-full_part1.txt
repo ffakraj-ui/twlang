@@ -1,0 +1,117 @@
+================================================================================
+TW Framework — Technical Reference
+================================================================================
+
+Source: github.com/ffakraj-ui/twlang (default branch: main)
+Version: v0.9.27 (2026-08-12)
+
+================================================================================
+0. WHAT TW IS
+================================================================================
+
+TW ("TW Framework", package `tw-framework`, PyPI) is a custom language +
+compiler + dev server + CLI for building web applications.
+
+Key design decisions:
+- HTML-first: pages written in JSX-like syntax in `.tw` files
+- Zero-JS by default: pages without state/events ship no JavaScript
+- Multi-runtime: API routes run on Node.js, Edge V8, Python, or WASM
+- File-based routing: `app/` directory structure defines routes
+
+================================================================================
+1. LANGUAGE SYNTAX
+================================================================================
+
+### Pages (.tw)
+    page <name> {
+      state <var> = <value>
+      render { <content> }
+    }
+
+### Components (.tw)
+    component <Name> {
+      props { <name>: <type> = <default> }
+      render { <content> }
+    }
+
+### Layouts (.tw)
+    layout <name> {
+      render { <html>{children}</html> }
+    }
+
+### Stylesheets (.tss)
+    Standard CSS with variables, nesting, media queries.
+
+### API Routes (.twm)
+    function GET(request) { return Response.json({...}); }
+    runtime = "nodejs"  // optional
+
+================================================================================
+2. BUILD PIPELINE
+================================================================================
+
+1. `tw create my-site`
+2. Write `.tw` pages, `.tss` styles, `.twm` API routes
+3. `tw build`
+4. `tw deploy --provider vercel`
+
+Pipeline: Source -> Lexer -> Parser -> AST -> Semantic -> IR -> Lowering -> HTML/JS
+
+================================================================================
+3. RUNTIMES
+================================================================================
+
+| Runtime | Directive | Engine | FS | Net | Crypto |
+|---------|-----------|--------|-----|-----|--------|
+| Node.js | nodejs | Node.js worker | Y | Y | Y |
+| Edge V8 | edge | V8 Isolate | N | Y | Y |
+| Python | python | Python in-process | Y | Y | Y |
+| WASM | wasm | wasmtime sandbox | N | N | Y |
+
+================================================================================
+4. CACHING
+================================================================================
+
+Four-tier: Request Memo, Data Cache, Full Route Cache, Router Cache.
+`"use cache"` enables component-level caching with revalidation.
+
+================================================================================
+5. PARTIAL PRERENDERING
+================================================================================
+
+Static parts prerendered at build, dynamic parts streamed at request.
+Suspense boundaries separate regions.
+
+================================================================================
+6. STATE AND REACTIVITY
+================================================================================
+
+- `state` keyword declares reactive variables
+- VDOM diff and patch on changes
+- Hooks: useOptimistic, useActionState, useFormStatus, useTransition
+
+================================================================================
+7. SECURITY
+================================================================================
+
+CSP nonce, CSRF tokens, HTML/URL sanitization, password strength, SRI hashing,
+secure headers (HSTS, X-Frame-Options, etc.)
+
+================================================================================
+8. DEPLOYMENT
+================================================================================
+
+Vercel, Netlify, Cloudflare, Docker.
+
+================================================================================
+9. AUTHORS
+================================================================================
+
+- TW MRMK
+- TW MLKRAJ
+- TW ASLAM
+- TW BADAL
+- TW ROHIT
+- TW RISHU
+
+License: MIT

@@ -1,0 +1,148 @@
+.compiler-lab {
+    display grid
+    gap 24
+    padding 28
+    border-radius 28
+    background linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.86))
+    border 1px solid rgba(148, 163, 184, 0.22)
+    box-shadow 0 22px 60px rgba(2, 6, 23, 0.32)
+    color #e2e8f0
+}
+
+.compiler-header {
+    display grid
+    gap 12
+}
+
+.compiler-header h2 {
+    margin 0
+    font-size 34
+    color #f8fafc
+}
+
+.compiler-header p {
+    margin 0
+    color rgba(226, 232, 240, 0.78)
+    line-height 1.7
+}
+
+.badge {
+    display inline-flex
+    align-items center
+    justify-content center
+    width fit-content
+    padding 8 14
+    border-radius 999
+    font-size 13
+    letter-spacing 0.08em
+    text-transform uppercase
+    background rgba(96, 165, 250, 0.18)
+    color #bfdbfe
+}
+
+.compiler-grid {
+    display grid
+    grid-template-columns repeat(3, minmax(0, 1fr))
+    gap 18
+}
+
+.compiler-card {
+    display grid
+    gap 14
+    padding 20
+    border-radius 22
+    background rgba(15, 23, 42, 0.7)
+    border 1px solid rgba(148, 163, 184, 0.16)
+    min-height 100%
+}
+
+.compiler-card h3 {
+    margin 0
+    font-size 20
+    color #f8fafc
+}
+
+.compiler-card p {
+    margin 0
+    color rgba(226, 232, 240, 0.76)
+    line-height 1.7
+}
+
+.compiler-code {
+    margin 0
+    padding 16
+    border-radius 18
+    overflow auto
+    background rgba(2, 6, 23, 0.74)
+    border 1px solid rgba(148, 163, 184, 0.16)
+    color #cbd5e1
+}
+
+.phase-stack {
+    display grid
+    gap 10
+}
+
+.phase-row {
+    display flex
+    align-items center
+    justify-content space-between
+    gap 12
+    padding 12 14
+    border-radius 16
+    background rgba(30, 41, 59, 0.9)
+    border 1px solid rgba(148, 163, 184, 0.12)
+}
+
+.phase-row strong {
+    color #93c5fd
+}
+
+.phase-row span {
+    color #f8fafc
+}
+
+.diagnostic-list {
+    display grid
+    gap 12
+}
+
+.diagnostic-item {
+    display grid
+    gap 6
+    padding 14 16
+    border-radius 16
+    border 1px solid rgba(148, 163, 184, 0.14)
+    background rgba(15, 23, 42, 0.92)
+}
+
+.diagnostic-item strong {
+    font-size 14
+}
+
+.diagnostic-item p {
+    margin 0
+}
+
+.diagnostic-error strong {
+    color #fda4af
+}
+
+.diagnostic-warning strong {
+    color #fde68a
+}
+
+.diagnostic-info strong {
+    color #93c5fd
+}
+
+.compiler-footer p {
+    margin 0
+    color rgba(226, 232, 240, 0.72)
+}
+
+@media (max-width: 960px) {
+    .compiler-grid {
+        grid-template-columns 1fr
+    }
+}

@@ -1,0 +1,327 @@
+page {
+    title "Deployment - TW Framework Docs"
+    layout "main"
+    render static
+}
+
+load "@./style/global.tss"
+
+body {
+    div { class "docs-container"
+        div { class "docs-sidebar"
+            div { class "docs-sidebar-brand", "TW Framework" }
+            div { class "docs-sidebar-version", "v0.4.7 Documentation" }
+
+            div { class "docs-sidebar-section"
+                h3 "Getting Started"
+
+                a "Project Structure" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "CLI Command Reference" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "FAQ" { class "docs-sidebar-link", href "/getting-started" }
+
+                a "Getting Started" { class "docs-sidebar-link", href "/getting-started" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Syntax & Language"
+
+                a "Common Syntax Errors and Fixes" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Component Patterns and Anti-Patterns" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TW File Syntax" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TSS (TW Style Sheets) Syntax Deep Dive" { class "docs-sidebar-link", href "/syntax" }
+
+                a "TWM (TW Modules) Syntax and Patterns" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Data Binding and Reactivity" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Routing and Navigation" { class "docs-sidebar-link", href "/syntax" }
+
+                a "Page Block and Meta Tags" { class "docs-sidebar-link", href "/syntax" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Components & Layouts"
+
+                a "Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layouts" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Middleware" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Advanced Components" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Hooks System" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Responsive Design" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Custom Error Pages" { class "docs-sidebar-link", href "/components-layouts" }
+
+                a "Layout Inheritance and Chains" { class "docs-sidebar-link", href "/components-layouts" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Data & APIs"
+
+                a "API Routes" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Authentication" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Rate Limiting" { class "docs-sidebar-link", href "/data-api" }
+
+                a "WebSockets" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Form Handling and Validation" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Data Fetching Patterns" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Static Assets" { class "docs-sidebar-link", href "/data-api" }
+
+                a "Webhook Handling" { class "docs-sidebar-link", href "/data-api" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Deployment"
+
+                a "Deploy Adapters" { class "docs-sidebar-link docs-sidebar-link-active", href "/deployment" }
+
+                a "Troubleshooting" { class "docs-sidebar-link docs-sidebar-link-active", href "/deployment" }
+
+                a "SSR vs SSG vs Edge Rendering" { class "docs-sidebar-link docs-sidebar-link-active", href "/deployment" }
+
+                a "Deployment Troubleshooting" { class "docs-sidebar-link docs-sidebar-link-active", href "/deployment" }
+
+                a "CI/CD Pipeline" { class "docs-sidebar-link docs-sidebar-link-active", href "/deployment" }
+
+                a "Docker Production" { class "docs-sidebar-link docs-sidebar-link-active", href "/deployment" }
+
+                a "Docker" { class "docs-sidebar-link docs-sidebar-link-active", href "/deployment" }
+
+                a "Edge Deployment" { class "docs-sidebar-link docs-sidebar-link-active", href "/deployment" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Advanced"
+
+                a "Code Splitting" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Dead Code Detection" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Dev Server" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Security" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Image Optimization" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Structured Data (Schema.org)" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Service Workers and PWA" { class "docs-sidebar-link", href "/advanced" }
+
+                a "Lazy Loading" { class "docs-sidebar-link", href "/advanced" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Reference"
+
+                a "SEO and Meta Tags" { class "docs-sidebar-link", href "/reference" }
+
+                a "Built-in Search" { class "docs-sidebar-link", href "/reference" }
+
+                a "Environment Variables" { class "docs-sidebar-link", href "/reference" }
+
+                a "Build Pipeline" { class "docs-sidebar-link", href "/reference" }
+
+                a "TW Config Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "Error Reference" { class "docs-sidebar-link", href "/reference" }
+
+                a "LSP and Editor Support" { class "docs-sidebar-link", href "/reference" }
+
+                a "Glossary" { class "docs-sidebar-link", href "/reference" }
+
+            }
+
+            div { class "docs-sidebar-section"
+                h3 "Guides & Tutorials"
+
+                a "Migration Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "Mobile Development" { class "docs-sidebar-link", href "/guides" }
+
+                a "E-Commerce Template Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "SaaS Landing Page Template" { class "docs-sidebar-link", href "/guides" }
+
+                a "Internationalization (i18n)" { class "docs-sidebar-link", href "/guides" }
+
+                a "Accessibility Guide" { class "docs-sidebar-link", href "/guides" }
+
+                a "Tutorial: Building a Blog" { class "docs-sidebar-link", href "/guides" }
+
+                a "Tutorial: Building a Docs Site" { class "docs-sidebar-link", href "/guides" }
+
+            }
+
+        }
+
+        div { class "docs-content"
+            div { class "docs-header"
+                h1 "🚢 Deployment"
+                p "Vercel, Netlify, Docker, CI/CD"
+            }
+            div { class "docs-grid"
+
+                div { class "docs-card"
+                    h3 "Deploy Adapters"
+                    p "TW Framework has built-in adapters for Vercel, Netlify, and Cloudflare. Generates `vercel.json` and configures output fo..."
+                }
+
+                div { class "docs-card"
+                    h3 "Troubleshooting"
+                    p "**Cause:** `[home]` directory missing or named incorrectly. **Fix:** ls -la [home]/ mv home '[home]' **Fix:** Create `tw..."
+                }
+
+                div { class "docs-card"
+                    h3 "SSR vs SSG vs Edge Rendering"
+                    p "HTML generated at build time. Zero server needed. page { render static } - When: Blogs, landing pages, docs, portfolios ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Deployment Troubleshooting"
+                    p "Error: This environment is externally managed Fix: Add --break-system-packages: { 'buildCommand': 'pip install --break-s..."
+                }
+
+                div { class "docs-card"
+                    h3 "CI/CD Pipeline"
+                    p "Automate testing, building, and deploying your TW Framework projects. Create `.github/workflows/deploy.yml`: name: Build..."
+                }
+
+                div { class "docs-card"
+                    h3 "Docker Production"
+                    p "Containerize and deploy TW Framework applications with Docker. FROM python:3.11-slim WORKDIR /app RUN apt-get update && ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Docker"
+                    p "Files to add to your TW project root (next to `tw.config`): `Dockerfile`, `.dockerignore`, `docker-compose.yml`. docker ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Edge Deployment"
+                    p "Deploy TW Framework to edge networks for global low-latency delivery. Edge deployment runs your code on servers close to..."
+                }
+
+                div { class "docs-card"
+                    h3 "Kubernetes"
+                    p "Prerequisite: build and push the Docker image first (see [docker.md](./docker.md)): docker build -t my-tw-site:latest . ..."
+                }
+
+                div { class "docs-card"
+                    h3 "Deploying to Netlify"
+                    p "1. Push your TW project to a GitHub repository. 2. Go to [netlify.com](https://netlify.com) and click **Add new site → I..."
+                }
+
+                div { class "docs-card"
+                    h3 "Release Checklist"
+                    p "Follow this checklist before publishing a new version of TW Framework. - [ ] All tests pass: `pytest` - [ ] Code coverag..."
+                }
+
+                div { class "docs-card"
+                    h3 "Deploying to Vercel"
+                    p "1. Push your TW project to a GitHub repository. 2. Go to [vercel.com](https://vercel.com) and click **Add New → Project*..."
+                }
+
+            }
+
+            div { class "docs-section"
+                h2 "Articles in this section"
+            }
+
+            div { class "docs-card"
+                h3 "Deploy Adapters"
+                p "TW Framework has built-in adapters for Vercel, Netlify, and Cloudflare. Generates `vercel.json` and configures output fo..."
+                p "File: 35-deploy-adapters.md"
+            }
+
+            div { class "docs-card"
+                h3 "Troubleshooting"
+                p "**Cause:** `[home]` directory missing or named incorrectly. **Fix:** ls -la [home]/ mv home '[home]' **Fix:** Create `tw..."
+                p "File: 36-troubleshooting.md"
+            }
+
+            div { class "docs-card"
+                h3 "SSR vs SSG vs Edge Rendering"
+                p "HTML generated at build time. Zero server needed. page { render static } - When: Blogs, landing pages, docs, portfolios ..."
+                p "File: 58-ssr-vs-ssg-vs-edge.md"
+            }
+
+            div { class "docs-card"
+                h3 "Deployment Troubleshooting"
+                p "Error: This environment is externally managed Fix: Add --break-system-packages: { 'buildCommand': 'pip install --break-s..."
+                p "File: 72-deployment-troubleshooting.md"
+            }
+
+            div { class "docs-card"
+                h3 "CI/CD Pipeline"
+                p "Automate testing, building, and deploying your TW Framework projects. Create `.github/workflows/deploy.yml`: name: Build..."
+                p "File: ci-cd-pipeline.md"
+            }
+
+            div { class "docs-card"
+                h3 "Docker Production"
+                p "Containerize and deploy TW Framework applications with Docker. FROM python:3.11-slim WORKDIR /app RUN apt-get update && ..."
+                p "File: docker-production.md"
+            }
+
+            div { class "docs-card"
+                h3 "Docker"
+                p "Files to add to your TW project root (next to `tw.config`): `Dockerfile`, `.dockerignore`, `docker-compose.yml`. docker ..."
+                p "File: docker.md"
+            }
+
+            div { class "docs-card"
+                h3 "Edge Deployment"
+                p "Deploy TW Framework to edge networks for global low-latency delivery. Edge deployment runs your code on servers close to..."
+                p "File: edge-deployment.md"
+            }
+
+            div { class "docs-card"
+                h3 "Kubernetes"
+                p "Prerequisite: build and push the Docker image first (see [docker.md](./docker.md)): docker build -t my-tw-site:latest . ..."
+                p "File: k8s.md"
+            }
+
+            div { class "docs-card"
+                h3 "Deploying to Netlify"
+                p "1. Push your TW project to a GitHub repository. 2. Go to [netlify.com](https://netlify.com) and click **Add new site → I..."
+                p "File: netlify.md"
+            }
+
+            div { class "docs-card"
+                h3 "Release Checklist"
+                p "Follow this checklist before publishing a new version of TW Framework. - [ ] All tests pass: `pytest` - [ ] Code coverag..."
+                p "File: release-checklist.md"
+            }
+
+            div { class "docs-card"
+                h3 "Deploying to Vercel"
+                p "1. Push your TW project to a GitHub repository. 2. Go to [vercel.com](https://vercel.com) and click **Add New → Project*..."
+                p "File: vercel.md"
+            }
+
+            div { class "docs-footer"
+                p "TW Framework v0.4.7 - Built with TW Framework"
+            }
+        }
+    }
+}

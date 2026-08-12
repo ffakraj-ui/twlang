@@ -1,0 +1,84 @@
+# TW Framework — Reference for Coding Assistants
+# Source: https://github.com/ffakraj-ui/twlang
+# Version: v0.9.27 (2026-08-12)
+# Rule: If README and source code disagree, trust the source code and tests.
+
+## 1. PROJECT OVERVIEW
+
+TW Framework (package: `tw-framework` on PyPI) is a Python-based full-stack web framework with App Router, Zero-JS static sites, multi-runtime API routes, and a custom DSL.
+
+- Language: Custom DSL (`.tw`, `.tss`, `.twm`, `.twp`)
+- Python: >=3.9
+- Core dependencies: None (pure Python stdlib)
+- License: MIT
+
+## 2. CLI COMMANDS
+
+```bash
+tw create my-site
+tw dev
+tw build
+tw export
+tw deploy --provider vercel
+tw plugin add seo-booster
+tw check
+tw ast
+```
+
+## 3. PAGE SYNTAX (.tw)
+
+```tw
+page home {
+  state count = 0
+  render {
+    <div>
+      <h1>Counter: {count}</h1>
+      <button onClick={count++}>Increment</button>
+    </div>
+  }
+}
+```
+
+## 4. API ROUTES (.twm)
+
+```twm
+function GET(request) {
+  return Response.json({ users: [] });
+}
+```
+
+Runtimes: nodejs (default), edge, python, wasm
+
+## 5. SPECIAL FILES
+
+| File | Purpose |
+|------|---------|
+| `page.tw` | Page component |
+| `layout.tw` | Layout |
+| `loading.tw` | Loading UI |
+| `error.tw` | Error boundary |
+| `not-found.tw` | 404 page |
+| `route.twm` | API route |
+| `middleware.tw` | Edge middleware |
+
+## 6. RENDER MODES
+
+| Mode | Description |
+|------|-------------|
+| Static | Zero-JS, prerendered at build |
+| Server | SSR with streaming |
+| Edge | Edge runtime rendering |
+| Interactive | Client-side hydration |
+| Dynamic | Always server-rendered |
+| CSR | Client-side rendering |
+
+## 7. AUTHORS
+
+- TW MRMK
+- TW MLKRAJ
+- TW ASLAM
+- TW BADAL
+- TW ROHIT
+- TW RISHU
+
+See `pyproject.toml` for full metadata.

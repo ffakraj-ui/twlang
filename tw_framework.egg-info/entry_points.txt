@@ -1,0 +1,2 @@
+[console_scripts]
+tw = tw_framework.cli:main

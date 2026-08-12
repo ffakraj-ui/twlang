@@ -1,0 +1,33 @@
+load "@../style/cta.tss"
+
+section {
+
+    class "cta"
+
+    div {
+
+        class "cta-box"
+
+        h2 "Ready to Build with TW?"
+
+        p "Start building modern apps with a powerful language and compiler."
+
+        div {
+
+            class "cta-actions"
+
+            a "Get Started" {
+                href "/docs"
+                class "primary"
+            }
+
+            a "GitHub" {
+                href "https://github.com/ffakraj-ui/twlang"
+                class "secondary"
+            }
+
+        }
+
+    }
+
+}

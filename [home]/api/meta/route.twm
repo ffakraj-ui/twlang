@@ -1,0 +1,43 @@
+fn readHeader(headers, target) {
+  const want = String(target || "").toLowerCase();
+  for (const key of Object.keys(headers || {})) {
+    if (String(key).toLowerCase() === want) {
+      return headers[key];
+    }
+  }
+  return "";
+}
+
+fn get(request) {
+  const headers = request.headers || {};
+  const cookies = request.cookies || {};
+  const trace = readHeader(headers, "X-Test-Trace") || "trace-not-provided";
+  return {
+    status: 200,
+    headers: {
+      "X-Request-Trace": trace,
+      "Cache-Control": "no-store"
+    },
+    json: {
+      ok: true,
+      timestamp: new Date().toISOString(),
+      traceId: trace,
+      headers,
+      cookies,
+      query: request.query || {}
+    }
+  };
+}
+
+fn options(request) {
+  return {
+    status: 204,
+    headers: {
+      "Allow": "GET, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Test-Trace"
+    },
+    text: ""
+  };
+}

@@ -1,0 +1,4915 @@
+import argparse
+import base64
+import contextlib
+import fnmatch
+import gzip
+import hashlib
+import hmac
+import html
+import http.server
+import json
+import logging
+import mimetypes
+import os
+import posixpath
+import re
+import secrets
+import shutil
+import socketserver
+import socket
+import subprocess
+import sys
+import threading
+import time
+import ctypes
+import select
+import struct
+import importlib.util
+import urllib.parse
+from email.utils import formatdate
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
+
+from . import compiler
+from .common import content_hash, log
+from .plugin_runtime import ExtensionManager
+from .twm_parser import compile_twm_module_to_cjs, parse_twm_functions
+from . import websocket as tw_websocket
+
+# Deployment adapter imports
+from .adapters.vercel import build_vercel_config, generate_vercel_output
+from .adapters.netlify import generate_netlify_output
+from .adapters.cloudflare import generate_cloudflare_output
+from .adapters.vercel_functions import generate_vercel_api_functions
+from .dependency_graph import DependencyGraph
+from .incremental_cache import IncrementalCache
+from .build_report import BuildReport
+from .compiler_stats import CompilerStats
+from .performance_analyzer import PerformanceAnalyzer
+from .advanced_diagnostics import run_advanced_diagnostics
+from .production_optimizer import optimize_for_production
+from .tree_shaking import shake_project
+from .dead_code import detect_dead_code
+from .route_optimizer import optimize_routes
+from .code_splitting import generate_chunks
+from .static_dynamic_auto import determine_render_mode
+from .hydration import wrap_interactive_nodes
+from .streaming import render_program_streaming
+
+# v0.9.08: New feature imports (module-level)
+from .plugin_manager import PluginManager
+from .hmr import hmr_manager
+from .prefetch import get_prefetch_script
+from .streaming import get_streaming_script, generate_skeleton
+from .image_optimizer import get_image_optimizer
+from . import isr as isr_module
+from . import edge_db as edge_db_module
+from . import deploy as deploy_module
+import concurrent
+import urllib
+
+logger = logging.getLogger(__name__)
+
+
+for ext, content_type in {
+    ".avif": "image/avif",
+    ".mjs": "application/javascript",
+    ".wasm": "application/wasm",
+    ".webmanifest": "application/manifest+json",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".yaml": "application/yaml",
+    ".yml": "application/yaml",
+    ".toml": "application/toml",
+}.items():
+    mimetypes.add_type(content_type, ext)
+
+
+SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
+DEFAULT_PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, compiler.PROJECT_ROOT))
+DEFAULT_INTERNAL_OUTPUT = os.path.join(DEFAULT_PROJECT_ROOT, "dist")
+DEFAULT_DEV_HOST = "127.0.0.1"
+DEFAULT_DEV_PORT = 3000
+DEFAULT_PREVIEW_PORT = 4173
+HIDDEN_FRAMEWORK_DIR = ".tw"
+WATCH_EXTENSIONS = {
+    ".tw", ".tss", ".ts", ".twm", ".json", ".md", ".py",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico",
+    ".env", ".txt",
+}
+
+
+@dataclass
+class BuildSummary:
+    built: int
+    skipped: int
+    removed: int
+    errors: int
+    output_dir: str
+    warnings: int = 0
+    route_collisions: int = 0
+
+
+@dataclass
+class RouteMatch:
+    page_info: dict
+    params: Dict[str, str]
+    item: Optional[dict]
+    route_path: str
+
+
+def configure_compiler_paths(project_root: str) -> None:
+    project_root = os.path.abspath(project_root)
+
+    compiler.PROJECT_ROOT = project_root
+    compiler.HOME_DIR = os.path.join(project_root, "[home]")
+    compiler.COMPONENTS_DIR = os.path.join(compiler.HOME_DIR, "components")
+    compiler.PAGES_DIR = os.path.join(compiler.HOME_DIR, "pages")
+    compiler.ASSETS_DIR = os.path.join(compiler.HOME_DIR, "assets")
+    compiler.LAYOUTS_DIR = os.path.join(compiler.HOME_DIR, "layouts")
+    compiler.API_DIR = os.path.join(compiler.HOME_DIR, "api")
+    compiler.INDEX_FILE = os.path.join(compiler.HOME_DIR, "index.tw")
+    compiler.STYLE_FILE = os.path.join(compiler.HOME_DIR, "style.tss")
+    compiler.CONFIG_FILE = os.path.join(project_root, "tw.config")
+
+    compiler.INTERNAL_DIR = os.path.join(project_root, HIDDEN_FRAMEWORK_DIR)
+    compiler.CACHE_DIR = os.path.join(compiler.INTERNAL_DIR, "cache")
+    compiler.MANIFEST_DIR = os.path.join(compiler.INTERNAL_DIR, "manifest")
+    compiler.COMPILER_DIR = os.path.join(compiler.INTERNAL_DIR, "compiler")
+
+    compiler.PUBLIC_DIR = os.path.join(project_root, "dist")
+    compiler.BUILD_DIR = compiler.PUBLIC_DIR
+    compiler.PUBLIC_ASSETS_DIR = os.path.join(compiler.PUBLIC_DIR, "assets")
+    compiler.CHUNKS_DIR = os.path.join(compiler.COMPILER_DIR, "chunks")
+    compiler.CHUNKS_PUBLIC_DIR = os.path.join(compiler.PUBLIC_DIR, "_tw", "static", "chunks")
+    compiler.CHUNKS_URL_PREFIX = "/_tw/static/chunks/"
+    compiler.BUILD_MANIFEST_FILE = os.path.join(compiler.MANIFEST_DIR, "build-manifest.json")
+    compiler.HASH_DB_FILE = os.path.join(compiler.CACHE_DIR, "hash-db.json")
+    compiler.DEPENDENCY_GRAPH_FILE = os.path.join(compiler.CACHE_DIR, "dependency-graph.json")
+
+
+@contextlib.contextmanager
+def compiler_output_context(output_root: str) -> Generator[Any, None, None]:
+    old_values = {
+        "INTERNAL_DIR": getattr(compiler, "INTERNAL_DIR", None),
+        "CACHE_DIR": getattr(compiler, "CACHE_DIR", None),
+        "MANIFEST_DIR": getattr(compiler, "MANIFEST_DIR", None),
+        "COMPILER_DIR": getattr(compiler, "COMPILER_DIR", None),
+        "PUBLIC_DIR": compiler.PUBLIC_DIR,
+        "BUILD_DIR": compiler.BUILD_DIR,
+        "PUBLIC_ASSETS_DIR": compiler.PUBLIC_ASSETS_DIR,
+        "CHUNKS_DIR": compiler.CHUNKS_DIR,
+        "CHUNKS_PUBLIC_DIR": getattr(compiler, "CHUNKS_PUBLIC_DIR", None),
+        "CHUNKS_URL_PREFIX": compiler.CHUNKS_URL_PREFIX,
+        "BUILD_MANIFEST_FILE": compiler.BUILD_MANIFEST_FILE,
+        "HASH_DB_FILE": getattr(compiler, "HASH_DB_FILE", None),
+        "DEPENDENCY_GRAPH_FILE": getattr(compiler, "DEPENDENCY_GRAPH_FILE", None),
+        "MINIFY_OUTPUT": getattr(compiler, "MINIFY_OUTPUT", False),
+    }
+
+    output_root = os.path.abspath(output_root)
+    compiler.PUBLIC_DIR = output_root
+    compiler.BUILD_DIR = output_root
+    compiler.PUBLIC_ASSETS_DIR = os.path.join(output_root, "assets")
+    compiler.CHUNKS_PUBLIC_DIR = os.path.join(output_root, "_tw", "static", "chunks")
+    compiler.CHUNKS_URL_PREFIX = "/_tw/static/chunks/"
+    compiler._CHUNK_CACHE.clear()
+
+    try:
+        yield
+    finally:
+        compiler.INTERNAL_DIR = old_values["INTERNAL_DIR"]
+        compiler.CACHE_DIR = old_values["CACHE_DIR"]
+        compiler.MANIFEST_DIR = old_values["MANIFEST_DIR"]
+        compiler.COMPILER_DIR = old_values["COMPILER_DIR"]
+        compiler.PUBLIC_DIR = old_values["PUBLIC_DIR"]
+        compiler.BUILD_DIR = old_values["BUILD_DIR"]
+        compiler.PUBLIC_ASSETS_DIR = old_values["PUBLIC_ASSETS_DIR"]
+        compiler.CHUNKS_DIR = old_values["CHUNKS_DIR"]
+        compiler.CHUNKS_PUBLIC_DIR = old_values["CHUNKS_PUBLIC_DIR"]
+        compiler.CHUNKS_URL_PREFIX = old_values["CHUNKS_URL_PREFIX"]
+        compiler.BUILD_MANIFEST_FILE = old_values["BUILD_MANIFEST_FILE"]
+        compiler.HASH_DB_FILE = old_values["HASH_DB_FILE"]
+        compiler.DEPENDENCY_GRAPH_FILE = old_values["DEPENDENCY_GRAPH_FILE"]
+        compiler.MINIFY_OUTPUT = old_values["MINIFY_OUTPUT"]
+        compiler._CHUNK_CACHE.clear()
+
+
+def invalidate_compiler_caches() -> None:
+    compiler._CHUNK_CACHE.clear()
+    compiler._COMPONENT_AST_CACHE.clear()
+    compiler._COMPONENT_EXISTS_CACHE.clear()
+    if hasattr(compiler, "_COMPONENT_PATH_CACHE"):
+        compiler._COMPONENT_PATH_CACHE.clear()
+    compiler._LAYOUT_CACHE.clear()
+    compiler._COMPONENT_DEP_GRAPH_CACHE.clear()
+    if hasattr(compiler, "_COMPONENT_STYLESHEET_PATHS"):
+        compiler._COMPONENT_STYLESHEET_PATHS.clear()
+    compiler.INLINE_SCRIPTS.clear()
+    # Reset script placeholder growth (prevents long-lived dev sessions from leaking memory)
+    if hasattr(compiler, "_SCRIPT_COUNTER"):
+        compiler._SCRIPT_COUNTER = 0
+    # Optional caches introduced by newer versions
+    if hasattr(compiler, "_LAYOUT_META_CACHE"):
+        compiler._LAYOUT_META_CACHE.clear()
+    # v0.8.48: _LAYOUT_AST_CACHE was missing from invalidation, causing
+    # layout structure edits (adding/removing components) to stay stale
+    # in `tw dev` until a full `tw clean` + restart. (Issue D)
+    if hasattr(compiler, "_LAYOUT_AST_CACHE"):
+        compiler._LAYOUT_AST_CACHE.clear()
+    # v0.8.51: Clear API route cache so .twm file changes are picked up
+    invalidate_api_route_cache()
+    # v0.8.51: Clear in-memory handler cache so .twm source changes recompile
+    invalidate_twm_handler_cache()
+
+
+def use_modular_pipeline(config: Optional[Dict] = None) -> Any:
+    env_value = os.environ.get("TW_USE_MODULAR_PIPELINE")
+    if env_value is not None and str(env_value).strip() != "":
+        return str(env_value).strip().lower() in {"1", "true", "yes", "on"}
+    config = config or compiler.load_config()
+    return compiler.to_bool(config.get("modular_pipeline", config.get("modularPipeline", False)))
+
+
+def normalize_url_path(path: str) -> Any:
+    clean = urllib.parse.urlparse(path).path
+    clean = posixpath.normpath(clean)
+    if clean == ".":
+        clean = "/"
+    if not clean.startswith("/"):
+        clean = "/" + clean
+    return clean
+
+
+def strip_trailing_slash(path: str) -> Any:
+    if path != "/" and path.endswith("/"):
+        return path[:-1]
+    return path
+
+
+def route_from_static_page(page_info: dict) -> Any:
+    # App Router pages have a canonical url_path — use it directly
+    # to avoid double-nesting (rel_dir="about" + name="about" → "/about/about")
+    # (fixed v0.8.2)
+    url_path = page_info.get("url_path")
+    if url_path:
+        return url_path
+    segments = []
+    if page_info["rel_dir"]:
+        segments.extend(page_info["rel_dir"].split(os.sep))
+    if page_info["name"] != "index":
+        is_app_router = page_info.get("app_router", False)
+        if is_app_router:
+            # Don't duplicate: if name is already the last segment of rel_dir, skip
+            if segments and segments[-1] == page_info["name"]:
+                pass
+            else:
+                segments.append(page_info["name"])
+        else:
+            segments.append(page_info["name"])
+    route = "/" + "/".join(filter(None, segments))
+    return route if route != "" else "/"
+
+
+def route_from_dynamic_page(page_info: dict, item: dict) -> Any:
+    # App Router dynamic pages: use url_path with segment substitution
+    url_path = page_info.get("url_path")
+    if url_path:
+        dyn = compiler.resolve_dynamic_segments(page_info, item)
+        if dyn:
+            seg = "/".join(dyn)
+            param = page_info.get("param", "")
+            if param:
+                # Handle [param] format (Next.js style)
+                if f"[{param}]" in url_path:
+                    return url_path.replace(f"[{param}]", seg)
+                # Handle [...param] format (catch-all)
+                if f"[...{param}]" in url_path:
+                    return url_path.replace(f"[...{param}]", seg)
+                # Handle :param format (Express style) (v0.8.38 fix)
+                if f":{param}" in url_path:
+                    return url_path.replace(f":{param}", seg)
+            return f"{url_path.rstrip('/')}/{seg}" if seg else url_path
+        return url_path
+    segments = []
+    if page_info["rel_dir"]:
+        segments.extend(page_info["rel_dir"].split(os.sep))
+    segments.extend(compiler.resolve_dynamic_segments(page_info, item))
+    return "/" + "/".join(filter(None, segments))
+
+
+def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
+    tw_path = page_info["path"]
+    config = compiler.load_config()
+    pretty_urls = compiler.to_bool(config.get("pretty_urls", config.get("prettyUrls", False)))
+
+    def render_and_write(route_path: str, render_context: Dict, out_path: str) -> Any:
+        # Clear caches before each page render so layout/style changes are fresh
+        invalidate_compiler_caches()
+        # ── App Router mode: use compose_nested_layouts ───────────────
+        if page_info.get("app_router") and page_info.get("layout_files"):
+            page_ast = compiler.load_page_ast_from_file(tw_path)
+            body_html, needs_router, head_scripts = compiler.render_elements_html(
+                page_ast.body, render_context
+            )
+            title = compiler.interpolate(page_ast.title, render_context) if page_ast.title else ""
+
+            # Compute zero_js BEFORE head_extras so theme script can be skipped
+            raw_source = ""
+            try:
+                raw_source = compiler.read_text_file(page_ast._tw_source_path) if page_ast._tw_source_path else ""
+            except (OSError, UnicodeDecodeError):
+                raw_source = ""
+
+            from .reactivity import has_reactivity
+            reactive_enabled = bool(raw_source and has_reactivity(raw_source))
+            zero_js = compiler.is_zero_js_page(
+                page_ast,
+                body_html=body_html,
+                needs_router_runtime=needs_router,
+                raw_source=raw_source,
+                reactive_enabled=reactive_enabled,
+            )
+            if isinstance(render_context, dict):
+                render_context["_zero_js"] = zero_js
+
+            head_extras = "".join(head_scripts) + compiler.build_theme_inline_script(render_context) + compiler.render_head_extras(page_ast.head, render_context)
+
+            style_lines = []
+            if page_ast.loaded_sheets:
+                _sheets = compiler._dedupe_loaded_sheets(page_ast.loaded_sheets)
+                combined = "\n\n".join(compiler.render_css(sheet, render_context) for sheet in _sheets)
+                style_lines.append(f"  <style>\n{combined}\n  </style>")
+            style_blocks = ("\n".join(style_lines) + "\n") if style_lines else ""
+
+            html_text = compiler.compose_nested_layouts(
+                layout_files=page_info["layout_files"],
+                page_body_html=body_html,
+                page_title=title,
+                page_head_extras=head_extras,
+                page_style_blocks=style_blocks,
+                page_runtime_scripts="",
+                context=render_context,
+                page=page_ast,
+                zero_js=zero_js,
+            )
+            # Inject React bootstrap + loader if page uses React
+            html_text = compiler._inject_react_integration(
+                html_text, page_ast, raw_source, render_context
+            )
+        else:
+            # ── Legacy mode: standard compile_file_pipeline ────────────
+            artifacts = compiler.compile_file_pipeline(
+                tw_path,
+                context=render_context,
+                css_href=css_url,
+                route_path=route_path,
+            )
+            html_text = artifacts.html or ""
+        if compiler.MINIFY_OUTPUT:
+            html_text = compiler.minify_html_content(html_text)
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as handle:
+            handle.write(html_text)
+        return out_path
+
+    if page_info["type"] == "static":
+        page_ast = compiler.load_page_ast_from_file(tw_path)
+        route_path = compiler.route_path_from_page_info(page_info)
+        base_context = compiler.build_page_context(page_info, page_ast, tw_path, route_path=route_path)
+        out_dir = os.path.join(compiler.BUILD_DIR, page_info["rel_dir"]) if page_info["rel_dir"] else compiler.BUILD_DIR
+        is_app_router = page_info.get("app_router", False)
+        if pretty_urls and page_info["name"] != "index":
+            if is_app_router:
+                # App Router: rel_dir already contains the route name (e.g. "about"),
+                # so we must NOT append page_info["name"] again — that causes
+                # double-nesting: dist/about/about/index.html (issues resolved v0.8.1).
+                out_path = os.path.join(out_dir, "index.html")
+            else:
+                # Legacy mode: /about -> dist/about/index.html (clean URLs)
+                out_dir = os.path.join(out_dir, page_info["name"])
+                out_path = os.path.join(out_dir, "index.html")
+        else:
+            out_path = os.path.join(out_dir, f"{page_info['name']}.html")
+        return [render_and_write(route_path, base_context, out_path)]
+
+    built_paths: List[str] = []
+    # Check for generateStaticParams directive first
+    _page_ast = compiler.load_page_ast_from_file(tw_path)
+    gsp_items = compiler.load_generate_static_params(_page_ast, tw_path)
+    if gsp_items is not None:
+        items = gsp_items
+    else:
+        items = compiler.load_dynamic_items(tw_path)
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        segments = compiler.resolve_dynamic_segments(page_info, item)
+        route_path = compiler.route_path_from_page_info(page_info, item=item)
+        context = compiler.build_page_context(page_info, compiler.load_page_ast_from_file(tw_path), tw_path, item=item, route_path=route_path)
+        out_parts = [compiler.BUILD_DIR]
+        if page_info["rel_dir"]:
+            out_parts.append(page_info["rel_dir"])
+        out_parts.extend(segments)
+        out_dir = os.path.join(*out_parts)
+        built_paths.append(render_and_write(route_path or "/", context, os.path.join(out_dir, "index.html")))
+    return built_paths
+
+
+def build_page_job_modular(page_info: dict, css_url: str) -> dict:
+    outputs = build_page_with_modular_pipeline(page_info, css_url)
+    return {"page_info": page_info, "outputs": outputs}
+
+
+def special_page_name_for_status(status_code: int) -> Any:
+    if status_code == 404:
+        return "404"
+    if status_code == 500:
+        return "500"
+    return str(status_code)
+
+
+def inject_dev_client(html_text: str) -> str:
+    # Robust live reload:
+    # - Auto-reconnect on background tab / network hiccups
+    # - Backoff retry to avoid CPU spikes
+    client = """
+<script>
+(() => {
+  let source = null;
+  let retry = 500;
+  const maxRetry = 5000;
+
+  function connect() {
+    try { if (source) source.close(); } catch (e) {}
+    source = new EventSource('/__tw/events');
+    source.onopen = () => { retry = 500; };
+    source.onmessage = (event) => {
+      if (event.data === 'reload') window.location.reload();
+    };
+    source.onerror = () => {
+      try { if (source) source.close(); } catch (e) {}
+      setTimeout(connect, retry);
+      retry = Math.min(maxRetry, retry * 2);
+    };
+  }
+
+  connect();
+})();
+</script>
+"""
+    if "</body>" in html_text:
+        return html_text.replace("</body>", client + "\n</body>", 1)
+    return html_text + client
+
+
+def _mask_ip(ip: str) -> Any:
+    if not ip:
+        return "unknown"
+    if ":" in ip:
+        parts = ip.split(":")
+        return parts[0] + ":****" if parts and parts[0] else "****"
+    parts = ip.split(".")
+    if len(parts) == 4:
+        return f"{parts[0]}.***.***.{parts[3]}"
+    return "***"
+
+
+def _ip_footer_html(ip: str) -> Any:
+    if not ip:
+        return ""
+    masked = html.escape(_mask_ip(ip))
+    real = html.escape(ip)
+    return f"""
+  <div class="tw-ip-footer" style="position:fixed;left:0;right:0;bottom:0;padding:10px 16px;font-size:12px;color:#6b7280;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <span id="tw-ip-value" onclick="this.textContent = this.textContent.indexOf('*') === -1 ? '{masked}' : '{real}'; this.style.cursor='pointer';" style="cursor:pointer;" title="Click to toggle">Your IP: {masked}</span>
+  </div>"""
+
+
+def render_error_html(title: str, message: str, status_code: int = 500, ip: str = "", page_path: str = "", error_line: int = 0, source_snippet: str = "", suggestion: str = "") -> bytes:
+    """
+    Render error HTML page.
+    v0.8.37: Enhanced with dev server error overlay — shows source code,
+    line numbers, and suggestions like Vite/Next.js.
+    """
+    ip_footer = _ip_footer_html(ip)
+    
+    # If we have source context, render a rich error overlay
+    if source_snippet and (status_code >= 500 or (status_code == 0 and page_path)):
+        return _render_error_overlay(title, message, page_path, error_line, source_snippet, suggestion).encode("utf-8")
+    
+    if status_code == 404:
+        doc = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{html.escape(title)}</title>
+  <style>
+    body {{ margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #000; }}
+    .wrap {{ text-align: center; padding: 0 24px; }}
+    h1 {{ display: inline-block; margin: 0 20px 0 0; padding-right: 20px; font-size: 24px; font-weight: 500; vertical-align: top; border-right: 1px solid rgba(0,0,0,0.3); }}
+    .msg {{ display: inline-block; text-align: left; line-height: 49px; height: 49px; }}
+    h2 {{ font-size: 14px; font-weight: 400; line-height: 49px; margin: 0; }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>{status_code}</h1>
+    <div class="msg"><h2>{html.escape(message)}</h2></div>
+  </div>
+  {ip_footer}
+</body>
+</html>"""
+        return doc.encode("utf-8")
+
+    if 400 <= status_code < 500:
+        accent = "#b45309"
+    else:
+        accent = "#b91c1c"
+    doc = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{html.escape(title)}</title>
+  <style>
+    body {{ margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fafafa; color: #111; padding: 24px; box-sizing: border-box; }}
+    .card {{ max-width: 720px; width: 100%; }}
+    .status {{ color: {accent}; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 10px; }}
+    h1 {{ margin: 0 0 16px; font-size: 24px; font-weight: 600; }}
+    pre {{ margin: 0; white-space: pre-wrap; background: #111; color: #f5f5f5; padding: 20px; border-radius: 8px; overflow: auto; line-height: 1.55; font-size: 13px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="status">HTTP {status_code}</div>
+    <h1>{html.escape(title)}</h1>
+    <pre>{html.escape(message)}</pre>
+  </div>
+  {ip_footer}
+</body>
+</html>"""
+    return doc.encode("utf-8")
+
+
+def _render_error_overlay(title, message, page_path, error_line, source_snippet, suggestion):
+    """Render a Vite-style error overlay for dev server (v0.8.37)."""
+    import html as _html
+    lines = source_snippet.split("\n")
+    source_html = ""
+    for i, line in enumerate(lines, 1):
+        is_error = (i == error_line)
+        bg = "#fee2e2" if is_error else "#1e1e1e"
+        fg = "#dc2626" if is_error else "#d4d4d4"
+        marker = "&#9654; " if is_error else "  "
+        escaped = _html.escape(line).replace(" ", "&nbsp;")
+        source_html += '<div style="background:{};color:{};padding:2px 8px;font-family:monospace;font-size:13px;line-height:1.6;"><span style="opacity:0.5;width:40px;display:inline-block;">{}</span>{}{}</div>\n'.format(bg, fg, i, marker, escaped)
+    suggestion_html = ""
+    if suggestion:
+        suggestion_html = '<div style="margin-top:16px;padding:12px 16px;background:#dbeafe;border-left:3px solid #3b82f6;border-radius:4px;"><div style="font-size:12px;font-weight:600;color:#1e40af;margin-bottom:4px;">&#128161; Suggestion</div><div style="font-size:13px;color:#1e3a5f;">{}</div></div>'.format(_html.escape(suggestion))
+    file_display = _html.escape(os.path.relpath(page_path, os.getcwd())) if page_path else "unknown"
+    return """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>&#9888; {}</title>
+<style>*{{margin:0;padding:0;box-sizing:border-box;}}body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,monospace;background:#0a0a0a;color:#f0f0f0;min-height:100vh;padding:24px;}}.overlay{{max-width:900px;margin:40px auto;}}.header{{background:#dc2626;padding:16px 24px;border-radius:8px 8px 0 0;}}.header h1{{font-size:18px;font-weight:600;}}.header .file{{font-size:13px;opacity:0.8;margin-top:4px;}}.source{{background:#1e1e1e;border-radius:0 0 8px 8px;overflow:hidden;max-height:400px;overflow-y:auto;}}.message{{padding:16px 24px;background:#1a1a1a;color:#f87171;font-family:monospace;font-size:13px;line-height:1.6;}}.actions{{margin-top:16px;display:flex;gap:12px;}}.btn{{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;}}.btn-reload{{background:#3b82f6;color:white;}}.auto-reload{{margin-top:8px;font-size:12px;color:#6b7280;}}</style>
+</head><body><div class="overlay"><div class="header"><h1>&#9888; {}</h1><div class="file">&#128196; {}{}</div></div><div class="message">&#128172; {}</div><div class="source">{}</div>{}<div class="actions"><button class="btn btn-reload" onclick="location.reload()">&#128260; Reload</button></div><div class="auto-reload">Auto-reload enabled &mdash; fix the error and save to reload automatically.</div></div><script>if(window.EventSource){{var es=new EventSource('/__tw/events');es.addEventListener('reload',function(){{location.reload();}});}}</script></body></html>""".format(
+        _html.escape(title), _html.escape(title), file_display,
+        ' (line {})'.format(error_line) if error_line else '',
+        _html.escape(message), source_html, suggestion_html
+    )
+
+
+def get_error_context(page_path, err):
+    """Extract source context around error for dev overlay (v0.8.37)."""
+    context = {"page_path": page_path, "error_line": 0, "source_snippet": "", "suggestion": ""}
+    if not page_path or not os.path.exists(page_path):
+        return context
+    try:
+        raw = compiler.read_text_file(page_path)
+        lines = raw.split("\n")
+        err_line = 0
+        if hasattr(err, 'token') and err.token:
+            err_line = getattr(err.token, 'line', 0) or 0
+        if not err_line:
+            import re as _re
+            m = _re.search(r'line (\d+)', str(err), _re.IGNORECASE)
+            if m:
+                err_line = int(m.group(1))
+        if err_line > 0:
+            start = max(0, err_line - 6)
+            end = min(len(lines), err_line + 5)
+            snippet = "\n".join(lines[start:end])
+            context["error_line"] = err_line - start
+        else:
+            snippet = "\n".join(lines[:20]) if len(lines) > 20 else raw
+        context["source_snippet"] = snippet
+        if hasattr(err, 'suggestion') and err.suggestion:
+            context["suggestion"] = str(err.suggestion)
+    except Exception:
+        pass
+    return context
+
+
+def format_compiler_error(page_path: str, err: Exception) -> Any:
+    if isinstance(err, compiler.CompilerError) and os.path.exists(page_path):
+        raw = compiler.read_text_file(page_path)
+        emitter = compiler.DiagnosticEmitter(page_path, raw)
+        return emitter.format(err)
+    return str(err)
+
+
+def safe_read_binary(path: str) -> Optional[bytes]:
+    if not os.path.exists(path) or not os.path.isfile(path):
+        return None
+    with open(path, "rb") as f:
+        return f.read()
+
+
+def is_path_within(root_path: str, candidate_path: str) -> Any:
+    try:
+        root_abs = os.path.abspath(root_path)
+        candidate_abs = os.path.abspath(candidate_path)
+        return os.path.commonpath([root_abs, candidate_abs]) == root_abs
+    except (ValueError, OSError):
+        return False
+
+
+def _normalize_config_headers(raw_value: Any) -> Any:
+    if not raw_value:
+        return []
+    if isinstance(raw_value, dict):
+        return [(str(key), str(value)) for key, value in raw_value.items()]
+    if isinstance(raw_value, list):
+        normalized = []
+        for item in raw_value:
+            if isinstance(item, dict):
+                normalized.extend((str(key), str(value)) for key, value in item.items())
+            elif isinstance(item, (list, tuple)) and len(item) == 2:
+                normalized.append((str(item[0]), str(item[1])))
+        return normalized
+    return []
+
+
+def get_security_headers(config: Optional[Dict]) -> List[Tuple[str, str]]:
+    config = config or {}
+    return (
+        _normalize_config_headers(compiler.get_config_value(config, "security", "headers"))
+        or _normalize_config_headers(config.get("security.headers"))
+        or _normalize_config_headers(config.get("security_headers"))
+        or _normalize_config_headers(config.get("headers"))
+    )
+
+
+def get_cookie_secure_mode(config: Optional[Dict]) -> str:
+    config = config or {}
+    raw_value = (
+        compiler.get_config_value(config, "cookies", "secure")
+        or config.get("cookies.secure")
+        or config.get("cookies_secure")
+        or "auto"
+    )
+    value = str(raw_value).strip().lower()
+    if value in {"true", "1", "yes", "on"}:
+        return "true"
+    if value in {"false", "0", "no", "off"}:
+        return "false"
+    return "auto"
+
+
+def request_uses_https(request_headers: Optional[Dict[str, str]] = None, server_port: Optional[int] = None) -> Any:
+    request_headers = request_headers or {}
+    forwarded_proto = str(request_headers.get("X-Forwarded-Proto", "")).split(",", 1)[0].strip().lower()
+    if forwarded_proto:
+        return forwarded_proto == "https"
+    forwarded = str(request_headers.get("Forwarded", "")).lower()
+    if "proto=https" in forwarded:
+        return True
+    return server_port == 443
+
+
+def render_cookie_header(
+    name: str,
+    value: object,
+    *,
+    config: Optional[Dict] = None,
+    request_headers: Optional[Dict[str, str]] = None,
+    server_port: Optional[int] = None,
+) -> Any:
+    rendered_value = urllib.parse.quote(str(value))
+    parts = [f"{name}={rendered_value}", "Path=/", "HttpOnly", "SameSite=Lax"]
+    secure_mode = get_cookie_secure_mode(config)
+    if secure_mode == "true" or (secure_mode == "auto" and request_uses_https(request_headers, server_port=server_port)):
+        parts.append("Secure")
+    return "; ".join(parts)
+
+
+def _csrf_secret() -> Any:
+    return (
+        os.environ.get("TW_CSRF_SECRET")
+        or os.environ.get("SECRET_KEY")
+        or os.environ.get("API_TOKEN")
+        or "tw-dev-csrf-secret"
+    )
+
+
+def _csrf_session_hint(request: Optional[Dict]) -> Any:
+    cookies = dict((request or {}).get("cookies") or {})
+    for key in ("session_id", "session", "sid"):
+        if cookies.get(key):
+            return str(cookies[key])
+    return ""
+
+
+def generate_csrf_token(request: Optional[Dict] = None) -> Any:
+    issued_at = str(int(time.time()))
+    nonce = secrets.token_urlsafe(16)
+    session_hint = _csrf_session_hint(request)
+    payload = f"{issued_at}:{nonce}:{session_hint}"
+    signature = hmac.new(_csrf_secret().encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    token = f"{payload}:{signature}".encode("utf-8")
+    return base64.urlsafe_b64encode(token).decode("ascii").rstrip("=")
+
+
+def verify_csrf_token(token: str, request: Optional[Dict] = None, *, max_age: int = 7200) -> Any:
+    if not token:
+        return False
+    try:
+        padding = "=" * (-len(token) % 4)
+        decoded = base64.urlsafe_b64decode((token + padding).encode("ascii")).decode("utf-8")
+        issued_at, nonce, session_hint, signature = decoded.split(":", 3)
+        payload = f"{issued_at}:{nonce}:{session_hint}"
+    except Exception:
+        return False
+    expected_signature = hmac.new(_csrf_secret().encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature, expected_signature):
+        return False
+    try:
+        if int(time.time()) - int(issued_at) > int(max_age):
+            return False
+    except (TypeError, ValueError):
+        return False
+    return session_hint == _csrf_session_hint(request)
+
+
+class TokenBucketRateLimiter:
+    def __init__(self, capacity: int, window_seconds: float) -> None:
+        self.capacity = max(1, int(capacity))
+        self.window_seconds = max(float(window_seconds), 1.0)
+        self.refill_rate = self.capacity / self.window_seconds
+        self._state: Dict[str, Tuple[float, float]] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, bucket_key: str) -> bool:
+        now = time.monotonic()
+        with self._lock:
+            tokens, updated_at = self._state.get(bucket_key, (float(self.capacity), now))
+            elapsed = max(0.0, now - updated_at)
+            tokens = min(float(self.capacity), tokens + elapsed * self.refill_rate)
+            if tokens < 1.0:
+                self._state[bucket_key] = (tokens, now)
+                return False
+            self._state[bucket_key] = (tokens - 1.0, now)
+            return True
+
+
+def parse_env_file(path: str) -> Dict[str, str]:
+    values = {}
+    if not os.path.exists(path):
+        return values
+    with open(path, "r", encoding="utf-8") as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            # Support `KEY=value # comment` (comment starts only when preceded by whitespace).
+            # If value is quoted, keep everything inside quotes.
+            if value.startswith(("'", '"')) and len(value) >= 2:
+                quote = value[0]
+                # Find the matching quote; anything after it is ignored (including comments).
+                end_idx = value.find(quote, 1)
+                if end_idx != -1:
+                    value = value[1:end_idx]
+                    # FIX #140: Unescape escaped quotes
+                    value = value.replace("\\" + quote, quote)
+                    value = value.replace("\\\\", "\\")
+                else:
+                    value = value.strip(quote)
+            else:
+                value = re.split(r"\s+#", value, 1)[0].strip()
+            values[key] = value
+    return values
+
+
+def load_project_env(project_root: str, mode: str) -> Dict[str, str]:
+    env = {}
+    for name in [".env", f".env.{mode}", ".env.local"]:
+        env.update(parse_env_file(os.path.join(project_root, name)))
+    for key, value in env.items():
+        os.environ[key] = value
+    return env
+
+
+def _check_env_type(name: str, value: str, expected_type: str) -> Optional[str]:
+    expected_type = (expected_type or "").strip().lower()
+    if expected_type in ("", "string", "str"):
+        return None
+    if expected_type == "number":
+        try:
+            float(value)
+            return None
+        except (TypeError, ValueError):
+            return f"{name} (expected a number, got `{value}`)"
+    if expected_type in ("boolean", "bool"):
+        if str(value).strip().lower() in {"true", "false", "1", "0", "yes", "no"}:
+            return None
+        return f"{name} (expected a boolean like true/false, got `{value}`)"
+    if expected_type == "url":
+        if re.match(r"^https?://\S+", str(value).strip()):
+            return None
+        return f"{name} (expected a URL starting with http:// or https://, got `{value}`)"
+    return None
+
+
+def validate_env_schema(config: dict, env: Dict[str, str]) -> List[str]:
+    def get_value(name: str) -> Optional[str]:
+        value = env.get(name)
+        return value if value is not None else os.environ.get(name)
+
+    issues: List[str] = []
+
+    raw_required = compiler.get_config_value(config, "env", "required", default="")
+    if isinstance(raw_required, str):
+        required_names = [part.strip() for part in raw_required.split(",") if part.strip()]
+    elif isinstance(raw_required, (list, tuple)):
+        required_names = [str(part).strip() for part in raw_required if str(part).strip()]
+    else:
+        required_names = []
+
+    for name in required_names:
+        value = get_value(name)
+        if value is None or str(value).strip() == "":
+            issues.append(f"{name} (missing)")
+
+    raw_types = compiler.get_config_value(config, "env", "types", default="")
+    type_map: Dict[str, str] = {}
+    if isinstance(raw_types, str):
+        for pair in raw_types.split(","):
+            pair = pair.strip()
+            if not pair or ":" not in pair:
+                continue
+            name, _, type_name = pair.partition(":")
+            type_map[name.strip()] = type_name.strip()
+    elif isinstance(raw_types, dict):
+        type_map = {str(k).strip(): str(v).strip() for k, v in raw_types.items()}
+
+    for name, type_name in type_map.items():
+        value = get_value(name)
+        if value is None or str(value).strip() == "":
+            continue
+        issue = _check_env_type(name, value, type_name)
+        if issue:
+            issues.append(issue)
+
+    return issues
+
+
+def warn_missing_env(issues: List[str]) -> None:
+    if not issues:
+        return
+    log("", level="warning")
+    log("\u26a0 Environment variable issue(s):", level="warning")
+    for issue in issues:
+        log(f"   - {issue}", level="warning")
+    log("  Set these in `.env`, `.env.development`, or `.env.local` before relying on them.", level="warning")
+    log("  Declared in `tw.config` under `env: required:` / `env: types:`.", level="warning")
+    log("", level="warning")
+
+
+def discover_ws_routes(project_root: str) -> Dict[str, str]:
+    routes = {}
+    ws_dir = os.path.join(project_root, "[home]", "ws")
+    if not os.path.isdir(ws_dir):
+        return routes
+    for dirpath, _, filenames in os.walk(ws_dir):
+        for filename in sorted(filenames):
+            if not filename.endswith(".py") or filename.startswith("_"):
+                continue
+            full_path = os.path.join(dirpath, filename)
+            rel = os.path.relpath(full_path, ws_dir)
+            rel = rel[:-3] if rel.endswith(".py") else rel
+            rel = rel.replace(os.sep, "/")
+            if rel.endswith("/index"):
+                rel = rel[: -len("/index")]
+            elif rel == "index":
+                rel = ""
+            route = "/ws/" + rel if rel else "/ws"
+            routes[route] = full_path
+    return routes
+
+
+def load_ws_handler(path: str) -> Any:
+    module_name = f"tw_ws_{os.path.splitext(os.path.basename(path))[0]}_{content_hash(path, length=10)}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        logger.exception("Failed to load WebSocket route: %s", path)
+        return None
+    handler = getattr(module, "on_connect", None)
+    return handler if callable(handler) else None
+
+
+def parse_cookie_header(raw_value: str) -> Dict[str, str]:
+    cookies = {}
+    if not raw_value:
+        return cookies
+    for part in raw_value.split(";"):
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        cookies[key.strip()] = urllib.parse.unquote(value.strip())
+    return cookies
+
+
+def match_path_pattern(path: str, pattern: str) -> Any:
+    if not pattern or pattern in {"*", "/**"}:
+        return True
+    if pattern.endswith("/**"):
+        return path.startswith(pattern[:-3] or "/")
+    return fnmatch.fnmatch(path, pattern)
+
+
+def middleware_file_candidates(project_root: str) -> List[str]:
+    return [
+        os.path.join(project_root, "middleware.tw"),
+        os.path.join(compiler.HOME_DIR, "middleware.tw"),
+        os.path.join(compiler.HOME_DIR, "middleware", "index.tw"),
+    ]
+
+
+def parse_value_token(tokens, i) -> Any:
+    expr, j = compiler.collect_until_eol(tokens, i, stop_on_block_open=True)
+    if not expr:
+        raise RuntimeError("Expected value token")
+    return compiler.parse_literal_value(expr), j
+
+
+def parse_single_value_token(tokens, i) -> Any:
+    """Parse exactly one literal token (STRING or WORD), without consuming
+    the rest of the line. Needed for directives that carry more than one
+    value on the same line, e.g. `auth "cookie" "redirect"`."""
+    if i >= len(tokens):
+        raise RuntimeError("Expected value token")
+    tok = tokens[i]
+    if tok.type == "STRING":
+        return tok.value, i + 1
+    if tok.type == "WORD" and tok.value not in {"{", "}", "[", "]", "(", ")"}:
+        return compiler.parse_literal_value(tok.value), i + 1
+    raise RuntimeError("Expected value token")
+
+
+def _extract_fn_middleware(source: str, hook_name: str) -> Optional[str]:
+    """v0.8.50 (Issue 1): Extract a `fn before(request)` or `fn after(response)`
+    function body from middleware.tw source text.
+
+    Returns the raw function body text (between the braces), or None.
+    The body is a simple JS-like object manipulation snippet that we
+    evaluate as Python after translating the response/request dict access.
+    """
+    pattern = re.compile(
+        r'fn\s+' + hook_name + r'\s*\([^)]*\)\s*\{',
+        re.MULTILINE,
+    )
+    m = pattern.search(source)
+    if not m:
+        return None
+    # Find the matching closing brace
+    start = m.end()
+    depth = 1
+    i = start
+    while i < len(source) and depth > 0:
+        if source[i] == '{':
+            depth += 1
+        elif source[i] == '}':
+            depth -= 1
+        i += 1
+    if depth != 0:
+        return None
+    return source[start:i - 1].strip()
+
+
+def _run_fn_middleware(body: str, ctx: dict, hook_name: str) -> Optional[dict]:
+    """v0.8.50 (Issue 1): Execute a fn-style middleware body.
+
+    The body uses JS-like syntax: `response.headers["X"] = "value"` or
+    `return { status: 302, headers: { "Location": "/login" } }`.
+    We translate it to Python and eval it safely with the request/response
+    dict as context.
+
+    Returns the modified context dict if the function returned one, or
+    the original context if it modified it in-place.  Returns None on error.
+    """
+    if not body:
+        return None
+    try:
+        # Translate JS-like syntax to Python
+        py_body = body
+        # response.headers["key"] = "value" -> ctx["response"]["headers"]["key"] = "value"
+        py_body = re.sub(r'\bresponse\b', 'ctx["response"]', py_body)
+        py_body = re.sub(r'\brequest\b', 'ctx["request"]', py_body)
+        # Remove "return" — we capture the last expression
+        py_body = py_body.replace('return ', 'ctx["result"] = ')
+        # Translate JS object syntax { key: value } -> { "key": value }
+        py_body = re.sub(r'(\w+):', r'"\1":', py_body)
+        # Execute in a restricted namespace
+        namespace = {"ctx": ctx, "json": json}
+        exec(compile(py_body, "<middleware_fn>", "exec"), namespace)
+        if ctx.get("result") is not None:
+            return ctx["result"]
+        return ctx
+    except Exception as err:
+        logger.warning("fn %s middleware execution failed: %s", hook_name, err)
+        return None
+
+
+def parse_middleware_rules(project_root: str) -> Any:
+    source_path = next((path for path in middleware_file_candidates(project_root) if os.path.exists(path)), None)
+    if not source_path:
+        return []
+
+    raw_source = compiler.read_text_file(source_path)
+    tokens = compiler.tokenize_tw(raw_source)
+    rules = []
+
+    # v0.8.50 (Issue 1): Extract fn-style middleware hooks (fn before/after).
+    # These are simple function definitions that the user puts in middleware.tw
+    # alongside (or instead of) rule blocks.  We store the raw function body
+    # as a Python-evaluated callable so apply_middleware can invoke it.
+    fn_before_body = _extract_fn_middleware(raw_source, "before")
+    fn_after_body = _extract_fn_middleware(raw_source, "after")
+    if fn_before_body or fn_after_body:
+        # Store as a special rule that apply_middleware checks first
+        rules.insert(0, {
+            "_fn_middleware": True,
+            "before": fn_before_body,
+            "after": fn_after_body,
+        })
+
+    def skip_separators(index) -> Any:
+        while index < len(tokens) and compiler.is_statement_separator(tokens[index]):
+            index += 1
+        return index
+
+    def expect_block(index, label) -> Any:
+        index = skip_separators(index)
+        if index >= len(tokens) or tokens[index].type != "BRACE" or tokens[index].value != "{":
+            raise RuntimeError(f"Expected `{{` after `{label}` in middleware.tw")
+        return index + 1
+
+    def ensure_list(value) -> List[Any]:
+        if value is None:
+            return []
+        if isinstance(value, (list, tuple, set)):
+            return [str(item) for item in value]
+        return [str(value)]
+
+    def parse_object_block(index) -> Any:
+        index = expect_block(index, "json")
+        data = {}
+        while index < len(tokens):
+            tok = tokens[index]
+            if compiler.is_statement_separator(tok):
+                index += 1
+                continue
+            if tok.type == "BRACE" and tok.value == "}":
+                index += 1
+                break
+            if tok.type != "WORD":
+                raise RuntimeError("Invalid object key in middleware.tw")
+            key = tok.value
+            index += 1
+            index = skip_separators(index)
+            if index < len(tokens) and tokens[index].type == "BRACE" and tokens[index].value == "{":
+                value, index = parse_object_block(index - 0)
+            else:
+                value, index = parse_value_token(tokens, index)
+            data[key] = value
+        return data, index
+
+    def parse_response_block(index) -> Any:
+        index = expect_block(index, "response")
+        response = {"headers": [], "cookies": []}
+        while index < len(tokens):
+            tok = tokens[index]
+            if compiler.is_statement_separator(tok):
+                index += 1
+                continue
+            if tok.type == "BRACE" and tok.value == "}":
+                index += 1
+                break
+            if tok.type != "WORD":
+                raise RuntimeError("Invalid response directive in middleware.tw")
+            key = tok.value
+            index += 1
+            if key == "status":
+                response["status"], index = parse_value_token(tokens, index)
+            elif key in {"text", "html", "content_type"}:
+                response[key], index = parse_value_token(tokens, index)
+            elif key == "json":
+                response["json"], index = parse_object_block(index)
+            elif key == "header":
+                header_name, index = parse_single_value_token(tokens, index)
+                header_value, index = parse_single_value_token(tokens, index)
+                response["headers"].append((str(header_name), str(header_value)))
+            elif key == "cookie":
+                cookie_name, index = parse_single_value_token(tokens, index)
+                cookie_value, index = parse_single_value_token(tokens, index)
+                response["cookies"].append((str(cookie_name), str(cookie_value)))
+            else:
+                raise RuntimeError(f"Unsupported response key: {key}")
+        return response, index
+
+    def parse_user_agent_block(index) -> Any:
+        index = expect_block(index, "user_agent")
+        spec = {"allow": [], "block": [], "empty_is_blocked": False}
+        while index < len(tokens):
+            tok = tokens[index]
+            if compiler.is_statement_separator(tok):
+                index += 1
+                continue
+            if tok.type == "BRACE" and tok.value == "}":
+                index += 1
+                break
+            if tok.type != "WORD":
+                raise RuntimeError("Invalid user_agent directive in middleware.tw")
+            key = tok.value
+            index += 1
+            if key in {"allow", "block"}:
+                value, index = parse_value_token(tokens, index)
+                spec[key] = ensure_list(value)
+            elif key == "empty_is_blocked":
+                value, index = parse_value_token(tokens, index)
+                spec["empty_is_blocked"] = bool(value)
+            else:
+                raise RuntimeError(f"Unsupported user_agent key: {key}")
+        return spec, index
+
+    def parse_origin_block(index) -> Any:
+        index = expect_block(index, "origin")
+        spec = {"allow": [], "allow_referer": True, "require": False}
+        while index < len(tokens):
+            tok = tokens[index]
+            if compiler.is_statement_separator(tok):
+                index += 1
+                continue
+            if tok.type == "BRACE" and tok.value == "}":
+                index += 1
+                break
+            if tok.type != "WORD":
+                raise RuntimeError("Invalid origin directive in middleware.tw")
+            key = tok.value
+            index += 1
+            if key == "allow":
+                value, index = parse_value_token(tokens, index)
+                spec["allow"] = ensure_list(value)
+            elif key in {"allow_referer", "require"}:
+                value, index = parse_value_token(tokens, index)
+                spec[key] = bool(value)
+            else:
+                raise RuntimeError(f"Unsupported origin key: {key}")
+        return spec, index
+
+    def parse_path_block(index) -> Any:
+        index = expect_block(index, "path")
+        spec = {
+            "prefixes": [],
+            "contains": [],
+            "extensions": [],
+            "regex": [],
+            "single_segment_max": 0,
+            "deny_traversal": True,
+            "deny_null_bytes": True,
+        }
+        while index < len(tokens):
+            tok = tokens[index]
+            if compiler.is_statement_separator(tok):
+                index += 1
+                continue
+            if tok.type == "BRACE" and tok.value == "}":
+                index += 1
+                break
+            if tok.type != "WORD":
+                raise RuntimeError("Invalid path directive in middleware.tw")
+            key = tok.value
+            index += 1
+            if key in {"prefixes", "contains", "extensions", "regex"}:
+                value, index = parse_value_token(tokens, index)
+                spec[key] = ensure_list(value)
+            elif key == "single_segment_max":
+                value, index = parse_value_token(tokens, index)
+                spec[key] = int(value or 0)
+            elif key in {"deny_traversal", "deny_null_bytes"}:
+                value, index = parse_value_token(tokens, index)
+                spec[key] = bool(value)
+            else:
+                raise RuntimeError(f"Unsupported path key: {key}")
+        return spec, index
+
+    def parse_auth_block(index) -> Any:
+        index = expect_block(index, "auth")
+        spec = {"cookie": "", "jwt_secret": "", "jwt_secret_env": "", "required": True}
+        while index < len(tokens):
+            tok = tokens[index]
+            if compiler.is_statement_separator(tok):
+                index += 1
+                continue
+            if tok.type == "BRACE" and tok.value == "}":
+                index += 1
+                break
+            if tok.type != "WORD":
+                raise RuntimeError("Invalid auth directive in middleware.tw")
+            key = tok.value
+            index += 1
+            if key in {"cookie", "jwt_secret", "jwt_secret_env"}:
+                spec[key], index = parse_value_token(tokens, index)
+            elif key == "required":
+                value, index = parse_value_token(tokens, index)
+                spec["required"] = bool(value)
+            else:
+                raise RuntimeError(f"Unsupported auth key: {key}")
+        return spec, index
+
+    def parse_rate_limit_block(index) -> Any:
+        index = expect_block(index, "rate_limit")
+        rate_limit = {"identity": "ip", "bucket_segments": 2}
+        while index < len(tokens):
+            tok = tokens[index]
+            if compiler.is_statement_separator(tok):
+                index += 1
+                continue
+            if tok.type == "BRACE" and tok.value == "}":
+                index += 1
+                break
+            if tok.type != "WORD":
+                raise RuntimeError("Invalid rate_limit directive")
+            inner_key = tok.value
+            index += 1
+            inner_value, index = parse_value_token(tokens, index)
+            rate_limit[inner_key] = inner_value
+        requests = int(compiler.parse_config_scalar(rate_limit.get("requests", 0)) or 0)
+        window = float(compiler.parse_config_scalar(rate_limit.get("window", 0)) or 0)
+        if requests <= 0 or window <= 0:
+            raise RuntimeError("`rate_limit` requires positive `requests` and `window` values")
+        return {
+            "requests": requests,
+            "window": window,
+            "identity": str(rate_limit.get("identity", "ip") or "ip"),
+            "bucket_segments": int(rate_limit.get("bucket_segments", 2) or 2),
+        }, index
+
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if compiler.is_statement_separator(token):
+            i += 1
+            continue
+        if token.type == "WORD" and token.value in {"use", "rule"}:
+            i += 1
+            i = skip_separators(i)
+            rule = {"name": "", "match": "/**", "methods": [], "headers": [], "cookies": []}
+            if i < len(tokens) and tokens[i].type in {"STRING", "WORD"}:
+                next_tok = tokens[i + 1] if i + 1 < len(tokens) else None
+                if next_tok and next_tok.type == "BRACE" and next_tok.value == "{":
+                    rule["name"] = str(tokens[i].value)
+                    i += 1
+            i = expect_block(i, token.value)
+            while i < len(tokens):
+                tok = tokens[i]
+                if compiler.is_statement_separator(tok):
+                    i += 1
+                    continue
+                if tok.type == "BRACE" and tok.value == "}":
+                    i += 1
+                    break
+                if tok.type != "WORD":
+                    raise RuntimeError("Invalid middleware directive")
+                key = tok.value
+                i += 1
+                if key == "match":
+                    rule["match"], i = parse_value_token(tokens, i)
+                elif key == "methods":
+                    methods, i = parse_value_token(tokens, i)
+                    rule["methods"] = [str(item).upper() for item in ensure_list(methods)]
+                elif key == "redirect":
+                    rule["redirect"], i = parse_value_token(tokens, i)
+                elif key == "rewrite":
+                    rule["rewrite"], i = parse_value_token(tokens, i)
+                elif key == "response":
+                    rule["response"], i = parse_response_block(i)
+                elif key == "user_agent":
+                    rule["user_agent"], i = parse_user_agent_block(i)
+                elif key == "origin":
+                    rule["origin"], i = parse_origin_block(i)
+                elif key == "path":
+                    rule["path_rule"], i = parse_path_block(i)
+                elif key == "auth_rule":
+                    rule["auth_rule"], i = parse_auth_block(i)
+                elif key == "deny":
+                    # Syntax:
+                    #   deny 403 "Forbidden"
+                    # Returns an immediate response without redirect/rewrite.
+                    raw_status, i = parse_value_token(tokens, i)
+                    status = int(compiler.parse_config_scalar(raw_status) or raw_status)
+                    # Optional message/body
+                    message = "Forbidden"
+                    if i < len(tokens) and not compiler.is_statement_separator(tokens[i]) and not (
+                        tokens[i].type == "BRACE" and tokens[i].value == "}"
+                    ):
+                        message, i = parse_value_token(tokens, i)
+                    rule["deny"] = {"status": status, "body": str(message)}
+                elif key == "auth":
+                    i = skip_separators(i)
+                    if i < len(tokens) and tokens[i].type == "BRACE" and tokens[i].value == "{":
+                        rule["auth_rule"], i = parse_auth_block(i)
+                    else:
+                        cookie_name, i = parse_single_value_token(tokens, i)
+                        redirect_to, i = parse_single_value_token(tokens, i)
+                        rule["auth"] = {"cookie": cookie_name, "redirect": redirect_to}
+                elif key == "header":
+                    header_name, i = parse_single_value_token(tokens, i)
+                    header_value, i = parse_single_value_token(tokens, i)
+                    rule["headers"].append((str(header_name), str(header_value)))
+                elif key == "cookie":
+                    cookie_name, i = parse_single_value_token(tokens, i)
+                    cookie_value, i = parse_single_value_token(tokens, i)
+                    rule["cookies"].append((str(cookie_name), str(cookie_value)))
+                elif key == "rate_limit":
+                    rule["rate_limit"], i = parse_rate_limit_block(i)
+                elif key in {"status", "text", "html", "content_type"}:
+                    rule.setdefault("response", {"headers": [], "cookies": []})
+                    value, i = parse_value_token(tokens, i)
+                    rule["response"][key] = value
+                elif key == "json":
+                    rule.setdefault("response", {"headers": [], "cookies": []})
+                    rule["response"]["json"], i = parse_object_block(i)
+                else:
+                    raise RuntimeError(f"Unsupported middleware key: {key}")
+            rules.append(rule)
+            continue
+        i += 1
+    return rules
+
+
+def _middleware_header(request_headers: Dict[str, str], name: str, default: str = "") -> Any:
+    lname = str(name).lower()
+    for key, value in (request_headers or {}).items():
+        if str(key).lower() == lname:
+            return str(value)
+    return default
+
+
+def _middleware_list(value: Any) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return [str(item) for item in value]
+    return [str(value)]
+
+
+def _middleware_referer_origin(referer: str) -> Any:
+    parsed = urllib.parse.urlparse(str(referer or ""))
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _jwt_b64url_decode(value: str) -> bytes:
+    padding = "=" * ((4 - (len(value) % 4)) % 4)
+    return base64.urlsafe_b64decode((value + padding).encode("ascii"))
+
+
+def _verify_hs256_jwt(token: str, secret: str) -> bool:
+    try:
+        parts = str(token or "").split(".")
+        if len(parts) != 3:
+            return False
+        header, payload, signature = parts
+        signing_input = f"{header}.{payload}".encode("utf-8")
+        expected = hmac.new(str(secret or "").encode("utf-8"), signing_input, hashlib.sha256).digest()
+        actual = _jwt_b64url_decode(signature)
+        if not hmac.compare_digest(expected, actual):
+            return False
+        payload_obj = json.loads(_jwt_b64url_decode(payload).decode("utf-8", errors="replace") or "{}")
+        exp = payload_obj.get("exp")
+        if exp and time.time() > float(exp):
+            return False
+        return True
+    except Exception:
+        return False
+
+
+def _build_middleware_response(
+    rule: dict,
+    result: dict,
+    *,
+    default_status: int,
+    default_text: str,
+    default_content_type: str = "text/plain; charset=utf-8",
+    extra_headers: Optional[List[Tuple[str, str]]] = None,
+) -> dict:
+    spec = dict(rule.get("response") or {})
+    status = int(spec.get("status", default_status) or default_status)
+    headers = list(result.get("headers", [])) + list(spec.get("headers", [])) + list(extra_headers or [])
+    cookies = list(result.get("cookies", [])) + list(spec.get("cookies", []))
+    if "json" in spec:
+        body = json.dumps(spec.get("json"), ensure_ascii=False).encode("utf-8")
+        content_type = str(spec.get("content_type") or "application/json; charset=utf-8")
+    elif "html" in spec:
+        body = str(spec.get("html", default_text) or default_text).encode("utf-8")
+        content_type = str(spec.get("content_type") or "text/html; charset=utf-8")
+    else:
+        body = str(spec.get("text", default_text) or default_text).encode("utf-8")
+        content_type = str(spec.get("content_type") or default_content_type)
+    return {
+        "status": status,
+        "content_type": content_type,
+        "body": body,
+        "headers": headers,
+        "cookies": cookies,
+    }
+
+
+def discover_api_routes() -> List[dict]:
+    routes = discover_twm_api_handlers()
+    routes.extend(discover_app_router_api_routes())
+    return routes
+
+
+def discover_app_router_api_routes() -> List[dict]:
+    """
+    Discover route.tw files in App Router mode.
+
+    In App Router mode, route.tw files inside [home]/ (or its subdirectories)
+    are treated as API endpoints. They use the same .twm syntax as legacy
+    route.twm files, but are discovered via the App Router directory structure.
+
+    A route.tw in [home]/api/apps/route.tw -> /api/apps
+    """
+    routes = []
+    try:
+        from .app_router import has_app_router_structure, discover_routes as _discover_app_routes
+    except ImportError:
+        return routes
+
+    if not has_app_router_structure(compiler.HOME_DIR):
+        return routes
+
+    app_routes = _discover_app_routes(compiler.HOME_DIR)
+    for route in app_routes:
+        if not route.is_api:
+            continue
+        routes.append({
+            "path": route.api_file,
+            "route": route.url_path,
+            "lang": "twm",
+        })
+    return routes
+
+
+_API_ROUTE_CACHE: Optional[List[dict]] = None
+_API_ROUTE_CACHE_LOCK = threading.Lock()
+
+
+_RUNTIME_DIRECTIVE_RE = re.compile(r'^[ \t]*runtime[ \t]*=[ \t]*["\']?(nodejs|node|python|edge|edge-v8|wasm)["\']?[ \t]*$', re.MULTILINE)
+
+
+def _parse_runtime_directive(handler_path: str) -> str:
+    """v0.9.0: Parse `runtime = "edge"` from a .twm file.
+
+    Returns the runtime name, or "nodejs" (default) if not specified.
+    """
+    try:
+        source = compiler.read_text_file(handler_path)
+    except Exception:
+        return "nodejs"
+    m = _RUNTIME_DIRECTIVE_RE.search(source)
+    if m:
+        name = m.group(1).lower()
+        # Normalize "node" → "nodejs"
+        return "nodejs" if name == "node" else name
+    return "nodejs"
+
+
+def _execute_with_runtime(handler_path: str, runtime_name: str, method: str,
+                           url_path: str, headers: Dict[str, str], body: object) -> dict:
+    """v0.9.0: Execute a .twm handler using a specific runtime.
+
+    For "python" and "edge": executes in-process via Python evaluation.
+    For "nodejs": delegates to execute_twm_api_handler (Node.js subprocess/persistent).
+    For "wasm": executes in restricted Python sandbox (future: wasmtime).
+    """
+    from .tw_runtime import get_runtime, tw, validate_runtime_compatibility, RuntimeValidationError
+
+    runtime = get_runtime(runtime_name)
+    if runtime is None:
+        return {
+            "status": 500,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": f"Unknown runtime: {runtime_name!r}"}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    # Set the active runtime on the tw singleton
+    tw.set_runtime(runtime)
+
+    # Read handler source
+    try:
+        source = compiler.read_text_file(handler_path)
+    except Exception as err:
+        return {
+            "status": 500,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": f"Failed to read handler: {err}"}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    # Build request context
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(url_path).query, keep_blank_values=True)
+    query = {k: v[0] if len(v) == 1 else v for k, v in query.items()}
+    cookies = parse_cookie_header(headers.get("Cookie", ""))
+
+    # v0.9.05: edge runtime is now V8/QuickJS-based (not Python exec)
+    # edge and edge-v8 both go through the V8 sandbox
+    if runtime_name in ("edge", "edge-v8"):
+        return _execute_with_edge_v8(source, runtime, method, url_path, query,
+                                     headers, cookies, body, handler_path)
+
+    # python/wasm runtimes: evaluate the .twm handler in-process via Python
+    if runtime_name in ("python", "wasm"):
+        request_data = {
+            "method": method.upper(),
+            "path": normalize_url_path(url_path),
+            "query": query,
+            "body": body,
+            "headers": headers,
+            "cookies": cookies,
+            "env": dict(os.environ),
+        }
+        return _execute_twm_in_python(source, runtime, request_data, handler_path)
+
+    # v0.9.03: edge-v8 runtime -- real JavaScript sandbox (V8/QuickJS)
+    if runtime_name == "edge-v8":
+        return _execute_with_edge_v8(source, runtime, method, url_path, query,
+                                     headers, cookies, body, handler_path)
+
+    # Fallback to Node.js
+    return execute_twm_api_handler(handler_path, method, url_path, headers, body)
+
+
+def _execute_with_edge_v8(source: str, runtime, method: str, url_path: str,
+                           query: dict, headers: dict, cookies: dict,
+                           body: object, handler_path: str) -> dict:
+    """v0.9.03: Execute a .twm handler inside the V8/QuickJS JS sandbox.
+
+    This is TW's real JavaScript Edge runtime -- like Next.js Edge Runtime.
+    """
+    import re as _re
+
+    method_lower = method.lower()
+    fn_pattern = _re.compile(
+        r'fn\s+(' + method_lower + r'|handler)\s*\([^)]*\)\s*\{',
+        _re.MULTILINE,
+    )
+    m = fn_pattern.search(source)
+    if not m:
+        allowed = _re.findall(r'fn\s+(\w+)\s*\(', source)
+        return {
+            "status": 405,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": f"Method {method.upper()} not allowed", "allowed": allowed}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    start = m.end()
+    depth = 1
+    i = start
+    while i < len(source) and depth > 0:
+        if source[i] == '{':
+            depth += 1
+        elif source[i] == '}':
+            depth -= 1
+        i += 1
+    fn_body = source[start:i - 1].strip()
+
+    fn_body = _RUNTIME_DIRECTIVE_RE.sub("", fn_body)
+
+    request_data = {
+        "method": method.upper(),
+        "path": normalize_url_path(url_path),
+        "query": query,
+        "body": body,
+        "headers": headers,
+        "cookies": cookies,
+        "env": dict(os.environ),
+    }
+
+    if hasattr(runtime, "execute_handler"):
+        return runtime.execute_handler(fn_body, method, request_data, handler_path)
+    else:
+        return {
+            "status": 500,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": "Edge V8 runtime not properly configured"}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+
+def _execute_twm_in_python(source: str, runtime, request_data: dict, handler_path: str) -> dict:
+    """v0.9.0: Execute a .twm handler directly in Python (python/edge/wasm runtime).
+
+    Translates the JS-like .twm function syntax to Python and evaluates it
+    in a namespace where `tw`, `request`, and standard library are available.
+    """
+    import tw_framework.tw_runtime as twrt
+
+    # Extract the handler function (e.g. fn get(request) { ... })
+    method = request_data["method"].lower()
+    fn_pattern = re.compile(
+        r'fn\s+(' + method + r'|handler)\s*\([^)]*\)\s*\{',
+        re.MULTILINE,
+    )
+    m = fn_pattern.search(source)
+    if not m:
+        allowed = re.findall(r'fn\s+(\w+)\s*\(', source)
+        return {
+            "status": 405,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": f"Method {method.upper()} not allowed", "allowed": allowed}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    # Extract function body
+    start = m.end()
+    depth = 1
+    i = start
+    while i < len(source) and depth > 0:
+        if source[i] == '{':
+            depth += 1
+        elif source[i] == '}':
+            depth -= 1
+        i += 1
+    fn_body = source[start:i - 1].strip()
+
+    # Strip `runtime = "..."` directive lines from source
+    fn_body = _RUNTIME_DIRECTIVE_RE.sub("", fn_body)
+
+    # Translate JS-like syntax to Python
+    py_body = fn_body
+    # `return { key: value }` → `return { "key": value }`  (JS object keys)
+    py_body = re.sub(r'(\w+):', r'"\1":', py_body)
+    # `null` → `None`, `true` → `True`, `false` → `False`
+    py_body = py_body.replace("null", "None").replace("true", "True").replace("false", "False")
+
+    # Build execution namespace
+    namespace = {
+        "tw": twrt.tw,
+        "request": request_data,
+        "json": json,
+        "os": os,
+        "re": re,
+        "__name__": "__twm_handler__",
+    }
+
+    # Add runtime-specific imports for python runtime
+    if runtime.runtime_name == "python":
+        namespace.update({
+            "hashlib": __import__("hashlib"),
+            "hmac": __import__("hmac"),
+            "secrets": __import__("secrets"),
+            "sqlite3": __import__("sqlite3"),
+            "urllib": __import__("urllib.request", fromlist=["urllib"]),
+        })
+
+    try:
+        exec(compile(py_body, handler_path, "exec"), namespace)
+        result = namespace.get("result")
+        if result is None:
+            return {
+                "status": 200,
+                "content_type": "application/json; charset=utf-8",
+                "body": b"{}",
+                "headers": [],
+                "cookies": [],
+            }
+    except Exception as err:
+        return {
+            "status": 500,
+            "content_type": "application/json; charset=utf-8",
+            "body": json.dumps({"error": str(err), "type": type(err).__name__}).encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    # Normalize response
+    status = 200
+    content_type = "application/json; charset=utf-8"
+    headers_out = []
+    cookies_out = []
+    body_val = result
+
+    if isinstance(result, dict):
+        if "status" in result:
+            status = int(result["status"])
+        if "content_type" in result:
+            content_type = str(result["content_type"])
+        if "headers" in result:
+            h = result["headers"]
+            if isinstance(h, dict):
+                headers_out = list(h.items())
+            elif isinstance(h, list):
+                headers_out = h
+        if "cookies" in result:
+            c = result["cookies"]
+            if isinstance(c, dict):
+                cookies_out = list(c.items())
+            elif isinstance(c, list):
+                cookies_out = c
+        if "body" in result:
+            body_val = result["body"]
+    elif isinstance(result, str):
+        content_type = "text/plain; charset=utf-8"
+        body_val = result
+    elif isinstance(result, (dict, list)):
+        body_val = result
+
+    if isinstance(body_val, (dict, list)):
+        body_bytes = json.dumps(body_val, ensure_ascii=False).encode("utf-8")
+    elif isinstance(body_val, str):
+        body_bytes = body_val.encode("utf-8")
+    else:
+        body_bytes = str(body_val).encode("utf-8")
+
+    return {
+        "status": status,
+        "content_type": content_type,
+        "body": body_bytes,
+        "headers": headers_out,
+        "cookies": cookies_out,
+    }
+
+
+def discover_twm_api_handlers() -> List[dict]:
+    """
+    Discover folder-based route handlers as server-side TW script API handlers.
+
+    v0.8.51: Results are cached in memory. Call invalidate_api_route_cache()
+    to force a refresh (used by the file watcher on .twm changes).
+
+    Contract:
+    - `get(request)`, `post(request)`, ... or `handler(request)`
+    - No top-level statements allowed in `.twm` (enforced by parser)
+    """
+    global _API_ROUTE_CACHE
+    if _API_ROUTE_CACHE is not None:
+        return _API_ROUTE_CACHE
+    with _API_ROUTE_CACHE_LOCK:
+        if _API_ROUTE_CACHE is not None:
+            return _API_ROUTE_CACHE
+        routes = []
+        if os.path.isdir(compiler.API_DIR):
+            for root, _, files in os.walk(compiler.API_DIR):
+                rel_dir = os.path.relpath(root, compiler.API_DIR)
+                rel_dir = compiler.normalize_route_directory(rel_dir)
+                for filename in sorted(files):
+                    if filename != "route.twm":
+                        continue
+                    segments = ["api"]
+                    if rel_dir and rel_dir != ".":
+                        segments.extend(rel_dir.split(os.sep))
+                    route_path = "/" + "/".join(filter(None, segments))
+                    routes.append({"path": os.path.join(root, filename), "route": route_path, "lang": "twm"})
+        _API_ROUTE_CACHE = routes
+        return routes
+
+
+def invalidate_api_route_cache() -> None:
+    """v0.8.51: Clear the cached API route table (called on .twm file changes)."""
+    global _API_ROUTE_CACHE
+    with _API_ROUTE_CACHE_LOCK:
+        _API_ROUTE_CACHE = None
+
+
+_TWM_HANDLER_MEM_CACHE: Dict[str, str] = {}  # handler_path → compiled JS string
+_TWM_HANDLER_MEM_CACHE_LOCK = threading.Lock()
+
+
+def _compile_twm_api_handler_to_cache(handler_path: str) -> Any:
+    """v0.8.51: In-memory cache for compiled .twm handlers.
+    Previously, every request hit the disk to check if the compiled .cjs file
+    exists. Now the compiled JS string is cached in memory and only written
+    to disk on first compile (or when the source changes)."""
+    # Check in-memory cache first
+    with _TWM_HANDLER_MEM_CACHE_LOCK:
+        if handler_path in _TWM_HANDLER_MEM_CACHE:
+            return _TWM_HANDLER_MEM_CACHE[handler_path]
+
+    cache_dir = os.path.join(compiler.CACHE_DIR, "twm_api")
+    os.makedirs(cache_dir, exist_ok=True)
+    with open(handler_path, "r", encoding="utf-8") as f:
+        src = f.read()
+    digest = content_hash(f"{handler_path}::{src}", length=16)
+    out_path = os.path.join(cache_dir, f"{digest}.cjs")
+    if not os.path.isfile(out_path):
+        js = compile_twm_module_to_cjs(src, module_id=handler_path)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(js)
+    else:
+        with open(out_path, "r", encoding="utf-8") as f:
+            js = f.read()
+    # Cache in memory for subsequent requests
+    with _TWM_HANDLER_MEM_CACHE_LOCK:
+        _TWM_HANDLER_MEM_CACHE[handler_path] = out_path
+    return out_path
+
+
+def invalidate_twm_handler_cache() -> None:
+    """v0.8.51: Clear in-memory handler cache (called on .twm file changes)."""
+    with _TWM_HANDLER_MEM_CACHE_LOCK:
+        _TWM_HANDLER_MEM_CACHE.clear()
+    # Also reload the persistent Node.js worker's handler cache
+    _persistent_node_worker.reload()
+
+
+# ── v0.8.51: Persistent Node.js worker ─────────────────────────────────
+# Instead of spawning a new `node` process per request (~100ms overhead),
+# we keep a single Node.js process alive and communicate via stdin/stdout
+# using newline-delimited JSON (JSON Lines protocol).
+
+class PersistentNodeWorker:
+    """v0.8.51: A persistent Node.js process that stays alive between requests.
+
+    Protocol:
+      Python → stdin:  {"handlerPath": "...", "method": "GET", ...}\n
+      Node   → stdout: {"status": 200, "body": "...", ...}\n
+
+    Special commands:
+      {"__ping": true}   → health check
+      {"__reload": true}  → clear handler cache
+    """
+
+    def __init__(self):
+        self.proc = None
+        self._lock = threading.Lock()
+        self._ready = False
+
+    def _ensure_started(self):
+        """Start the persistent Node.js process if not already running."""
+        if self.proc is not None and self.proc.poll() is None:
+            return True
+        from .npm_manager import find_node
+        node_bin = find_node()
+        if not node_bin:
+            return False
+        runner = os.path.join(SCRIPT_DIR, "twm_api_runner_persistent.js")
+        if not os.path.isfile(runner):
+            return False
+        try:
+            self.proc = subprocess.Popen(
+                [node_bin, runner],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,  # line-buffered
+                cwd=os.path.abspath(getattr(compiler, "PROJECT_ROOT", os.getcwd()) or os.getcwd()),
+            )
+            # Wait for the "__ready" signal
+            ready_line = self.proc.stdout.readline()
+            if ready_line and '"__ready"' in ready_line:
+                self._ready = True
+                return True
+            # Process started but didn't signal ready — fall back to per-request mode
+            self._stop()
+            return False
+        except Exception:
+            self._stop()
+            return False
+
+    def _stop(self):
+        """Stop the persistent Node.js process."""
+        self._ready = False
+        if self.proc is not None:
+            try:
+                self.proc.stdin.close()
+            except Exception:
+                pass
+            try:
+                self.proc.terminate()
+                self.proc.wait(timeout=3)
+            except Exception:
+                try:
+                    self.proc.kill()
+                except Exception:
+                    pass
+            self.proc = None
+
+    def execute(self, handler_path: str, method: str, url_path: str,
+                headers: Dict[str, str], body: object, request_data: dict) -> Optional[dict]:
+        """Execute a .twm handler via the persistent Node.js process.
+
+        Returns the response dict, or None if the persistent worker is
+        unavailable (caller should fall back to per-request subprocess).
+        """
+        with self._lock:
+            if not self._ensure_started():
+                return None
+            request_json = json.dumps({
+                "handlerPath": handler_path,
+                "method": method.upper(),
+                "path": normalize_url_path(url_path),
+                "query": request_data.get("query", {}),
+                "body": body,
+                "headers": headers,
+                "cookies": request_data.get("cookies", {}),
+                "env": dict(os.environ),
+                "project_root": request_data.get("project_root", ""),
+            }, ensure_ascii=False)
+            try:
+                self.proc.stdin.write(request_json + "\n")
+                self.proc.stdin.flush()
+                response_line = self.proc.stdout.readline()
+                if not response_line:
+                    # Process died — stop and fall back
+                    self._stop()
+                    return None
+                return json.loads(response_line)
+            except (BrokenPipeError, OSError, json.JSONDecodeError):
+                self._stop()
+                return None
+
+    def reload(self):
+        """Clear the handler cache in the persistent Node.js process."""
+        with self._lock:
+            if self.proc is not None and self.proc.poll() is None:
+                try:
+                    self.proc.stdin.write('{"__reload": true}\n')
+                    self.proc.stdin.flush()
+                    # Read the confirmation
+                    self.proc.stdout.readline()
+                except Exception:
+                    self._stop()
+
+    def is_available(self) -> bool:
+        """Check if the persistent worker is running and ready."""
+        return self.proc is not None and self.proc.poll() is None and self._ready
+
+
+# Singleton instance
+_persistent_node_worker = PersistentNodeWorker()
+
+
+def execute_twm_api_handler(handler_path: str, method: str, url_path: str,
+                            headers: Dict[str, str], body: object) -> dict:
+    """
+    Execute a `.twm` API handler (server-side TW scripting) via Node.js.
+
+    The `.twm` module should export one of:
+      - `get/post/put/patch/delete/options(request)`
+      - or a generic `handler(request)`
+
+    Response shapes (JS):
+      - string => text/plain
+      - object => JSON (unless it includes {json|text|html|body,status,headers,cookies})
+      - array => [body, status] or [body, status, headers]
+    """
+    # v0.8.50 (Issue 2): Detect Node.js before attempting to run the handler.
+    # Previously, a missing Node.js binary caused a cryptic FileNotFoundError
+    # that surfaced as a 500 (or 404 if the route was never resolved).
+    # Now we check upfront and return a clear 501 with installation guidance.
+    from .npm_manager import find_node, _get_node_install_help
+    node_bin = find_node()
+    if not node_bin:
+        help_text = _get_node_install_help()
+        error_body = json.dumps({
+            "error": "Node.js not detected — API routes are disabled.",
+            "detail": "TW Framework requires Node.js to execute `.twm` API route handlers.",
+            "install_help": help_text,
+        }, ensure_ascii=False, indent=2)
+        return {
+            "status": 501,
+            "content_type": "application/json; charset=utf-8",
+            "body": error_body.encode("utf-8"),
+            "headers": [],
+            "cookies": [],
+        }
+
+    compiled = _compile_twm_api_handler_to_cache(handler_path)
+    runner = os.path.join(SCRIPT_DIR, "twm_api_runner.js")
+    if not os.path.isfile(runner):
+        raise RuntimeError("Missing twm_api_runner.js (framework installation is incomplete).")
+
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(url_path).query, keep_blank_values=True)
+    query = {k: v[0] if len(v) == 1 else v for k, v in query.items()}
+    cookies = parse_cookie_header(headers.get("Cookie", ""))
+    project_root = os.path.abspath(getattr(compiler, "PROJECT_ROOT", os.getcwd()) or os.getcwd())
+    request_data = {
+        "method": method.upper(),
+        "path": normalize_url_path(url_path),
+        "query": query,
+        "body": body,
+        "headers": headers,
+        "cookies": cookies,
+        "env": dict(os.environ),
+        "project_root": project_root,
+    }
+
+    # v0.8.51: Try persistent Node.js worker first (2-5ms per request).
+    # Falls back to per-request subprocess (100ms+) if worker is unavailable.
+    persistent_runner = os.path.join(SCRIPT_DIR, "twm_api_runner_persistent.js")
+    if os.path.isfile(persistent_runner):
+        resp = _persistent_node_worker.execute(
+            compiled, method, url_path, headers, body, request_data,
+        )
+        if resp is not None:
+            status = int(resp.get("status", 200) or 200)
+            content_type = str(resp.get("content_type") or "application/json; charset=utf-8")
+            headers_out = resp.get("headers") or []
+            cookies_out = resp.get("cookies") or []
+            body_val = resp.get("body", "")
+            if isinstance(body_val, (dict, list)):
+                body_bytes = json.dumps(body_val, ensure_ascii=False).encode("utf-8")
+                content_type = "application/json; charset=utf-8"
+            elif isinstance(body_val, str):
+                body_bytes = body_val.encode("utf-8")
+            else:
+                body_bytes = str(body_val).encode("utf-8")
+            return {
+                "status": status,
+                "content_type": content_type,
+                "body": body_bytes,
+                "headers": headers_out,
+                "cookies": cookies_out,
+            }
+
+    # Fallback: per-request subprocess (original behavior, ~100ms overhead)
+    timeout_s = float(os.environ.get("TW_TWM_TIMEOUT", "10") or "10")
+    proc = subprocess.run(
+        [node_bin, runner, compiled],
+        input=json.dumps(request_data, ensure_ascii=False),
+        text=True,
+        capture_output=True,
+        timeout=max(1.0, timeout_s),
+        cwd=project_root,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"TWM handler failed (exit={proc.returncode}): {proc.stderr.strip() or proc.stdout.strip()}")
+
+    try:
+        resp = json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError as err:
+        raise RuntimeError(f"TWM runner returned invalid JSON: {err}: {proc.stdout[:2000]!r}") from err
+
+    status = int(resp.get("status", 200) or 200)
+    content_type = str(resp.get("content_type") or "application/json; charset=utf-8")
+    headers_out = resp.get("headers") or []
+    cookies_out = resp.get("cookies") or []
+    body_val = resp.get("body", "")
+
+    if isinstance(body_val, (dict, list)):
+        body_bytes = json.dumps(body_val, ensure_ascii=False).encode("utf-8")
+        content_type = "application/json; charset=utf-8"
+    else:
+        body_bytes = str(body_val).encode("utf-8")
+
+    return {
+        "status": status,
+        "content_type": content_type,
+        "body": body_bytes,
+        "headers": list(headers_out),
+        "cookies": list(cookies_out),
+    }
+
+
+def parse_api_route_file(tw_path: str) -> Dict[str, dict]:
+    tokens = compiler.tokenize_tw(compiler.read_text_file(tw_path))
+    methods = {}
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if compiler.is_statement_separator(token):
+            i += 1
+            continue
+        if token.type != "WORD":
+            i += 1
+            continue
+        method = token.value.upper()
+        if method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}:
+            i += 1
+            continue
+        i += 1
+        while i < len(tokens) and compiler.is_statement_separator(tokens[i]):
+            i += 1
+        if i >= len(tokens) or tokens[i].type != "BRACE" or tokens[i].value != "{":
+            raise RuntimeError(f"Expected `{{` after `{method}` in {tw_path}")
+        i += 1
+        spec = {"status": 200, "headers": [], "cookies": []}
+        while i < len(tokens):
+            tok = tokens[i]
+            if compiler.is_statement_separator(tok):
+                i += 1
+                continue
+            if tok.type == "BRACE" and tok.value == "}":
+                i += 1
+                break
+            if tok.type != "WORD":
+                raise RuntimeError(f"Invalid API directive in {tw_path}")
+            key = tok.value
+            i += 1
+            if key == "status":
+                raw_status, i = parse_value_token(tokens, i)
+                spec["status"] = int(raw_status)
+            elif key in {"json", "text", "html", "redirect"}:
+                spec[key], i = parse_value_token(tokens, i)
+            elif key == "header":
+                header_name, i = parse_single_value_token(tokens, i)
+                header_value, i = parse_single_value_token(tokens, i)
+                spec["headers"].append((header_name, header_value))
+            elif key == "cookie":
+                cookie_name, i = parse_single_value_token(tokens, i)
+                cookie_value, i = parse_single_value_token(tokens, i)
+                spec["cookies"].append((cookie_name, cookie_value))
+            else:
+                raise RuntimeError(f"Unsupported API key `{key}` in {tw_path}")
+        methods[method] = spec
+    return methods
+
+
+def render_api_value(value, context) -> Any:
+    def render_nested(item) -> Any:
+        if isinstance(item, dict):
+            return {key: render_nested(val) for key, val in item.items()}
+        if isinstance(item, list):
+            return [render_nested(val) for val in item]
+        if isinstance(item, str):
+            return compiler.parse_literal_value(compiler.interpolate(item, context))
+        return item
+
+    if isinstance(value, str):
+        stripped = value.strip()
+        if (stripped.startswith("{") and stripped.endswith("}")) or (stripped.startswith("[") and stripped.endswith("]")):
+            try:
+                return render_nested(json.loads(stripped))
+            except json.JSONDecodeError:
+                pass
+    rendered = compiler.interpolate(str(value), context)
+    return compiler.parse_literal_value(rendered)
+
+
+def decode_request_body(handler: Callable[..., Any]) -> Any:
+    length = int(handler.headers.get("Content-Length", "0") or "0")
+    if length <= 0:
+        return {}
+    raw = handler.rfile.read(length)
+    content_type = handler.headers.get("Content-Type", "")
+    if "application/json" in content_type:
+        try:
+            return json.loads(raw.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return {"raw": raw.decode("utf-8", errors="replace")}
+    if "application/x-www-form-urlencoded" in content_type:
+        parsed = urllib.parse.parse_qs(raw.decode("utf-8"), keep_blank_values=True)
+        return {key: value[0] if len(value) == 1 else value for key, value in parsed.items()}
+    return {"raw": raw.decode("utf-8", errors="replace"), "bytes": len(raw)}
+
+
+class TWProject:
+    def __init__(self, project_root: str) -> None:
+        self.project_root = os.path.abspath(project_root)
+        self._lock = threading.RLock()
+        configure_compiler_paths(self.project_root)
+        self.env = load_project_env(self.project_root, "development")
+        self.config = compiler.load_config()
+        warn_missing_env(validate_env_schema(self.config, self.env))
+        self.modular_pipeline = use_modular_pipeline(self.config)
+        self.extensions = ExtensionManager(self.project_root, self.config, self.env).refresh()
+        self._rate_limiters: Dict[str, TokenBucketRateLimiter] = {}
+
+    @property
+    def source_root(self) -> Any:
+        return compiler.HOME_DIR
+
+    def list_source_files(self) -> List[str]:
+        files = []
+        if os.path.exists(self.project_root):
+            config_path = compiler.CONFIG_FILE
+            if os.path.exists(config_path):
+                files.append(config_path)
+
+        for root in [compiler.HOME_DIR]:
+            if not os.path.exists(root):
+                continue
+            for dirpath, _, filenames in os.walk(root):
+                for filename in filenames:
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext in WATCH_EXTENSIONS:
+                        files.append(os.path.join(dirpath, filename))
+        return sorted(set(os.path.abspath(p) for p in files))
+
+    def source_signature(self) -> Any:
+        digest = hashlib.sha1()
+        for path in self.list_source_files():
+            stat = os.stat(path)
+            digest.update(path.encode("utf-8"))
+            digest.update(str(stat.st_mtime_ns).encode("utf-8"))
+            digest.update(str(stat.st_size).encode("utf-8"))
+        return digest.hexdigest()
+
+    def invalidate(self) -> None:
+        invalidate_compiler_caches()
+        self.env = load_project_env(self.project_root, "development")
+        self.config = compiler.load_config()
+        self.modular_pipeline = use_modular_pipeline(self.config)
+        self.extensions.refresh(self.config, self.env)
+
+    def discover_pages(self) -> List[dict]:
+        self.invalidate()
+        return compiler.discover_pages()
+
+    def find_special_page(self, status_code: int) -> Optional[dict]:
+        expected_name = special_page_name_for_status(status_code)
+        for page in self.discover_pages():
+            if page["type"] == "static" and page.get("name") == expected_name:
+                return page
+        return None
+
+    def resolve_asset(self, url_path: str) -> Optional[Tuple[bytes, str]]:
+        path = normalize_url_path(url_path)
+
+        if path == "/_tw/search-index.json":
+            payload = json.dumps(self.build_dev_search_index(), ensure_ascii=False, indent=2).encode("utf-8")
+            return payload, "application/json; charset=utf-8"
+
+        if path.startswith("/assets/"):
+            candidate = os.path.abspath(os.path.join(compiler.ASSETS_DIR, path[len("/assets/"):]))
+            if is_path_within(compiler.ASSETS_DIR, candidate):
+                payload = safe_read_binary(candidate)
+                if payload is not None:
+                    content_type = mimetypes.guess_type(candidate)[0] or "application/octet-stream"
+                    return payload, content_type
+
+        if path.startswith("/_tw/static/chunks/"):
+            candidate = os.path.abspath(os.path.join(compiler.CHUNKS_DIR, path.split("/_tw/static/chunks/", 1)[1]))
+            if is_path_within(compiler.CHUNKS_DIR, candidate):
+                payload = safe_read_binary(candidate)
+                if payload is not None:
+                    content_type = mimetypes.guess_type(candidate)[0] or "application/javascript"
+                    return payload, content_type
+
+        # v0.8.48: serve files from public/ at the URL root, Next.js-style
+        # (bug #1 — public/ was previously ignored entirely).
+        if not path.startswith("/_tw/") and not path.startswith("/assets/"):
+            for public_dir in (os.path.join(compiler.HOME_DIR, "public"), os.path.join(compiler.PROJECT_ROOT, "public")):
+                if not os.path.isdir(public_dir):
+                    continue
+                candidate = os.path.abspath(os.path.join(public_dir, path.lstrip("/")))
+                if is_path_within(public_dir, candidate) and os.path.isfile(candidate):
+                    payload = safe_read_binary(candidate)
+                    if payload is not None:
+                        content_type = mimetypes.guess_type(candidate)[0] or "application/octet-stream"
+                        return payload, content_type
+
+        return None
+
+    def build_dev_search_index(self) -> List[dict]:
+        # Dev-only: compile current static pages and extract searchable text.
+        items = []
+        for page in self.discover_pages():
+            if page["type"] != "static":
+                continue
+            route = route_from_static_page(page)
+            match = RouteMatch(page_info=page, params={}, item=None, route_path=route or "/")
+            html_text = self.compile_match_to_html(match, dev_mode=False)
+            text = strip_html_to_text(html_text)
+            if not text:
+                continue
+            page_ast = compiler.load_page_ast_from_file(page["path"])
+            title = page_ast.title or route
+            items.append({
+                "route": route,
+                "title": title,
+                "excerpt": text[:240],
+                "content": text[:4000],
+            })
+        return items
+
+    def resolve_route(self, raw_path: str) -> Optional[RouteMatch]:
+        path = strip_trailing_slash(normalize_url_path(raw_path))
+        pages = self.discover_pages()
+
+        for page in pages:
+            if page["type"] == "static":
+                route = strip_trailing_slash(route_from_static_page(page))
+                html_route = route + ".html" if route != "/" else "/index.html"
+                pretty_html_route = (route + "/index.html") if route != "/" else "/index.html"
+                if path in {route, html_route, strip_trailing_slash(pretty_html_route)}:
+                    return RouteMatch(page_info=page, params={}, item=None, route_path=route or "/")
+                continue
+
+            items = compiler.load_dynamic_items(page["path"])
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                route = strip_trailing_slash(route_from_dynamic_page(page, item))
+                html_route = route + "/index.html" if route != "/" else "/index.html"
+                if path in {route, strip_trailing_slash(html_route)}:
+                    param = page["param"]
+                    segments = compiler.resolve_dynamic_segments(page, item)
+                    params = {param: "/".join(segments)}
+                    if page.get("route_kind") != "single":
+                        params[param + "Segments"] = segments
+                    return RouteMatch(page_info=page, params=params, item=item, route_path=route or "/")
+
+        return None
+
+    def _get_rate_limiter(self, rule: dict) -> Optional[TokenBucketRateLimiter]:
+        rate_limit = rule.get("rate_limit")
+        if not rate_limit:
+            return None
+        limiter_key = f"{rule.get('match', '/**')}::{rate_limit['requests']}::{rate_limit['window']}"
+        limiter = self._rate_limiters.get(limiter_key)
+        if limiter is None:
+            limiter = TokenBucketRateLimiter(rate_limit["requests"], rate_limit["window"])
+            self._rate_limiters[limiter_key] = limiter
+        return limiter
+
+    def _resolve_rate_limit_identity(self, request_headers: Dict[str, str], request_meta: Optional[Dict[str, str]] = None) -> Any:
+        request_meta = request_meta or {}
+        forwarded_for = str(request_headers.get("X-Forwarded-For", "")).split(",", 1)[0].strip()
+        return (
+            request_meta.get("client_ip")
+            or forwarded_for
+            or str(request_headers.get("X-Real-IP", "")).strip()
+            or "anonymous"
+        )
+
+    def apply_middleware(
+        self,
+        raw_path: str,
+        request_headers: Optional[Dict[str, str]] = None,
+        request_meta: Optional[Dict[str, str]] = None,
+        method: str = "GET",
+    ) -> dict:
+        path = normalize_url_path(raw_path)
+        request_headers = request_headers or {}
+        method = str(method or "GET").upper()
+        cookies = parse_cookie_header(_middleware_header(request_headers, "Cookie", ""))
+        result = {
+            "path": path,
+            "headers": list(get_security_headers(self.config)),
+            "cookies": [],
+            "redirect": None,
+            "response": None,
+        }
+
+        for rule in parse_middleware_rules(self.project_root):
+            # v0.8.50 (Issue 1): fn-style middleware (fn before/after)
+            if rule.get("_fn_middleware"):
+                # Run "before" hook — can redirect/rewrite/block
+                if rule.get("before"):
+                    fn_ctx = {
+                        "request": {
+                            "method": method,
+                            "path": path,
+                            "headers": request_headers,
+                            "cookies": cookies,
+                        },
+                        "response": {},
+                        "result": None,
+                    }
+                    fn_result = _run_fn_middleware(rule["before"], fn_ctx, "before")
+                    if fn_result and isinstance(fn_result, dict):
+                        # If the before hook returned a response, short-circuit
+                        resp = fn_result.get("response") or fn_result.get("result")
+                        if resp and isinstance(resp, dict):
+                            status = int(resp.get("status", 200))
+                            if status in (301, 302, 303, 307, 308):
+                                location = ""
+                                resp_headers = resp.get("headers") or {}
+                                if isinstance(resp_headers, dict):
+                                    location = resp_headers.get("Location") or resp_headers.get("location", "")
+                                else:
+                                    for h in resp_headers:
+                                        if h[0].lower() == "location":
+                                            location = h[1]
+                                            break
+                                if location:
+                                    result["redirect"] = location
+                                    return result
+                            if status != 200 or resp.get("body"):
+                                result["response"] = {
+                                    "status": status,
+                                    "body": resp.get("body", b"").encode("utf-8") if isinstance(resp.get("body", ""), str) else resp.get("body", b""),
+                                    "content_type": resp.get("content_type", "text/html; charset=utf-8"),
+                                    "headers": [],
+                                    "cookies": [],
+                                }
+                                return result
+                # Store the "after" hook for post-response execution
+                if rule.get("after"):
+                    result["_fn_after"] = rule["after"]
+                continue
+            if not match_path_pattern(path, str(rule.get("match", "/**"))):
+                continue
+            allowed_methods = [str(item).upper() for item in rule.get("methods", [])]
+            if allowed_methods and method not in allowed_methods:
+                continue
+
+            # Modern rule engine for root `middleware.tw`
+            path_rule = rule.get("path_rule") or {}
+            if path_rule:
+                url_lower = path.lower()
+                block_match = False
+                if path_rule.get("deny_traversal", True) and ".." in path:
+                    block_match = True
+                if path_rule.get("deny_null_bytes", True) and "%00" in url_lower:
+                    block_match = True
+                for prefix in _middleware_list(path_rule.get("prefixes")):
+                    if url_lower.startswith(str(prefix).lower()):
+                        block_match = True
+                        break
+                if not block_match:
+                    for part in _middleware_list(path_rule.get("contains")):
+                        if str(part).lower() in url_lower:
+                            block_match = True
+                            break
+                if not block_match:
+                    for ext in _middleware_list(path_rule.get("extensions")):
+                        if url_lower.endswith(str(ext).lower()):
+                            block_match = True
+                            break
+                if not block_match:
+                    for pattern in _middleware_list(path_rule.get("regex")):
+                        if re.search(str(pattern), path):
+                            block_match = True
+                            break
+                single_segment_max = int(path_rule.get("single_segment_max", 0) or 0)
+                if not block_match and single_segment_max > 0:
+                    m = re.match(r"^/([^/?#]+)$", path)
+                    if m and len(m.group(1)) > single_segment_max:
+                        block_match = True
+                if block_match:
+                    result["response"] = _build_middleware_response(rule, result, default_status=404, default_text="Not Found")
+                    return result
+
+            user_agent_rule = rule.get("user_agent") or {}
+            if user_agent_rule:
+                ua = _middleware_header(request_headers, "User-Agent", "")
+                ua_lower = ua.lower()
+                allow_patterns = [item.lower() for item in _middleware_list(user_agent_rule.get("allow"))]
+                block_patterns = [item.lower() for item in _middleware_list(user_agent_rule.get("block"))]
+                exempt = bool(ua and any(pattern in ua_lower for pattern in allow_patterns))
+                blocked = (not ua and bool(user_agent_rule.get("empty_is_blocked"))) or (
+                    (not exempt) and any(pattern in ua_lower for pattern in block_patterns)
+                )
+                if blocked:
+                    result["response"] = _build_middleware_response(rule, result, default_status=403, default_text="Forbidden")
+                    return result
+
+            origin_rule = rule.get("origin") or {}
+            if origin_rule:
+                allowed = {str(item) for item in _middleware_list(origin_rule.get("allow"))}
+                origin = _middleware_header(request_headers, "Origin", "")
+                referer_origin = _middleware_referer_origin(_middleware_header(request_headers, "Referer", ""))
+                require_origin = bool(origin_rule.get("require"))
+                allow_referer = bool(origin_rule.get("allow_referer", True))
+                is_allowed = False
+                if origin and origin in allowed:
+                    is_allowed = True
+                elif allow_referer and referer_origin and referer_origin in allowed:
+                    is_allowed = True
+                elif not origin and not referer_origin and not require_origin:
+                    is_allowed = True
+                if allowed and not is_allowed:
+                    result["response"] = _build_middleware_response(rule, result, default_status=403, default_text="Access Denied")
+                    return result
+
+            auth_rule = rule.get("auth_rule") or {}
+            if auth_rule:
+                cookie_name = str(auth_rule.get("cookie") or "").strip()
+                if cookie_name:
+                    token = cookies.get(cookie_name, "")
+                    if not token and bool(auth_rule.get("required", True)):
+                        result["response"] = _build_middleware_response(rule, result, default_status=401, default_text="Unauthorized")
+                        return result
+                    if token:
+                        secret = str(auth_rule.get("jwt_secret") or "")
+                        secret_env = str(auth_rule.get("jwt_secret_env") or "")
+                        if secret_env:
+                            secret = os.environ.get(secret_env, secret)
+                        if secret and not _verify_hs256_jwt(token, secret):
+                            result["response"] = _build_middleware_response(rule, result, default_status=401, default_text="Invalid token")
+                            return result
+
+            auth = rule.get("auth")
+            if auth and not cookies.get(auth["cookie"]):
+                result["redirect"] = auth["redirect"]
+                return result
+            limiter = self._get_rate_limiter(rule)
+            if limiter is not None:
+                identity = self._resolve_rate_limit_identity(request_headers, request_meta=request_meta)
+                if str(rule["rate_limit"].get("identity", "ip")).lower() == "path":
+                    bucket_segments = max(1, int(rule["rate_limit"].get("bucket_segments", 2) or 2))
+                    bucket = "/".join(path.split("/")[: bucket_segments + 1]) or "/"
+                    identity = f"{identity}::{bucket}"
+                if not limiter.allow(f"{rule.get('match', '/**')}::{identity}"):
+                    result["response"] = _build_middleware_response(
+                        rule,
+                        result,
+                        default_status=429,
+                        default_text="Too Many Requests",
+                        extra_headers=[("Retry-After", str(int(rule["rate_limit"]["window"])))],
+                    )
+                    return result
+            deny = rule.get("deny")
+            if deny:
+                body = str(deny.get("body", "Forbidden") or "Forbidden").encode("utf-8")
+                result["response"] = {
+                    "status": int(deny.get("status", 403) or 403),
+                    "content_type": "text/plain; charset=utf-8",
+                    "body": body,
+                    "headers": list(result["headers"]),
+                    "cookies": list(result["cookies"]),
+                }
+                return result
+            if rule.get("response") and not any(
+                rule.get(key)
+                for key in ["user_agent", "origin", "path_rule", "auth_rule", "rate_limit", "deny", "redirect", "rewrite", "auth"]
+            ):
+                result["response"] = _build_middleware_response(rule, result, default_status=403, default_text="Forbidden")
+                return result
+            if rule.get("rewrite"):
+                result["path"] = normalize_url_path(rule["rewrite"])
+            if rule.get("redirect"):
+                result["redirect"] = rule["redirect"]
+                return result
+            result["headers"].extend(rule.get("headers", []))
+            result["cookies"].extend(rule.get("cookies", []))
+
+        return result
+
+    def resolve_api_route(self, raw_path: str) -> Optional[dict]:
+        path = strip_trailing_slash(normalize_url_path(raw_path))
+        for route in discover_twm_api_handlers():
+            if strip_trailing_slash(route["route"]) == path:
+                return route
+        return None
+
+    def execute_api_route(self, api_route: dict, method: str, url_path: str, headers: Dict[str, str], body: object) -> Any:
+        if api_route.get("lang") == "twm":
+            # v0.9.0: Multi-runtime support — parse runtime directive from .twm source
+            runtime_name = _parse_runtime_directive(api_route["path"])
+            if runtime_name and runtime_name != "nodejs":
+                # Non-default runtime: use runtime abstraction layer
+                return _execute_with_runtime(
+                    api_route["path"], runtime_name, method, url_path, headers, body,
+                )
+            return execute_twm_api_handler(api_route["path"], method, url_path, headers, body)
+        methods = parse_api_route_file(api_route["path"])
+        spec = methods.get(method.upper())
+        if not spec:
+            allowed = ", ".join(sorted(methods))
+            payload = json.dumps({"error": "Method not allowed", "allowed": sorted(methods)})
+            return {
+                "status": 405,
+                "content_type": "application/json; charset=utf-8",
+                "body": payload.encode("utf-8"),
+                "headers": [("Allow", allowed)],
+                "cookies": [],
+            }
+
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(url_path).query, keep_blank_values=True)
+        query = {key: value[0] if len(value) == 1 else value for key, value in query.items()}
+        cookies = parse_cookie_header(headers.get("Cookie", ""))
+        context = {
+            "env": dict(os.environ),
+            "query": query,
+            "body": body,
+            "headers": headers,
+            "cookies": cookies,
+            "request": {
+                "method": method.upper(),
+                "path": normalize_url_path(url_path),
+                "query": query,
+                "body": body,
+                "headers": headers,
+                "cookies": cookies,
+            },
+        }
+        context["generate_csrf_token"] = lambda: generate_csrf_token(context["request"])
+        context["verify_csrf_token"] = lambda token, max_age=7200: verify_csrf_token(token, context["request"], max_age=max_age)
+
+        response_headers = list(spec.get("headers", []))
+        response_cookies = list(spec.get("cookies", []))
+        if "redirect" in spec:
+            location = str(render_api_value(spec["redirect"], context))
+            return {
+                "status": int(spec.get("status", 302) or 302),
+                "content_type": "text/plain; charset=utf-8",
+                "body": f"Redirecting to {location}".encode("utf-8"),
+                "headers": response_headers + [("Location", location)],
+                "cookies": response_cookies,
+            }
+        if "json" in spec:
+            payload = render_api_value(spec["json"], context)
+            body_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            return {
+                "status": int(spec.get("status", 200)),
+                "content_type": "application/json; charset=utf-8",
+                "body": body_bytes,
+                "headers": response_headers,
+                "cookies": response_cookies,
+            }
+        if "html" in spec:
+            payload = str(render_api_value(spec["html"], context))
+            return {
+                "status": int(spec.get("status", 200)),
+                "content_type": "text/html; charset=utf-8",
+                "body": payload.encode("utf-8"),
+                "headers": response_headers,
+                "cookies": response_cookies,
+            }
+
+        payload = str(render_api_value(spec.get("text", ""), context))
+        return {
+            "status": int(spec.get("status", 200)),
+            "content_type": "text/plain; charset=utf-8",
+            "body": payload.encode("utf-8"),
+            "headers": response_headers,
+            "cookies": response_cookies,
+        }
+
+    def compile_match_response(self, match: RouteMatch, dev_mode: bool = False, depth: int = 0) -> dict:
+        # In dev mode, always clear layout/component caches so changes to
+        # layout.tw, style.tss, components/*.tw are picked up immediately.
+        if dev_mode:
+            invalidate_compiler_caches()
+        if depth > 5:
+            raise RuntimeError("Rewrite loop detected")
+
+        page_info = match.page_info
+        tw_path = page_info["path"]
+        page_ast = compiler.load_page_ast_from_file(tw_path)
+        css_url, _ = compiler.read_global_stylesheet()
+
+        context = compiler.build_page_context(
+            page_info,
+            page_ast,
+            tw_path,
+            item=match.item,
+            route_path=match.route_path,
+            request_params=match.params,
+        )
+        hook_state = self.extensions.emit(
+            "beforeRoute",
+            match=match,
+            page_info=page_info,
+            page_ast=page_ast,
+            context=context,
+            dev_mode=dev_mode,
+        )
+        context = hook_state.get("context", context)
+
+        if page_ast.rewrite_to:
+            rewritten_path = compiler.interpolate(page_ast.rewrite_to, context)
+            rewritten_match = self.resolve_route(rewritten_path)
+            if rewritten_match:
+                rewritten_match = RouteMatch(
+                    page_info=rewritten_match.page_info,
+                    params=rewritten_match.params,
+                    item=rewritten_match.item,
+                    route_path=match.route_path,
+                )
+                return self.compile_match_response(rewritten_match, dev_mode=dev_mode, depth=depth + 1)
+
+        # ── App Router mode: compose with nested layouts (same as build_one_page) ──
+        # v0.8.40 fix: dev server was not applying layouts/components/CSS
+        # because it used compile_file_pipeline() which skips compose_nested_layouts().
+        if page_info.get("app_router") and page_info.get("layout_files"):
+            # v0.8.48 (bug #8): warn (once per request is fine in dev) if a
+            # leftover named `layout "name"` key is present but ignored in
+            # favor of the App Router layout.tw chain — see compiler.build_one_page.
+            if getattr(page_ast, "layouts", None):
+                log(
+                    f"  ⚠️  {compiler.safe_relpath(tw_path, compiler.PROJECT_ROOT)}: "
+                    f"`layout {page_ast.layouts!r}` is ignored here — this page is inside an "
+                    f"App Router group and already uses its layout.tw chain. Remove the "
+                    f"named `layout` key or move the page out of the group folder.",
+                    level="warning",
+                )
+            body_html, needs_router, head_scripts = compiler.render_elements_html(
+                page_ast.body, context
+            )
+            title = compiler.interpolate(page_ast.title, context) if page_ast.title else ""
+            head_extras = (
+                "".join(head_scripts)
+                + compiler.build_theme_inline_script(context)
+                + compiler.render_head_extras(page_ast.head, context)
+            )
+
+            style_lines = []
+            if page_ast.loaded_sheets:
+                combined = "\n\n".join(
+                    compiler.render_css(sheet, context) for sheet in page_ast.loaded_sheets
+                )
+                style_lines.append(f"  <style>\n{combined}\n  </style>")
+            style_blocks = ("\n".join(style_lines) + "\n") if style_lines else ""
+
+            raw_source = ""
+            try:
+                raw_source = compiler.read_text_file(page_ast._tw_source_path) if page_ast._tw_source_path else ""
+            except (OSError, UnicodeDecodeError):
+                raw_source = ""
+
+            from .reactivity import has_reactivity
+            reactive_enabled = bool(raw_source and has_reactivity(raw_source))
+            zero_js = compiler.is_zero_js_page(
+                page_ast, body_html=body_html,
+                needs_router_runtime=needs_router,
+                raw_source=raw_source, reactive_enabled=reactive_enabled,
+            )
+
+            rendered = compiler.compose_nested_layouts(
+                layout_files=page_info["layout_files"],
+                page_body_html=body_html,
+                page_title=title,
+                page_head_extras=head_extras,
+                page_style_blocks=style_blocks,
+                page_runtime_scripts="",
+                context=context,
+                page=page_ast,
+                zero_js=zero_js,
+            )
+            redirect_to = page_ast.redirect_to
+            status = 302 if redirect_to else 200
+            headers = []
+            if redirect_to:
+                headers.append(("Location", compiler.interpolate(redirect_to, context)))
+            if dev_mode:
+                rendered = inject_dev_client(rendered)
+            response = {"html": rendered, "status": status, "headers": headers}
+            hook_state = self.extensions.emit(
+                "afterRoute",
+                match=match,
+                page_info=page_info,
+                page_ast=page_ast,
+                context=context,
+                response=response,
+                dev_mode=dev_mode,
+            )
+            return hook_state.get("response", response)
+
+        if self.modular_pipeline:
+            artifacts = compiler.compile_file_pipeline(
+                tw_path,
+                context=context,
+                css_href=css_url,
+                route_path=match.route_path,
+            )
+            rendered = artifacts.html or ""
+            program = artifacts.program
+            redirect_to = None
+            if program is not None:
+                redirect_to = program.meta.redirect_to or getattr(getattr(program, "legacy_page", None), "redirect_to", None)
+                rewrite_to = program.meta.rewrite_to or getattr(getattr(program, "legacy_page", None), "rewrite_to", None)
+                if rewrite_to:
+                    rewritten_path = compiler.interpolate(rewrite_to, context)
+                    rewritten_match = self.resolve_route(rewritten_path)
+                    if rewritten_match:
+                        rewritten_match = RouteMatch(
+                            page_info=rewritten_match.page_info,
+                            params=rewritten_match.params,
+                            item=rewritten_match.item,
+                            route_path=match.route_path,
+                        )
+                        return self.compile_match_response(rewritten_match, dev_mode=dev_mode, depth=depth + 1)
+            status = 302 if redirect_to else 200
+        else:
+            rendered = compiler.render_html(page_ast, context, css_url)
+            redirect_to = page_ast.redirect_to
+            status = 302 if redirect_to else 200
+        headers = []
+        if redirect_to:
+            headers.append(("Location", compiler.interpolate(redirect_to, context)))
+
+        if dev_mode:
+            rendered = inject_dev_client(rendered)
+        response = {"html": rendered, "status": status, "headers": headers}
+        hook_state = self.extensions.emit(
+            "afterRoute",
+            match=match,
+            page_info=page_info,
+            page_ast=page_ast,
+            context=context,
+            response=response,
+            dev_mode=dev_mode,
+        )
+        return hook_state.get("response", response)
+
+    def compile_match_to_html(self, match: RouteMatch, dev_mode: bool = False) -> Any:
+        return self.compile_match_response(match, dev_mode=dev_mode)["html"]
+
+    def compile_special_page(self, status_code: int, dev_mode: bool = False) -> Optional[str]:
+        page_info = self.find_special_page(status_code)
+        if not page_info:
+            return None
+        return self.compile_match_to_html(RouteMatch(page_info=page_info, params={}, item=None, route_path=f"/{status_code}"), dev_mode=dev_mode)
+
+
+class TWDevState:
+    def __init__(self, project: TWProject) -> None:
+        self.project = project
+        self.version = 0
+        self.stop_event = threading.Event()
+        self.lock = threading.Lock()
+
+    def bump(self) -> None:
+        with self.lock:
+            self.version += 1
+
+    def current_version(self) -> Any:
+        with self.lock:
+            return self.version
+
+
+class TWFileWatcher(threading.Thread):
+    def __init__(self, state: TWDevState, interval: float = 1.0) -> None:
+        super().__init__(daemon=True)
+        self.state = state
+        # Allow tuning:
+        # - env: TW_WATCH_INTERVAL
+        # - config: watch_interval
+        configured = None
+        try:
+            configured = float(os.environ.get("TW_WATCH_INTERVAL", "") or "")
+        except (ValueError, TypeError):
+            configured = None
+        if configured is None:
+            try:
+                configured = float(state.project.config.get("watch_interval", state.project.config.get("watchInterval", interval)))
+            except (ValueError, TypeError):
+                configured = None
+        self.interval = max(0.2, min(2.0, configured if configured is not None else interval))
+        # How often to rescan the full file list (for new/deleted files).
+        # Default is fairly aggressive to reduce "new file not detected" latency.
+        rescan_ticks = None
+        try:
+            rescan_ticks = int(os.environ.get("TW_WATCH_RESCAN_TICKS", "") or "")
+        except (ValueError, TypeError):
+            rescan_ticks = None
+        if rescan_ticks is None:
+            try:
+                rescan_ticks = int(state.project.config.get("watch_rescan_ticks", state.project.config.get("watchRescanTicks", 2)))
+            except (ValueError, TypeError):
+                rescan_ticks = None
+        self.rescan_ticks = max(1, int(rescan_ticks if rescan_ticks is not None else 2))
+
+        self._tick = 0
+        self._files = []
+        self._stats = {}
+        self.backend = str(os.environ.get("TW_WATCH_BACKEND", "auto") or "auto").strip().lower()
+        self._inotify_fd: Optional[int] = None
+        self._wd_to_dir: Dict[int, str] = {}
+        self._debounce_s = max(0.05, float(os.environ.get("TW_WATCH_DEBOUNCE", "0.15") or 0.15))
+        self._refresh_file_list()
+
+    def _refresh_file_list(self) -> None:
+        self._files = self.state.project.list_source_files()
+        self._stats = {}
+        for path in self._files:
+            try:
+                st = os.stat(path)
+                self._stats[path] = (st.st_mtime_ns, st.st_size)
+            except OSError:
+                self._stats[path] = None
+
+    def _can_use_inotify(self) -> Any:
+        if self.backend == "poll":
+            return False
+        if self.backend == "inotify":
+            return True
+        # auto
+        return sys.platform.startswith("linux")
+
+    def _inotify_setup(self) -> bool:
+        if not self._can_use_inotify():
+            return False
+        if self._inotify_fd is not None:
+            return True
+        try:
+            libc = ctypes.CDLL("libc.so.6", use_errno=True)
+        except OSError:
+            return False
+
+        inotify_init1 = getattr(libc, "inotify_init1", None)
+        inotify_add_watch = getattr(libc, "inotify_add_watch", None)
+        if inotify_init1 is None or inotify_add_watch is None:
+            return False
+
+        # Flags: IN_NONBLOCK (0x800) | IN_CLOEXEC (0x80000)
+        fd = int(inotify_init1(0x800 | 0x80000))
+        if fd < 0:
+            return False
+        self._inotify_fd = fd
+
+        # NOTE: We watch directories (not individual files). For new directories,
+        # we also add a watch dynamically when created.
+        try:
+            self._inotify_refresh_watches(libc)
+        except Exception:
+            logger.exception("Failed to setup inotify watches, falling back to polling")
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            self._inotify_fd = None
+            self._wd_to_dir = {}
+            return False
+        return True
+
+    def _inotify_refresh_watches(self, libc) -> None:
+        inotify_add_watch = libc.inotify_add_watch
+        inotify_add_watch.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_uint32]
+        inotify_add_watch.restype = ctypes.c_int
+
+        # Watch events: create/delete/move/modify/attrib on dirs and files
+        mask = (
+            0x00000100  # IN_CREATE
+            | 0x00000200  # IN_DELETE
+            | 0x00000002  # IN_MODIFY
+            | 0x00000004  # IN_ATTRIB
+            | 0x00000040  # IN_MOVED_FROM
+            | 0x00000080  # IN_MOVED_TO
+            | 0x00000400  # IN_DELETE_SELF
+            | 0x00000800  # IN_MOVE_SELF
+        )
+
+        # Clear and rebuild watch list (simple and robust).
+        self._wd_to_dir = {}
+        roots = [self.state.project.project_root, os.path.join(self.state.project.project_root, "[home]")]
+        for root in roots:
+            if not root or not os.path.isdir(root):
+                continue
+            for dirpath, dirnames, _ in os.walk(root):
+                # skip hidden caches inside project (don't waste watches)
+                dirnames[:] = [d for d in dirnames if d not in {".tw", "dist", "__pycache__", ".pytest_cache"}]
+                wd = int(inotify_add_watch(self._inotify_fd, dirpath.encode("utf-8"), mask))
+                if wd >= 0:
+                    self._wd_to_dir[wd] = dirpath
+
+    def _inotify_read_events(self) -> Any:
+        """Returns list of (mask, name, watched_dir)."""
+        assert self._inotify_fd is not None
+        try:
+            data = os.read(self._inotify_fd, 65536)
+        except BlockingIOError:
+            return []
+        except OSError:
+            logger.exception("inotify read failed")
+            return []
+
+        events = []
+        off = 0
+        # struct inotify_event { int wd; uint32_t mask; uint32_t cookie; uint32_t len; char name[]; }
+        while off + 16 <= len(data):
+            wd, mask, _cookie, name_len = struct.unpack_from("iIII", data, off)
+            off += 16
+            name = b""
+            if name_len:
+                name = data[off : off + name_len].split(b"\x00", 1)[0]
+                off += name_len
+            watched_dir = self._wd_to_dir.get(int(wd), "")
+            events.append((int(mask), name.decode("utf-8", errors="replace"), watched_dir))
+        return events
+
+    def run(self):
+        # Prefer inotify on Linux for better latency and battery usage.
+        if self._inotify_setup():
+            log("👀 File watcher: inotify mode")
+            try:
+                libc = ctypes.CDLL("libc.so.6", use_errno=True)
+            except OSError:
+                libc = None
+            last_change = 0.0
+            while not self.state.stop_event.is_set():
+                fd = self._inotify_fd
+                if fd is None:
+                    break
+                rlist, _, _ = select.select([fd], [], [], 0.5)
+                if not rlist:
+                    continue
+                events = self._inotify_read_events()
+                if not events:
+                    continue
+                changed = True
+
+                # If new dirs created, refresh watches (simple, avoids edge cases).
+                if libc is not None:
+                    for mask, name, watched_dir in events:
+                        # IN_ISDIR (0x40000000) + IN_CREATE
+                        if (mask & 0x40000000) and (mask & 0x00000100):
+                            try:
+                                self._inotify_refresh_watches(libc)
+                            except Exception:
+                                logger.exception("Failed to refresh inotify watches")
+                            break
+
+                now = time.monotonic()
+                if changed:
+                    # Debounce to avoid bumping multiple times during a save burst.
+                    if (now - last_change) < self._debounce_s:
+                        continue
+                    last_change = now
+                    self._refresh_file_list()
+                    self.state.project.invalidate()
+                    self.state.bump()
+
+            if self._inotify_fd is not None:
+                try:
+                    os.close(self._inotify_fd)
+                except OSError:
+                    pass
+                self._inotify_fd = None
+            return
+
+        # Polling fallback (portable)
+        log("👀 File watcher: polling mode")
+        while not self.state.stop_event.is_set():
+            time.sleep(self.interval)
+
+            changed = False
+            for path in list(self._files):
+                try:
+                    st = os.stat(path)
+                    sig = (st.st_mtime_ns, st.st_size)
+                except OSError:
+                    sig = None
+                if self._stats.get(path) != sig:
+                    changed = True
+                    break
+
+            # Periodically rescan to detect new files / deletions (low overhead)
+            if not changed and (self._tick % self.rescan_ticks == 0):
+                new_files = self.state.project.list_source_files()
+                if set(new_files) != set(self._files):
+                    changed = True
+
+            if changed:
+                self._refresh_file_list()
+                with self.state.project._lock:
+                    self.state.project.invalidate()
+                self.state.bump()
+
+
+def make_dev_handler(state: TWDevState) -> Any:
+    class TWDevHandler(http.server.BaseHTTPRequestHandler):
+        server_version = "TWDevServer/1.0"
+
+        def log_message(self, fmt, *args) -> None:
+            log(f"[dev] {self.address_string()} - {fmt % args}")
+
+        def do_GET(self) -> None:
+            self.handle_request("GET")
+
+        def do_HEAD(self) -> None:
+            # v0.8.50 (Issue 3): Support HEAD requests (curl -I, wget --spider,
+            # health checks).  HEAD is handled like GET but the response body
+            # is discarded after headers are computed.
+            self.handle_request("HEAD")
+
+        def do_POST(self) -> None:
+            self.handle_request("POST")
+
+        def do_PUT(self) -> None:
+            self.handle_request("PUT")
+
+        def do_PATCH(self) -> None:
+            self.handle_request("PATCH")
+
+        def do_DELETE(self) -> None:
+            self.handle_request("DELETE")
+
+        def do_OPTIONS(self) -> None:
+            self.handle_request("OPTIONS")
+
+        def handle_request(self, method: str) -> None:
+            path = normalize_url_path(self.path)
+
+            if tw_websocket.is_websocket_upgrade(self.headers):
+                self.handle_websocket(path)
+                return
+
+            if path == "/__tw/events":
+                self.handle_events()
+                return
+
+            # v0.9.08 FIX: Streaming SSE endpoint
+            if path == "/__tw/stream":
+                self.handle_streaming_sse(path)
+                return
+
+            # v0.9.08: ISR revalidation endpoint
+            if path == "/__tw/revalidate" and method == "POST":
+                body_data = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                req = json.loads(body_data)
+                result = isr_module.request_revalidation(req.get("paths", []), req.get("private_action"))
+                # v0.9.08 FIX: Actually rebuild the pages NOW
+                if result.get("success"):
+                    pr = state.project.project_root if hasattr(state, 'project') else "."
+                    od = "dist"
+                    rebuild_result = isr_module.process_pending_revalidations(pr, od)
+                    result["rebuilt"] = rebuild_result.get("rebuilt", 0)
+                    result["failed"] = rebuild_result.get("failed", [])
+                self.respond_bytes(200, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+                return
+
+            # v0.9.08: Edge DB proxy endpoint
+            if path == "/__tw/db" and method == "POST":
+                body_data = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                req = json.loads(body_data)
+                result = edge_db_module.handle_db_proxy_request(req)
+                self.respond_bytes(200, json.dumps(result).encode("utf-8"), "application/json; charset=utf-8")
+                return
+
+            # v0.9.08: HMR WebSocket endpoint
+            if path == "/__tw/hmr":
+                self.handle_hmr_websocket()
+                return
+
+            # v0.9.08 FIX: Enable HMR on first request
+            if not hmr_manager.enabled:
+                hmr_manager.enable()
+            if path == "/__tw/health":
+                self.respond_bytes(200, b"ok", "text/plain; charset=utf-8")
+                return
+
+            request_headers = {key: value for key, value in self.headers.items()}
+            # ── Modern request middleware hook (extensions) ───────────────
+            # Allows project code to intercept/block/redirect/rewrite before TW middleware/api/routes.
+            hook_state = state.project.extensions.emit(
+                "beforeRequest",
+                method=method,
+                raw_path=self.path,
+                url_path=path,
+                request_headers=request_headers,
+                request_meta={"client_ip": self.client_address[0] if self.client_address else ""},
+                dev_mode=True,
+            )
+            if hook_state.get("response"):
+                response = hook_state["response"]
+                self.respond_bytes(
+                    response["status"],
+                    response["body"],
+                    response["content_type"],
+                    headers=response.get("headers", []),
+                    cookies=response.get("cookies", []),
+                )
+                return
+            if hook_state.get("redirect"):
+                location = str(hook_state["redirect"])
+                self.respond_bytes(
+                    302,
+                    b"",
+                    "text/plain; charset=utf-8",
+                    headers=[("Location", location)] + list(hook_state.get("headers", [])),
+                    cookies=list(hook_state.get("cookies", [])),
+                )
+                return
+            if hook_state.get("rewrite"):
+                path = normalize_url_path(str(hook_state["rewrite"]))
+            request_headers = hook_state.get("request_headers", request_headers)
+            middleware = state.project.apply_middleware(
+                self.path,
+                request_headers,
+                request_meta={"client_ip": self.client_address[0] if self.client_address else ""},
+                method=method,
+            )
+
+            # v0.8.51 (Issue 1 contd): Run fn after(response) hook to inject
+            # response headers before sending.  The after-hook was stored in
+            # middleware["_fn_after"] by apply_middleware() but never executed.
+            fn_after = middleware.pop("_fn_after", None)
+
+            def _apply_after_hook(status, payload, content_type, headers, cookies):
+                """Run the fn after(response) hook if present, returning
+                potentially modified headers."""
+                if not fn_after:
+                    return headers, cookies
+                fn_ctx = {
+                    "response": {
+                        "status": status,
+                        "headers": {h[0]: h[1] for h in (headers or [])},
+                        "body": payload.decode("utf-8", errors="replace") if isinstance(payload, bytes) else str(payload),
+                    },
+                    "request": {
+                        "method": method,
+                        "path": path,
+                        "headers": request_headers,
+                    },
+                    "result": None,
+                }
+                fn_result = _run_fn_middleware(fn_after, fn_ctx, "after")
+                if fn_result and isinstance(fn_result, dict):
+                    resp = fn_result.get("response") or fn_result.get("result")
+                    if resp and isinstance(resp, dict):
+                        resp_headers = resp.get("headers") or {}
+                        if isinstance(resp_headers, dict):
+                            # Merge: existing headers + fn-added headers
+                            existing = {h[0]: h[1] for h in (headers or [])}
+                            existing.update(resp_headers)
+                            return list(existing.items()), cookies
+                        elif isinstance(resp_headers, list):
+                            return (headers or []) + resp_headers, cookies
+                return headers, cookies
+
+            if middleware.get("response"):
+                response = middleware["response"]
+                hdrs, cookies = _apply_after_hook(
+                    response["status"], response["body"], response["content_type"],
+                    response.get("headers", []), response.get("cookies", []),
+                )
+                self.respond_bytes(
+                    response["status"],
+                    response["body"],
+                    response["content_type"],
+                    headers=hdrs,
+                    cookies=cookies,
+                )
+                return
+            if middleware.get("redirect"):
+                payload = f"Redirecting to {middleware['redirect']}".encode("utf-8")
+                hdrs, cookies = _apply_after_hook(
+                    302, payload, "text/plain; charset=utf-8",
+                    [("Location", middleware["redirect"])] + middleware.get("headers", []),
+                    middleware.get("cookies", []),
+                )
+                self.respond_bytes(
+                    302,
+                    payload,
+                    "text/plain; charset=utf-8",
+                    headers=hdrs,
+                    cookies=cookies,
+                )
+                return
+            path = normalize_url_path(middleware.get("path", path))
+            with state.project._lock:
+                api_route = state.project.resolve_api_route(path)
+                if api_route is not None:
+                    body = decode_request_body(self) if method in {"POST", "PUT", "PATCH"} else {}
+                    try:
+                        api_response = state.project.execute_api_route(api_route, method, self.path, request_headers, body)
+                        self.respond_bytes(
+                            api_response["status"],
+                            api_response["body"],
+                            api_response["content_type"],
+                            headers=middleware.get("headers", []) + api_response.get("headers", []),
+                            cookies=middleware.get("cookies", []) + api_response.get("cookies", []),
+                        )
+                    except Exception as err:
+                        logger.exception("Unhandled API route error (dev): %s %s -> %s", method, self.path, api_route)
+                        body = render_error_html("API route error", str(err), 500, ip=self.client_address[0] if self.client_address else "")
+                        self.respond_bytes(500, body, "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
+                    return
+
+                asset = state.project.resolve_asset(path)
+                if asset is not None:
+                    payload, content_type = asset
+                    self.respond_bytes(200, payload, content_type, headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
+                    return
+
+                match = state.project.resolve_route(path)
+                if not match:
+                    custom_404 = state.project.compile_special_page(404, dev_mode=True)
+                    if custom_404 is not None:
+                        self.respond_bytes(404, custom_404.encode("utf-8"), "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
+                        return
+                    body = render_error_html("Page not found", f"Route not found: {path}", 404, ip=self.client_address[0] if self.client_address else "")
+                    self.respond_bytes(404, body, "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
+                    return
+
+                try:
+                    response = state.project.compile_match_response(match, dev_mode=True)
+                    self.respond_bytes(
+                        response["status"],
+                        response["html"].encode("utf-8"),
+                        "text/html; charset=utf-8",
+                        headers=middleware.get("headers", []) + response.get("headers", []),
+                        cookies=middleware.get("cookies", []),
+                    )
+                except Exception as err:
+                    try:
+                        custom_500 = state.project.compile_special_page(500, dev_mode=True)
+                        if custom_500 is not None:
+                            self.respond_bytes(500, custom_500.encode("utf-8"), "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
+                            return
+                    except Exception:
+                        logger.exception("Failed to compile custom 500 page (dev)")
+                    message = format_compiler_error(match.page_info["path"], err)
+                    ctx = get_error_context(match.page_info["path"], err)
+                    body = render_error_html("Compile error", message, 500,
+                        ip=self.client_address[0] if self.client_address else "",
+                        page_path=ctx["page_path"],
+                        error_line=ctx["error_line"],
+                        source_snippet=ctx["source_snippet"],
+                        suggestion=ctx["suggestion"])
+                    self.respond_bytes(500, body, "text/html; charset=utf-8", headers=middleware.get("headers", []), cookies=middleware.get("cookies", []))
+
+        def handle_websocket(self, path: str) -> None:
+            routes = discover_ws_routes(state.project.project_root)
+            handler_path = routes.get(path)
+            if handler_path is None:
+                self.send_response(404)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                try:
+                    self.wfile.write(b"No WebSocket route for this path")
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                return
+
+            on_connect = load_ws_handler(handler_path)
+            if on_connect is None:
+                self.send_response(500)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                try:
+                    self.wfile.write(b"WebSocket route failed to load (see server logs)")
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                return
+
+            if not tw_websocket.perform_handshake(self):
+                return
+
+            conn = tw_websocket.WebSocketConnection(
+                self.connection, path,
+                headers={key: value for key, value in self.headers.items()},
+            )
+            try:
+                on_connect(conn)
+            except Exception:
+                logger.exception("WebSocket handler raised an exception: %s", handler_path)
+            finally:
+                conn.close()
+
+        def handle_hmr_websocket(self) -> None:
+            """v0.9.08: HMR WebSocket handler."""
+            try:
+                if not tw_websocket.perform_handshake(self):
+                    return
+                conn = tw_websocket.WebSocketConnection(
+                    self.connection, "/__tw/hmr",
+                    headers={key: value for key, value in self.headers.items()},
+                )
+                hmr_manager.connections.add(conn)
+                conn.send('{"type": "connected", "watching": "*.tw"}')
+                while not state.stop_event.is_set():
+                    time.sleep(1)
+                hmr_manager.connections.discard(conn)
+            except Exception:
+                pass
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        def handle_events(self) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+
+            last_seen = state.current_version()
+            try:
+                # EventSource reconnection hint (ms)
+                self.wfile.write(b"retry: 500\n\n")
+                self.wfile.flush()
+                while not state.stop_event.is_set():
+                    current = state.current_version()
+                    if current != last_seen:
+                        self.wfile.write(b"data: reload\n\n")
+                        self.wfile.flush()
+                        last_seen = current
+                    else:
+                        self.wfile.write(b": ping\n\n")
+                        self.wfile.flush()
+                    time.sleep(1)
+            except (BrokenPipeError, ConnectionResetError):
+                return
+
+        def respond_bytes(self, status: int, payload: bytes, content_type: str, headers: Optional[List[Tuple[str, str]]] = None, cookies: Optional[List[Tuple[str, str]]] = None) -> None:
+            # v0.9.08 FIX: Inject HMR client script into HTML responses
+            if content_type and "text/html" in content_type and hmr_manager.enabled:
+                try:
+                    hmr_script = hmr_manager.get_client_script()
+                    if hmr_script and isinstance(payload, bytes):
+                        payload = payload.replace(b"</body>", hmr_script.encode("utf-8") + b"\n</body>", 1)
+                except Exception:
+                    pass
+            # v0.8.51: gzip compression for large responses in dev server
+            accept_encoding = self.headers.get("Accept-Encoding", "")
+            compressible = (
+                len(payload) > 1024
+                and "gzip" in accept_encoding
+                and (
+                    content_type.startswith("text/")
+                    or "javascript" in content_type
+                    or "json" in content_type
+                    or "xml" in content_type
+                    or "svg" in content_type
+                )
+            )
+            if compressible:
+                payload = gzip.compress(payload, compresslevel=6)
+
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(payload)))
+            if compressible:
+                self.send_header("Content-Encoding", "gzip")
+            # Dev cache hardening: avoid stale HTML/CSS/JS when browser caches aggressively
+            if content_type.startswith("text/html") or content_type.startswith("text/css") or "javascript" in content_type:
+                self.send_header("Cache-Control", "no-store")
+            else:
+                self.send_header("Cache-Control", "no-cache")
+            for header_name, header_value in headers or []:
+                self.send_header(header_name, header_value)
+            for cookie_name, cookie_value in cookies or []:
+                self.send_header(
+                    "Set-Cookie",
+                    render_cookie_header(
+                        cookie_name,
+                        cookie_value,
+                        config=state.project.config,
+                        request_headers={key: value for key, value in self.headers.items()},
+                        server_port=self.server.server_address[1],
+                    ),
+                )
+            self.end_headers()
+            # v0.8.50 (Issue 3): For HEAD requests, send headers but NOT the body.
+            # Content-Length is still set correctly so the client knows the real size.
+            if self.command != "HEAD":
+                try:
+                    self.wfile.write(payload)
+                except (BrokenPipeError, ConnectionResetError):
+                    return
+
+    return TWDevHandler
+
+
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+
+def run_dev_server(project_root: str, host: str, port: int) -> None:
+    project = TWProject(project_root)
+    state = TWDevState(project)
+    watcher = TWFileWatcher(state)
+    watcher.start()
+
+    handler = make_dev_handler(state)
+    try:
+        server = ThreadedTCPServer((host, port), handler)
+    except OSError as err:
+        state.stop_event.set()
+        raise RuntimeError(
+            f"Could not bind to port {port} ({err}). Is the port already in use? "
+            f"Try: `tw dev --port {port + 1}` or choose a free port."
+        ) from err
+
+    log(f"TW dev server running at http://{host}:{port}")
+    log("Source workflow active: edit `.tw`, `.tss`, `.ts`; the browser will auto-reload.")
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        log("\nStopping dev server...")
+    finally:
+        state.stop_event.set()
+        server.shutdown()
+        server.server_close()
+
+
+def build_preview_candidates(output_dir: str, path: str) -> Any:
+    if path == "/":
+        return [os.path.join(output_dir, "index.html")]
+
+    trimmed = path.lstrip("/")
+    candidates = [os.path.join(output_dir, trimmed)]
+    if not os.path.splitext(trimmed)[1]:
+        candidates.append(os.path.join(output_dir, trimmed + ".html"))
+        candidates.append(os.path.join(output_dir, trimmed, "index.html"))
+    return candidates
+
+
+def make_preview_handler(output_dir: str) -> Any:
+    output_dir = os.path.abspath(output_dir)
+
+    class TWPreviewHandler(http.server.BaseHTTPRequestHandler):
+        server_version = "TWPreviewServer/1.0"
+
+        def log_message(self, fmt, *args) -> None:
+            log(f"[preview] {self.address_string()} - {fmt % args}")
+
+        def do_GET(self) -> None:
+            path = normalize_url_path(self.path)
+            for candidate in build_preview_candidates(output_dir, path):
+                candidate = os.path.abspath(candidate)
+                if not is_path_within(output_dir, candidate):
+                    continue
+                payload = safe_read_binary(candidate)
+                if payload is not None:
+                    content_type = mimetypes.guess_type(candidate)[0] or "application/octet-stream"
+                    self.respond_bytes(200, payload, content_type)
+                    return
+
+            custom_404 = safe_read_binary(os.path.join(output_dir, "404.html"))
+            if custom_404 is not None:
+                self.respond_bytes(404, custom_404, "text/html; charset=utf-8")
+                return
+
+            body = render_error_html("Page not found", f"Route not found: {path}", 404, ip=self.client_address[0] if self.client_address else "")
+            self.respond_bytes(404, body, "text/html; charset=utf-8")
+
+        def respond_bytes(self, status: int, payload: bytes, content_type: str) -> None:
+            if (
+                (
+                    content_type.startswith("text/html")
+                    or content_type.startswith("text/css")
+                    or "javascript" in content_type
+                )
+                and "charset=" not in content_type.lower()
+            ):
+                content_type = f"{content_type}; charset=utf-8"
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(payload)))
+            # Preview: prefer fresh content during local testing
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            try:
+                self.wfile.write(payload)
+            except (BrokenPipeError, ConnectionResetError):
+                return
+
+    return TWPreviewHandler
+
+
+def run_preview_server(output_dir: str, host: str, port: int) -> None:
+    output_dir = os.path.abspath(output_dir)
+    if not os.path.isdir(output_dir):
+        raise RuntimeError(f"Preview output missing: {output_dir}. Run `tw build` or `tw export` first.")
+
+    handler = make_preview_handler(output_dir)
+    server = ThreadedTCPServer((host, port), handler)
+    log(f"TW preview server running at http://{host}:{port}")
+    log(f"Serving static output from: {output_dir}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        log("\nStopping preview server...")
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def compile_typescript_sources(project_root: str, output_dir: str) -> Any:
+    ts_files = []
+    for dirpath, _, filenames in os.walk(os.path.join(project_root, "[home]")):
+        for filename in filenames:
+            if filename.endswith(".ts"):
+                ts_files.append(os.path.join(dirpath, filename))
+
+    if not ts_files:
+        return []
+
+    tsc_bin = shutil.which("tsc")
+    if not tsc_bin:
+        log("  ⚠️  TypeScript files found, but `tsc` was not found. Skipping TS compilation.", level="warning")
+        return []
+
+    out_dir = os.path.join(output_dir, "_tw", "ts")
+    os.makedirs(out_dir, exist_ok=True)
+
+    command = [
+        tsc_bin,
+        "--module", "esnext",
+        "--target", "es2020",
+        "--sourceMap",
+        "--outDir", out_dir,
+        "--rootDir", os.path.join(project_root, "[home]"),
+        "--pretty", "false",
+        "--skipLibCheck",
+    ] + ts_files
+
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"TypeScript compile failed:\n{result.stdout}\n{result.stderr}".strip())
+
+    emitted = []
+    for root, _, files in os.walk(out_dir):
+        for filename in files:
+            emitted.append(os.path.join(root, filename))
+    return emitted
+
+
+def ensure_project_metadata(project_root: str) -> None:
+    package_json_path = os.path.join(project_root, "package.json")
+    if not os.path.exists(package_json_path):
+        package_name = os.path.basename(os.path.abspath(project_root)).lower().replace(" ", "-")
+        with open(package_json_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "name": package_name or "tw-site",
+                    "private": True,
+                    "version": "0.1.0",
+                    "engines": {
+                        "node": ">=18",
+                    },
+                    "scripts": {
+                        "dev": "tw dev",
+                        "build": "tw build",
+                        "export": "tw export",
+                        "preview": "tw preview",
+                        "clean": "tw clean",
+                        "doctor": "tw doctor",
+                        "info": "tw info",
+                        "deploy": "tw deploy",
+                    },
+                    "dependencies": {},
+                    "devDependencies": {},
+                },
+                f,
+                indent=2,
+            )
+            f.write("\n")
+
+    vercel_json_path = os.path.join(project_root, "vercel.json")
+    if not os.path.exists(vercel_json_path):
+        with open(vercel_json_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "buildCommand": "tw build",
+                    "outputDirectory": "dist",
+                },
+                f,
+                indent=2,
+            )
+            f.write("\n")
+
+
+def sync_runtime_chunks_to_output() -> None:
+    os.makedirs(compiler.CHUNKS_DIR, exist_ok=True)
+    os.makedirs(compiler.CHUNKS_PUBLIC_DIR, exist_ok=True)
+
+    for filename in os.listdir(compiler.CHUNKS_DIR):
+        src = os.path.join(compiler.CHUNKS_DIR, filename)
+        dst = os.path.join(compiler.CHUNKS_PUBLIC_DIR, filename)
+        if os.path.isfile(src):
+            shutil.copy2(src, dst)
+
+
+def write_hidden_cache_files(dependency_map: Dict[str, List[str]], metadata_map: Optional[Dict[str, dict]] = None) -> None:
+    os.makedirs(compiler.CACHE_DIR, exist_ok=True)
+    os.makedirs(compiler.MANIFEST_DIR, exist_ok=True)
+    os.makedirs(compiler.COMPILER_DIR, exist_ok=True)
+
+    hash_db = {}
+    for page_key, dependencies in dependency_map.items():
+        hash_db[page_key] = {
+            "signature": compiler.compute_dependency_signature(dependencies),
+            "dependencies": dependencies,
+            "metadata": dict((metadata_map or {}).get(page_key) or {}),
+        }
+
+    with open(compiler.HASH_DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(hash_db, f, indent=2, sort_keys=True)
+
+
+def write_text_file(path: str, content: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+def route_records_for_build() -> List[dict]:
+    records = []
+    config = compiler.load_config()
+    pipeline_name = "modular" if use_modular_pipeline(config) else "legacy"
+    for page in compiler.discover_pages():
+        page_ast = compiler.load_page_ast_from_file(page["path"])
+        if page["type"] == "static":
+            route = route_from_static_page(page)
+            metadata = compiler.collect_page_metadata(page, page_ast=page_ast, route_path=route, pipeline=pipeline_name)
+            render_mode = determine_render_mode(page["path"])
+            records.append({
+                "route": route,
+                "type": "page",
+                "render": render_mode,
+                "revalidate": page_ast.revalidate,
+                "source": compiler.safe_relpath(page["path"], compiler.PROJECT_ROOT),
+                "title": page_ast.title,
+                "layouts": metadata["layouts"],
+                "components": metadata["components"],
+                "pipeline": metadata["pipeline"],
+            })
+            continue
+        # v0.8.38: Check generateStaticParams first (same as build pipeline)
+        gsp_items = compiler.load_generate_static_params(page_ast, page["path"])
+        if gsp_items is not None:
+            items = gsp_items
+        else:
+            items = compiler.load_dynamic_items(page["path"])
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            route = route_from_dynamic_page(page, item)
+            metadata = compiler.collect_page_metadata(page, page_ast=page_ast, route_path=route, pipeline=pipeline_name, item=item)
+            render_mode = determine_render_mode(page["path"])
+            records.append({
+                "route": route,
+                "type": "page",
+                "render": render_mode,
+                "revalidate": page_ast.revalidate,
+                "source": compiler.safe_relpath(page["path"], compiler.PROJECT_ROOT),
+                "title": page_ast.title,
+                "layouts": metadata["layouts"],
+                "components": metadata["components"],
+                "pipeline": metadata["pipeline"],
+                "route_kind": metadata["route_kind"],
+            })
+    return sorted(records, key=lambda item: item["route"])
+
+
+def _generate_sitemap_xsl(config) -> str:
+    """Generate a stylish XSL stylesheet for sitemap.xml display."""
+    site_name = str(config.get("name", "TW Site"))
+    xsl = '''<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="1.0"
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+    xmlns:sitemap="http://www.sitemaps.org/schemas/sitemap/0.9"
+    xmlns:tw="TW"
+    exclude-result-prefixes="sitemap tw">
+  <xsl:template match="/">
+    <html lang="en"><head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <title>Sitemap - SITENAME</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;padding:24px}
+        .container{max-width:960px;margin:0 auto}
+        .header{display:flex;align-items:center;gap:16px;margin-bottom:32px;padding:24px;background:#1e293b;border-radius:16px;border:1px solid #334155}
+        .logo{width:56px;height:56px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff}
+        .header h1{font-size:28px;font-weight:800}
+        .header p{font-size:14px;color:#94a3b8;margin-top:4px}
+        .summary{display:flex;gap:16px;margin-bottom:32px}
+        .summary-card{flex:1;background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;text-align:center}
+        .summary-card .number{font-size:36px;font-weight:800;color:#38bdf8}
+        .summary-card .label{font-size:14px;color:#94a3b8;margin-top:4px}
+        table{width:100%;border-collapse:collapse;background:#1e293b;border-radius:12px;overflow:hidden;border:1px solid #334155}
+        th{text-align:left;padding:16px;background:#334155;font-size:14px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+        td{padding:16px;border-top:1px solid #334155;font-size:15px}
+        td a{color:#38bdf8;text-decoration:none}
+        td a:hover{text-decoration:underline}
+        tr:hover td{background:rgba(56,189,248,.05)}
+        .url-cell{font-family:monospace;font-size:13px}
+        .footer-note{text-align:center;margin-top:32px;color:#64748b;font-size:13px}
+        @media(max-width:768px){.summary{flex-direction:column}th,td{padding:12px 8px;font-size:13px}}
+      </style></head><body>
+      <div class="container">
+        <div class="header"><div class="logo">TW</div><div>
+          <h1>SITENAME</h1>
+          <p>Sitemap - <xsl:value-of select="count(//sitemap:url)"/> URLs</p>
+        </div></div>
+        <div class="summary">
+          <div class="summary-card"><div class="number"><xsl:value-of select="count(//sitemap:url)"/></div><div class="label">Total URLs</div></div>
+          <div class="summary-card"><div class="number">XML</div><div class="label">Sitemap Format</div></div>
+          <div class="summary-card"><div class="number">TW</div><div class="label">Generated by TW Framework</div></div>
+        </div>
+        <table><thead><tr><th>#</th><th>URL</th><th>Title</th></tr></thead><tbody>
+          <xsl:for-each select="//sitemap:url"><tr>
+            <td><xsl:value-of select="position()"/></td>
+            <td class="url-cell"><a><xsl:attribute name="href"><xsl:value-of select="sitemap:loc"/></xsl:attribute><xsl:value-of select="sitemap:loc"/></a></td>
+            <td><xsl:value-of select="tw:title"/></td>
+          </tr></xsl:for-each>
+        </tbody></table>
+        <div class="footer-note">Generated by TW Framework</div>
+      </div></body></html>
+  </xsl:template>
+</xsl:stylesheet>
+'''
+    return xsl.replace("SITENAME", site_name)
+
+
+def write_route_artifacts(output_dir: str) -> Any:
+    config = compiler.load_config()
+    site_url = str(config.get("site_url", "") or config.get("siteUrl", "") or "").rstrip("/")
+    routes = [item for item in route_records_for_build() if item["route"] not in {"/404", "/500"}]
+    # Route collision detection (warn by default; can be escalated by callers).
+    # Collision = same final route emitted by multiple source pages/items.
+    collisions = {}
+    for entry in routes:
+        route = entry.get("route") or "/"
+        src = entry.get("source") or ""
+        collisions.setdefault(route, []).append(src)
+    collisions = {r: srcs for r, srcs in collisions.items() if len(set(srcs)) > 1}
+    if collisions:
+        for route, srcs in sorted(collisions.items()):
+            sources = ", ".join(sorted(set(srcs)))
+            log(f"  ⚠️  Route collision: {route} <- {sources}", level="warning")
+    write_text_file(os.path.join(output_dir, "_tw", "route-manifest.json"), json.dumps(routes, indent=2, ensure_ascii=False) + "\n")
+
+    api_manifest = []
+    for api in discover_api_routes():
+        if api.get("lang") == "twm":
+            with open(api["path"], "r", encoding="utf-8") as handle:
+                _result = parse_twm_functions(handle.read())
+                funcs = _result["functions"] if isinstance(_result, dict) else _result
+            method_names = {"get", "post", "put", "patch", "delete", "options"}
+            methods = sorted({fn["name"].upper() for fn in funcs if fn["name"].lower() in method_names})
+            if not methods and any(fn["name"].lower() == "handler" for fn in funcs):
+                methods = ["ANY"]
+        else:
+            methods = sorted(parse_api_route_file(api["path"]).keys())
+        api_manifest.append({
+            "route": api["route"],
+            "methods": methods,
+            "source": compiler.safe_relpath(api["path"], compiler.PROJECT_ROOT),
+        })
+    write_text_file(os.path.join(output_dir, "_tw", "api-manifest.json"), json.dumps(api_manifest, indent=2, ensure_ascii=False) + "\n")
+
+    # v0.8.42: Opt-in sitemap/robots/rss via tw.config
+    # Priority: developer custom file > auto-generated
+    import shutil as _shutil
+
+    def _user_provided(filename):
+        for candidate_dir in [
+            os.path.join(compiler.HOME_DIR, "public"),
+            os.path.join(compiler.PROJECT_ROOT, "public"),
+            compiler.PROJECT_ROOT,
+        ]:
+            candidate = os.path.join(candidate_dir, filename)
+            if os.path.isfile(candidate):
+                return candidate
+        return None
+
+    sitemap_enabled = compiler.to_bool(config.get("sitemap", False))
+    robots_enabled = compiler.to_bool(config.get("robots", False))
+    rss_enabled = compiler.to_bool(config.get("rss", False))
+
+    # --- sitemap.xml ---
+    if sitemap_enabled and site_url:
+        sitemap_path = os.path.join(output_dir, "sitemap.xml")
+        user_sitemap = _user_provided("sitemap.xml")
+        if user_sitemap:
+            _shutil.copy2(user_sitemap, sitemap_path)
+            log(f"  sitemap.xml: using developer file ({compiler.safe_relpath(user_sitemap, compiler.PROJECT_ROOT)})")
+        else:
+            xsl_pi = '<?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>\n'
+            lines = [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                xsl_pi,
+                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+            ]
+            for route in routes:
+                lines.append("  <url>")
+                lines.append(f"    <loc>{html.escape(site_url + route['route'])}</loc>")
+                if route.get("title"):
+                    lines.append(f"    <tw:title>{html.escape(str(route['title']))}</tw:title>")
+                lines.append("  </url>")
+            lines.append("</urlset>")
+            write_text_file(sitemap_path, "\n".join(lines) + "\n")
+            log("  sitemap.xml: auto-generated (with XSL)")
+            xsl_path = os.path.join(output_dir, "sitemap.xsl")
+            user_xsl = _user_provided("sitemap.xsl")
+            if user_xsl:
+                _shutil.copy2(user_xsl, xsl_path)
+                log(f"  sitemap.xsl: using developer file ({compiler.safe_relpath(user_xsl, compiler.PROJECT_ROOT)})")
+            else:
+                write_text_file(xsl_path, _generate_sitemap_xsl(config))
+                log("  sitemap.xsl: auto-generated")
+    elif sitemap_enabled and not site_url:
+        log("  sitemap: true but no site_url set — skipping")
+
+    # --- rss.xml ---
+    if rss_enabled and site_url:
+        rss_path = os.path.join(output_dir, "rss.xml")
+        user_rss = _user_provided("rss.xml")
+        if user_rss:
+            _shutil.copy2(user_rss, rss_path)
+            log(f"  rss.xml: using developer file ({compiler.safe_relpath(user_rss, compiler.PROJECT_ROOT)})")
+        else:
+            rss_lines = [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<rss version="2.0">',
+                "<channel>",
+                f"  <title>{html.escape(str(config.get('name', 'TW Site')))}</title>",
+                f"  <link>{html.escape(site_url)}</link>",
+                f"  <description>{html.escape(str(config.get('description', 'TW generated feed')))}</description>",
+            ]
+            for route in routes:
+                rss_lines.append("  <item>")
+                rss_lines.append(f"    <title>{html.escape(str(route.get('title') or route['route']))}</title>")
+                rss_lines.append(f"    <link>{html.escape(site_url + route['route'])}</link>")
+                rss_lines.append(f"    <guid>{html.escape(site_url + route['route'])}</guid>")
+                rss_lines.append("    <pubDate>" + formatdate(usegmt=True) + "</pubDate>")
+                rss_lines.append("  </item>")
+            rss_lines.extend(["</channel>", "</rss>"])
+            write_text_file(rss_path, "\n".join(rss_lines) + "\n")
+            log("  rss.xml: auto-generated")
+
+    # --- robots.txt ---
+    if robots_enabled:
+        robots_path = os.path.join(output_dir, "robots.txt")
+        user_robots = _user_provided("robots.txt")
+        if user_robots:
+            _shutil.copy2(user_robots, robots_path)
+            log(f"  robots.txt: using developer file ({compiler.safe_relpath(user_robots, compiler.PROJECT_ROOT)})")
+        else:
+            robots_content = "User-agent: *\nAllow: /\n"
+            if site_url:
+                robots_content += f"Sitemap: {site_url}/sitemap.xml\n"
+            write_text_file(robots_path, robots_content)
+            log("  robots.txt: auto-generated")
+        log("  ✅ robots.txt: auto-generated")
+
+    # Optional: lightweight client-side search index
+    search_enabled = bool(config.get("search", config.get("search_index", config.get("searchIndex", False))))
+    if search_enabled:
+        try:
+            write_search_index(output_dir, routes)
+        except Exception as err:
+            log(f"  ⚠️  Search index build skipped: {err}", level="warning")
+    return len(collisions)
+
+
+def strip_html_to_text(html_text: str) -> str:
+    # Remove script/style blocks
+    html_text = re.sub(r"<script[\s\S]*?</script>", " ", html_text, flags=re.I)
+    html_text = re.sub(r"<style[\s\S]*?</style>", " ", html_text, flags=re.I)
+    # Remove tags
+    html_text = re.sub(r"<[^>]+>", " ", html_text)
+    # Decode entities + normalize whitespace
+    html_text = html.unescape(html_text)
+    html_text = re.sub(r"\s+", " ", html_text).strip()
+    return html_text
+
+
+def write_search_index(output_dir: str, routes: List[dict]) -> None:
+    """
+    Generates: dist/_tw/search-index.json
+    Format: [{route,title,excerpt,content}]
+    """
+    items = []
+    for route in routes:
+        route_path = str(route.get("route") or "/")
+        title = str(route.get("title") or route_path)
+        source_html = None
+        for candidate in build_preview_candidates(output_dir, route_path):
+            if os.path.exists(candidate) and os.path.isfile(candidate):
+                source_html = compiler.read_text_file(candidate)
+                break
+        if not source_html:
+            continue
+        content = strip_html_to_text(source_html)
+        if not content:
+            continue
+        excerpt = content[:240]
+        items.append({
+            "route": route_path,
+            "title": title,
+            "excerpt": excerpt,
+            "content": content[:4000],
+        })
+
+    write_text_file(
+        os.path.join(output_dir, "_tw", "search-index.json"),
+        json.dumps(items, indent=2, ensure_ascii=False) + "\n",
+    )
+
+
+def precompress_output(output_dir: str) -> None:
+    try:
+        import brotli  # type: ignore
+    except ImportError:
+        brotli = None
+
+    compress_exts = {".html", ".css", ".js", ".json", ".xml", ".txt", ".svg"}
+    brotli_warned = False
+    for root, _, files in os.walk(output_dir):
+        for filename in files:
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in compress_exts:
+                continue
+            path = os.path.join(root, filename)
+            with open(path, "rb") as f:
+                payload = f.read()
+            with gzip.open(path + ".gz", "wb", compresslevel=9) as gz:
+                gz.write(payload)
+            if brotli is not None:
+                with open(path + ".br", "wb") as br:
+                    br.write(brotli.compress(payload))
+            elif not brotli_warned:
+                log("⚠️  Brotli dependency not installed; generated gzip precompression only.", level="warning")
+                brotli_warned = True
+
+
+def ensure_deploy_support_files(project_root: str) -> None:
+    netlify_toml = os.path.join(project_root, "netlify.toml")
+    if not os.path.exists(netlify_toml):
+        write_text_file(netlify_toml, '[build]\ncommand = "tw build --prod"\npublish = "dist"\n')
+
+    dockerfile = os.path.join(project_root, "Dockerfile")
+    if not os.path.exists(dockerfile):
+        write_text_file(
+            dockerfile,
+            "FROM nginx:alpine\nCOPY dist /usr/share/nginx/html\nEXPOSE 80\nCMD [\"nginx\", \"-g\", \"daemon off;\"]\n",
+        )
+
+    github_workflow = os.path.join(project_root, ".github", "workflows", "tw-pages.yml")
+    if not os.path.exists(github_workflow):
+        write_text_file(
+            github_workflow,
+            """name: Deploy TW Pages
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install .
+      - run: tw build --prod
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/deploy-pages@v4
+""",
+        )
+
+
+def generate_deploy_metadata(output_dir: str, config: Dict[str, Any]) -> None:
+    """Write tw.deploy.json to the output directory for platform detection."""
+    metadata = {
+        "framework": "tw",
+        "version": compiler.get_framework_version(),
+        "build": "tw build",
+        "output": "dist",
+        "runtime": "ssr",
+        "detect": {
+            "config": "tw.config",
+            "pages": "pages/",
+            "components": "components/",
+        },
+    }
+    deploy_path = os.path.join(output_dir, "tw.deploy.json")
+    os.makedirs(os.path.dirname(deploy_path), exist_ok=True)
+    with open(deploy_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+    log(f"  ✅ Deployment metadata written: {deploy_path}")
+
+
+
+def get_changed_files(project_root: str, last_build_time: float) -> list:
+    """Get list of source files changed since last build (v0.8.37)."""
+    changed = []
+    src_path = os.path.join(project_root, "[home]")
+    if os.path.isdir(src_path):
+        for root, dirs, files in os.walk(src_path):
+            for fn in files:
+                if fn.endswith(('.tw', '.tss', '.twm')):
+                    fpath = os.path.join(root, fn)
+                    try:
+                        if os.path.getmtime(fpath) > last_build_time:
+                            changed.append(fpath)
+                    except OSError:
+                        pass
+    mw = os.path.join(project_root, "middleware.tw")
+    if os.path.isfile(mw):
+        try:
+            if os.path.getmtime(mw) > last_build_time:
+                changed.append(mw)
+        except OSError:
+            pass
+    return changed
+
+
+def get_affected_pages(changed_files: list) -> set:
+    """Given changed files, return set of page paths needing rebuild (v0.8.37)."""
+    affected = set()
+    for cf in changed_files:
+        if cf.endswith('.tw') and 'page.tw' in cf:
+            affected.add(cf)
+        elif cf.endswith('.tw') and 'layout' in cf.lower():
+            affected.add("*")
+        elif cf.endswith('.tw'):
+            affected.add(cf)
+        elif cf.endswith('.tss'):
+            affected.add("*")
+        elif cf.endswith('.twm'):
+            affected.add("*")
+    if "*" in affected:
+        return "*"
+    return affected
+
+
+def build_hidden_site(project_root: str, output_dir: str, force: bool = False, workers: Optional[int] = None, minify: bool = True, strict: bool = False, adapters: Optional[List[str]] = None, debug: bool = False) -> BuildSummary:
+    project_root = os.path.abspath(project_root)
+    output_dir = os.path.abspath(output_dir)
+    workers = workers or compiler.DEFAULT_WORKERS
+
+    configure_compiler_paths(project_root)
+    invalidate_compiler_caches()
+    env = load_project_env(project_root, "production")
+    ensure_project_metadata(project_root)
+    ensure_deploy_support_files(project_root)
+    config = compiler.load_config()
+    modular_pipeline = use_modular_pipeline(config)
+    extensions = ExtensionManager(project_root, config, env).refresh()
+    previous_minify = getattr(compiler, "MINIFY_OUTPUT", False)
+
+    # Initialize incremental cache and dependency graph
+    cache = IncrementalCache(project_root)
+    graph = DependencyGraph(project_root)
+
+    try:
+        with compiler_output_context(output_dir):
+            compiler.MINIFY_OUTPUT = minify
+            os.makedirs(output_dir, exist_ok=True)
+            os.makedirs(compiler.PUBLIC_ASSETS_DIR, exist_ok=True)
+            os.makedirs(compiler.CACHE_DIR, exist_ok=True)
+            os.makedirs(compiler.MANIFEST_DIR, exist_ok=True)
+            os.makedirs(compiler.COMPILER_DIR, exist_ok=True)
+
+            css_url, _ = compiler.read_global_stylesheet()
+            manifest = compiler.load_build_manifest()
+
+            compiler.copy_assets()
+            compiler.copy_public_folder()
+            compiler.verify_api_isolated()
+
+            # v0.9.08: Plugin system - beforeBuild hook
+            _plugin_mgr = PluginManager(plugins_dir=os.path.join(project_root, '.tw', 'plugins'), project_root=project_root)
+            _plugin_mgr.load_all()
+            if _plugin_mgr.has_plugins():
+                log('  Plugins loaded: ' + str(len(_plugin_mgr.list_plugins())), level='info')
+                _plugin_mgr.trigger('beforeBuild', {'project_root': project_root, 'output_dir': output_dir})
+
+            # v0.9.0: Build-time runtime compatibility validation
+            # Scan all .twm API routes for runtime-incompatible API usage
+            for route in discover_twm_api_handlers():
+                handler_path = route["path"]
+                runtime_name = _parse_runtime_directive(handler_path)
+                if runtime_name == "nodejs":
+                    continue  # Node.js supports everything, skip
+                try:
+                    source = compiler.read_text_file(handler_path)
+                    from .tw_runtime import validate_runtime_compatibility
+                    validation_errors = validate_runtime_compatibility(
+                        source, runtime_name, file_path=handler_path,
+                    )
+                    for err in validation_errors:
+                        log(f"  ⚠️  Runtime validation: {handler_path}", level="warning")
+                        log(f"     {err.message}", level="warning")
+                        warnings += 1
+                except Exception as err:
+                    log(f"  ⚠️  Runtime validation skipped for {handler_path}: {err}", level="warning")
+
+            pages = compiler.discover_pages()
+            current_page_keys = {compiler.page_cache_key(page) for page in pages}
+            removed = compiler.remove_deleted_page_outputs(manifest, current_page_keys)
+
+            # Load dependency graph
+            graph.build_from_project()
+
+            dependency_map = {}
+            page_metadata_map = {}
+            pages_to_build = []
+            skipped = 0
+            errors = 0
+            built = 0
+            warnings = 0
+
+            options = compiler.BuildOptions(force=force, workers=workers)
+            shared_dependencies = extensions.dependency_paths()
+            if extensions.errors:
+                for message in extensions.errors:
+                    log(f"  ❌ Extension error: {message}", level="error")
+                errors += len(extensions.errors)
+            extensions.emit(
+                "beforeBuild",
+                output_dir=output_dir,
+                force=force,
+                workers=workers,
+                minify=minify,
+            )
+
+            for page_info in pages:
+                try:
+                    page_ast = compiler.load_page_ast_from_file(page_info["path"])
+                    analysis_context = compiler.build_page_context(page_info, page_ast, page_info["path"], route_path=compiler.route_path_from_page_info(page_info))
+                    if page_info["type"] == "dynamic":
+                        _ast = compiler.load_page_ast_from_file(page_info["path"])
+                        _gsp = compiler.load_generate_static_params(_ast, page_info["path"])
+                        if _gsp is not None:
+                            items = _gsp
+                        else:
+                            items = compiler.load_dynamic_items(page_info["path"])
+                        sample_item = next((item for item in items if isinstance(item, dict)), None)
+                        if sample_item:
+                            analysis_context = compiler.build_page_context(
+                                page_info,
+                                page_ast,
+                                page_info["path"],
+                                item=sample_item,
+                                route_path=compiler.route_path_from_page_info(page_info, item=sample_item),
+                            )
+                    if modular_pipeline:
+                        analysis_route = analysis_context.get("_tw_route", "/")
+                        artifacts = compiler.compile_file_pipeline(
+                            page_info["path"],
+                            context=analysis_context,
+                            css_href=css_url,
+                            route_path=analysis_route,
+                        )
+                        diagnostics = [compiler.Diagnostic(**item) for item in artifacts.diagnostics]
+                    else:
+                        diagnostics = compiler.analyze_page_semantics(page_ast, analysis_context, page_info["path"], page_info=page_info)
+                    for diagnostic in diagnostics:
+                        if diagnostic.severity == "warning":
+                            warnings += 1
+                            compiler.print_diagnostic(diagnostic)
+                    dependencies = compiler.collect_page_dependencies(page_info["path"]) + shared_dependencies
+                    dependencies = sorted(set(dependencies))
+                    dependency_map[compiler.page_cache_key(page_info)] = dependencies
+
+                    # Update dependency graph
+                    for dep in dependencies:
+                        graph.add_dependency(compiler.page_cache_key(page_info), dep)
+
+                    page_metadata = compiler.collect_page_metadata(
+                        page_info,
+                        page_ast=page_ast,
+                        route_path=analysis_context.get("_tw_route", "/"),
+                        pipeline="modular" if modular_pipeline else "legacy",
+                    )
+                    page_metadata["dependency_count"] = len(dependencies)
+                    page_metadata_map[compiler.page_cache_key(page_info)] = page_metadata
+
+                    # Check incremental cache
+                    # --force bypasses the incremental cache-hit check entirely
+                    if not force:
+                        cached = cache.get(compiler.page_cache_key(page_info))
+                        if cached is not None and isinstance(cached, dict):
+                            cached_sig = cached.get("signature")
+                            current_sig = compiler.compute_dependency_signature(dependencies)
+                            if cached_sig == current_sig:
+                                # Cache hit: skip compilation
+                                skipped += 1
+                                log(f"  ⏭️  {compiler.safe_relpath(page_info['path'], compiler.PROJECT_ROOT)} (cache hit)")
+                                continue
+
+                    needs_build, reason = compiler.should_rebuild_page(page_info, dependencies, manifest, options)
+                    if needs_build:
+                        pages_to_build.append(page_info)
+                    else:
+                        skipped += 1
+                        log(f"  ⏭️  {compiler.safe_relpath(page_info['path'], compiler.PROJECT_ROOT)} ({reason})")
+                except Exception as err:
+                    errors += 1
+                    compiler.print_compiler_error(page_info, err, debug=debug)
+
+            if pages_to_build:
+                with compiler.concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+                    future_map = {
+                        executor.submit(build_page_job_modular if modular_pipeline else compiler.build_page_job, page_info, css_url): page_info
+                        for page_info in pages_to_build
+                    }
+                    for future in compiler.concurrent.futures.as_completed(future_map):
+                        page_info = future_map[future]
+                        try:
+                            result = future.result()
+                            outputs = result["outputs"]
+                            compiler.update_page_manifest_entry(
+                                manifest,
+                                page_info,
+                                dependency_map[compiler.page_cache_key(page_info)],
+                                outputs,
+                                metadata=page_metadata_map.get(compiler.page_cache_key(page_info)),
+                            )
+                            # Save to incremental cache
+                            cache.set(compiler.page_cache_key(page_info), {
+                                "dependencies": dependency_map.get(compiler.page_cache_key(page_info), []),
+                                "outputs": outputs,
+                                "signature": compiler.compute_dependency_signature(
+                                    dependency_map.get(compiler.page_cache_key(page_info), [])
+                                ),
+                            })
+                            for out_path in outputs:
+                                rel_out = os.path.relpath(out_path, output_dir)
+                                log(f"  ✅ {rel_out}")
+                                built += 1
+                        except Exception as err:
+                            errors += 1
+                            compiler.print_compiler_error(page_info, err, debug=debug)
+
+            try:
+                ts_outputs = compile_typescript_sources(project_root, output_dir)
+                if ts_outputs:
+                    log(f"  ✅ TypeScript emitted: {len(ts_outputs)} file(s)")
+            except Exception as err:
+                errors += 1
+                log(f"  ❌ {err}", level="error")
+
+            sync_runtime_chunks_to_output()
+            write_hidden_cache_files(dependency_map, page_metadata_map)
+            compiler.save_build_manifest(manifest)
+            compiler.save_dependency_graph({"forward": dependency_map, "metadata": page_metadata_map})
+            route_collisions = 0
+            try:
+                route_collisions = write_route_artifacts(output_dir)
+            except Exception as err:
+                # Route artifact generation should not take down builds silently.
+                errors += 1
+                log(f"  ❌ Failed to write route artifacts: {err}", level="error")
+            if route_collisions:
+                if strict:
+                    errors += route_collisions
+                    log(f"  ❌ Route collisions treated as errors (--strict): {route_collisions}", level="error")
+                else:
+                    warnings += route_collisions
+                    log(f"  ⚠️  Route collisions: {route_collisions}", level="warning")
+
+            # Log static/dynamic route counts
+            static_count = sum(1 for p in pages if p.get("type") == "static")
+            dynamic_count = sum(1 for p in pages if p.get("type") == "dynamic")
+            log(f"  📄 Static routes: {static_count}")
+            log(f"  📄 Dynamic routes: {dynamic_count}")
+
+            precompress_output(output_dir)
+
+            # ── Connect deployment adapters ──────────────────────────────
+            # Generate provider-specific configuration files after build.
+            selected_adapters = adapters or []
+            for adapter_name in selected_adapters:
+                try:
+                    if adapter_name == "vercel":
+                        generate_vercel_output(output_dir, config, project_root)
+                        generate_vercel_api_functions(output_dir, project_root, discover_api_routes())
+                        adapter_file_path = os.path.join(output_dir, "vercel.json")
+                    elif adapter_name == "netlify":
+                        generate_netlify_output(output_dir, config, project_root)
+                        adapter_file_path = os.path.join(output_dir, "netlify.toml")
+                    elif adapter_name == "cloudflare":
+                        generate_cloudflare_output(output_dir, config, project_root)
+                        adapter_file_path = os.path.join(output_dir, "wrangler.toml")
+                    else:
+                        adapter_file_path = None
+                    if adapter_file_path:
+                        if os.path.isfile(adapter_file_path):
+                            log(f"  ✅ {adapter_name} adapter config generated: {adapter_file_path}")
+                        else:
+                            log(f"  ⚠️  {adapter_name} adapter config file not found: {adapter_file_path}", level="warning")
+                except Exception as err:
+                    log(f"  ⚠️  {adapter_name} adapter config generation failed: {err}", level="warning")
+
+            extensions.emit(
+                "afterBuild",
+                output_dir=output_dir,
+                summary={
+                    "built": built,
+                    "skipped": skipped,
+                    "removed": removed,
+                    "errors": errors,
+                    "warnings": warnings,
+                },
+            )
+            if warnings:
+                log(f"  ⚠️  Semantic warnings: {warnings}", level="warning")
+
+        # Save dependency graph
+        try:
+            graph.save()
+        except Exception as e:
+            log(f"  ⚠️  Failed to save dependency graph: {e}", level="warning")
+
+        # Generate deployment metadata for zero‑config platforms
+        try:
+            generate_deploy_metadata(output_dir, config)
+        except Exception as e:
+            log(f"  ⚠️  Failed to write deployment metadata: {e}", level="warning")
+
+        # Generate build report
+        try:
+            report = BuildReport(project_root)
+            report.pages = [{"path": p["path"], "size": 0, "duration": 0} for p in pages]
+            report.save()
+        except Exception as e:
+            log(f"  ⚠️  Failed to generate build report: {e}", level="warning")
+
+        # Compiler statistics
+        try:
+            stats = CompilerStats()
+            stats.pages_compiled = built
+            stats.files_reused_from_cache = skipped
+            stats.files_rebuilt = built
+            stats.cache_hits = skipped
+            stats.cache_misses = built
+            log(f"  📊 Compiler stats: {stats.to_dict()}")
+        except Exception as e:
+            log(f"  ⚠️  Failed to compute compiler stats: {e}", level="warning")
+
+        # Performance analysis
+        try:
+            analyzer = PerformanceAnalyzer()
+            analyzer.measure("build", lambda: None)
+            report_data = analyzer.get_report()
+            log(f"  📊 Performance: {report_data}")
+        except Exception as e:
+            log(f"  ⚠️  Performance analysis failed: {e}", level="warning")
+
+        # Advanced diagnostics
+        try:
+            diag_bag = run_advanced_diagnostics(project_root)
+            if diag_bag.has_errors:
+                log(f"  ❌ Advanced diagnostics found errors", level="error")
+        except Exception as e:
+            log(f"  ⚠️  Advanced diagnostics failed: {e}", level="warning")
+
+        # Production optimization (only for production builds)
+        if minify:
+            try:
+                optimize_for_production(output_dir)
+                log("  ✅ Production optimization applied")
+            except Exception as e:
+                log(f"  ⚠️  Production optimization failed: {e}", level="warning")
+
+        # Tree shaking
+        try:
+            unused = shake_project(project_root)
+            if unused.get("components"):
+                log(f"  ⚠️  Unused components: {', '.join(unused['components'])}", level="warning")
+        except Exception as e:
+            log(f"  ⚠️  Tree shaking failed: {e}", level="warning")
+
+        # Dead code detection
+        try:
+            dead = detect_dead_code(project_root)
+            for category, items in dead.items():
+                if items:
+                    log(f"  ⚠️  Dead {category}: {', '.join(items)}", level="warning")
+        except Exception as e:
+            log(f"  ⚠️  Dead code detection failed: {e}", level="warning")
+
+        # Route optimization
+        try:
+            route_issues = optimize_routes(project_root)
+            if route_issues.get("duplicate_routes"):
+                for issue in route_issues["duplicate_routes"]:
+                    log(f"  ⚠️  Duplicate route: {issue['route']} from {', '.join(issue['paths'])}", level="warning")
+        except Exception as e:
+            log(f"  ⚠️  Route optimization failed: {e}", level="warning")
+
+        # Code splitting
+        try:
+            chunk_map = generate_chunks(pages, output_dir)
+            if chunk_map:
+                log(f"  ✅ Code splitting generated {len(chunk_map)} chunk(s)")
+        except Exception as e:
+            log(f"  ⚠️  Code splitting failed: {e}", level="warning")
+
+        # v0.9.08: Plugin afterBuild hook
+        try:
+            if _plugin_mgr.has_plugins():
+                _plugin_mgr.trigger('afterBuild', {'project_root': project_root, 'output_dir': output_dir})
+        except Exception:
+            pass
+
+        return BuildSummary(
+            built=built,
+            skipped=skipped,
+            removed=removed,
+            errors=errors,
+            warnings=warnings,
+            route_collisions=route_collisions,
+            output_dir=output_dir,
+        )
+    finally:
+        compiler.MINIFY_OUTPUT = previous_minify
+
+
+def clean_project_outputs(project_root: str) -> None:
+    project_root = os.path.abspath(project_root)
+    configure_compiler_paths(project_root)
+
+    for path in [compiler.PUBLIC_DIR, compiler.INTERNAL_DIR]:
+        if os.path.exists(path):
+            shutil.rmtree(path)
+
+    # Also clear the incremental build cache (.tw/cache/)
+    # so that --clean guarantees a true fresh rebuild.
+    cache = IncrementalCache(project_root)
+    cache.clear()
+
+    os.makedirs(compiler.CACHE_DIR, exist_ok=True)
+    os.makedirs(compiler.MANIFEST_DIR, exist_ok=True)
+    os.makedirs(compiler.COMPILER_DIR, exist_ok=True)
+    os.makedirs(compiler.PUBLIC_DIR, exist_ok=True)
+
+
+def inspect_project(project_root: str) -> dict:
+    project = TWProject(project_root)
+    pages = project.discover_pages()
+    components_dir = os.path.join(project_root, "[home]", "components")
+    component_count = 0
+    if os.path.isdir(components_dir):
+        for name in os.listdir(components_dir):
+            if name.endswith(".tw") and not compiler._is_backup_or_temp_file(name):
+                component_count += 1
+
+    dynamic_routes = sum(1 for page in pages if page["type"] == "dynamic")
+    static_routes = sum(1 for page in pages if page["type"] == "static")
+
+    # v0.8.50 (Issue 4): Runtime diagnostics — Node.js, API routes, middleware
+    from .npm_manager import find_node
+    node_bin = find_node()
+    api_routes = discover_twm_api_handlers()
+    api_route_count = len(api_routes)
+    # Check for middleware.tw
+    mw_candidates = middleware_file_candidates(project_root)
+    mw_path = next((p for p in mw_candidates if os.path.exists(p)), None)
+    has_middleware = mw_path is not None
+
+    # v0.9.0: Multi-runtime diagnostics
+    from .tw_runtime import list_runtimes, get_runtime
+    available_runtimes = []
+    runtime_details = {}
+    for rt_name in list_runtimes():
+        rt = get_runtime(rt_name)
+        if rt and rt.is_available():
+            available_runtimes.append(rt_name)
+            runtime_details[rt_name] = rt.capabilities_info()
+
+    # Check per-route runtime assignments
+    route_runtimes = {}
+    for route in api_routes:
+        rt_name = _parse_runtime_directive(route["path"])
+        route_runtimes[route["route"]] = rt_name
+
+    return {
+        "project_root": project_root,
+        "source_root": compiler.HOME_DIR,
+        "output_dir": compiler.PUBLIC_DIR,
+        "hidden_dir": compiler.INTERNAL_DIR,
+        "page_count": len(pages),
+        "static_routes": static_routes,
+        "dynamic_routes": dynamic_routes,
+        "component_count": component_count,
+        "has_404": project.find_special_page(404) is not None,
+        "has_500": project.find_special_page(500) is not None,
+        "modular_pipeline": project.modular_pipeline,
+        # v0.8.50 (Issue 4): New diagnostics fields
+        "node_detected": node_bin is not None,
+        "node_path": node_bin or "",
+        "api_route_count": api_route_count,
+        "api_routes_disabled": api_route_count > 0 and node_bin is None,
+        "middleware_detected": has_middleware,
+        "middleware_path": mw_path or "",
+        # v0.9.0: Multi-runtime diagnostics
+        "available_runtimes": available_runtimes,
+        "runtime_details": runtime_details,
+        "route_runtimes": route_runtimes,
+    }
+
+
+def doctor_project(project_root: str) -> List[dict]:
+    project_root = os.path.abspath(project_root)
+    configure_compiler_paths(project_root)
+    checks = []
+
+    def add_check(name: str, ok: bool, detail: str) -> None:
+        checks.append({"name": name, "ok": ok, "detail": detail})
+
+    add_check("tw.config", os.path.exists(compiler.CONFIG_FILE), compiler.CONFIG_FILE)
+    add_check("[home]", os.path.isdir(compiler.HOME_DIR), compiler.HOME_DIR)
+    add_check("package.json", os.path.exists(os.path.join(project_root, "package.json")), os.path.join(project_root, "package.json"))
+    add_check("vercel.json", os.path.exists(os.path.join(project_root, "vercel.json")), os.path.join(project_root, "vercel.json"))
+    add_check("netlify.toml", os.path.exists(os.path.join(project_root, "netlify.toml")), os.path.join(project_root, "netlify.toml"))
+    add_check("Dockerfile", os.path.exists(os.path.join(project_root, "Dockerfile")), os.path.join(project_root, "Dockerfile"))
+    add_check("TypeScript compiler", shutil.which("tsc") is not None, shutil.which("tsc") or "`tsc` not installed")
+    add_check("Vercel CLI", shutil.which("vercel") is not None, shutil.which("vercel") or "`vercel` not installed")
+    add_check("Cloudflare Wrangler", shutil.which("wrangler") is not None, shutil.which("wrangler") or "`wrangler` not installed")
+
+    project_info = inspect_project(project_root)
+    add_check("Route discovery", project_info["page_count"] > 0, f"{project_info['page_count']} route(s) discovered")
+    add_check(
+        "Custom 404 page",
+        project_info["has_404"],
+        "`[home]/pages/404.tw` detected" if project_info["has_404"] else "Add `[home]/pages/404.tw` for branded not-found pages",
+    )
+    add_check(
+        "Custom 500 page",
+        project_info["has_500"],
+        "`[home]/pages/500.tw` detected" if project_info["has_500"] else "Add `[home]/pages/500.tw` for branded server error pages",
+    )
+    add_check("API routes", len(discover_api_routes()) >= 0, f"{len(discover_api_routes())} API route(s) discovered")
+
+    # FIX #148: Additional doctor checks — component hygiene & cache stats
+    # Check for orphaned components (defined but never used in any page)
+    try:
+        _components_dir = os.path.join(project_root, "[home]", "components")
+        _defined_components = set()
+        if os.path.isdir(_components_dir):
+            for fname in os.listdir(_components_dir):
+                if fname.endswith(".tw") and not fname.startswith("."):
+                    _defined_components.add(os.path.splitext(fname)[0])
+        _pages_dir = os.path.join(project_root, "[home]", "pages")
+        _all_source = ""
+        if os.path.isdir(_pages_dir):
+            for fname in os.listdir(_pages_dir):
+                if fname.endswith(".tw"):
+                    try:
+                        _all_source += compiler.read_text_file(os.path.join(_pages_dir, fname))
+                    except Exception:
+                        pass
+        _used_components = {c for c in _defined_components if c in _all_source}
+        _orphaned = _defined_components - _used_components
+        add_check(
+            "Component usage",
+            len(_orphaned) == 0,
+            f"{len(_defined_components)} defined, {len(_used_components)} used" +
+            (f" — orphaned: {', '.join(sorted(_orphaned))}" if _orphaned else ""),
+        )
+    except Exception:
+        pass
+
+    # Check incremental cache stats
+    try:
+        _cache_stats = cache.stats()
+        _cache_mb = _cache_stats["size_bytes"] / (1024 * 1024)
+        _cache_ok = _cache_mb < 100  # Flag if cache exceeds 100 MB
+        add_check(
+            "Build cache size",
+            _cache_ok,
+            f"{_cache_stats['entries']} entries, {_cache_mb:.1f} MB" +
+            (" — consider `tw clean`" if not _cache_ok else ""),
+        )
+    except Exception:
+        pass
+
+    # Check for .env file presence (not its contents — just existence)
+    add_check(
+        ".env file",
+        os.path.exists(os.path.join(project_root, ".env")),
+        "Found" if os.path.exists(os.path.join(project_root, ".env"))
+        else "No .env file found — create one for environment variables",
+    )
+
+    # Check Node.js availability (needed for multi-runtime API routes)
+    from .npm_manager import find_node
+    _node_bin = find_node()
+    add_check(
+        "Node.js runtime",
+        _node_bin is not None,
+        _node_bin or "Node.js not found — needed for `nodejs` runtime API routes",
+    )
+
+    # Env schema validation
+    env = load_project_env(project_root, "development")
+    config = compiler.load_config()
+    env_issues = validate_env_schema(config, env)
+    has_env_schema = bool(compiler.get_config_value(config, "env", "required", default="")) or bool(
+        compiler.get_config_value(config, "env", "types", default="")
+    )
+    if has_env_schema:
+        add_check(
+            "Env schema (required/types)",
+            not env_issues,
+            "All declared vars present and well-formed" if not env_issues else "; ".join(env_issues),
+        )
+
+    # WebSocket routes
+    ws_routes = discover_ws_routes(project_root)
+    add_check(
+        "WebSocket routes",
+        True,
+        f"{len(ws_routes)} route(s): {', '.join(sorted(ws_routes)) if ws_routes else 'none defined'}",
+    )
+
+    # .gitignore hygiene for auto-generated cache files
+    gitignore_path = os.path.join(project_root, ".gitignore")
+    gitignore_text = ""
+    if os.path.exists(gitignore_path):
+        try:
+            gitignore_text = compiler.read_text_file(gitignore_path)
+        except Exception:
+            gitignore_text = ""
+    add_check(
+        ".gitignore excludes build cache",
+        "*.tw.json" in gitignore_text,
+        "`*.tw.json` is ignored" if "*.tw.json" in gitignore_text
+        else "Add `*.tw.json` to `.gitignore` (these are auto-generated and will otherwise show as constantly modified)",
+    )
+
+    # Default dev port availability
+    default_port = 3000
+    port_free = True
+    try:
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.settimeout(0.3)
+        result = probe.connect_ex(("127.0.0.1", default_port))
+        port_free = result != 0
+        probe.close()
+    except OSError:
+        port_free = True
+    add_check(
+        f"Port {default_port} available",
+        port_free,
+        "Free" if port_free else f"In use — `tw dev` will need `--port` to pick a different one",
+    )
+
+    return checks
+
+
+def deploy_with_vercel(output_dir: str, production: bool) -> None:
+    vercel_bin = shutil.which("vercel")
+    if not vercel_bin:
+        raise RuntimeError("`vercel` CLI is not installed. Please install the Vercel CLI first.")
+
+    command = [vercel_bin, "deploy", output_dir, "--yes"]
+    if production:
+        command.append("--prod")
+
+    token = os.environ.get("VERCEL_TOKEN")
+    if token:
+        command.extend(["--token", token])
+
+    subprocess.run(command, check=True)
+
+
+def deploy_with_cloudflare(output_dir: str, project_name: str) -> None:
+    wrangler_bin = shutil.which("wrangler")
+    if not wrangler_bin:
+        raise RuntimeError("`wrangler` CLI is not installed. Please install Cloudflare Wrangler first.")
+
+    command = [
+        wrangler_bin,
+        "pages",
+        "deploy",
+        output_dir,
+        "--project-name",
+        project_name,
+    ]
+    subprocess.run(command, check=True)
+
+
+def deploy_with_netlify(output_dir: str) -> None:
+    netlify_bin = shutil.which("netlify")
+    if not netlify_bin:
+        log("`netlify` CLI not found. Static output and `netlify.toml` are ready.", level="warning")
+        return
+    subprocess.run([netlify_bin, "deploy", "--dir", output_dir, "--prod"], check=True)
+
+
+def deploy_with_docker(project_root: str, production: bool) -> None:
+    docker_bin = shutil.which("docker")
+    if not docker_bin:
+        log("`docker` CLI not found. `Dockerfile` is ready.", level="warning")
+        return
+    tag = os.path.basename(os.path.abspath(project_root)).lower().replace("_", "-") + (":prod" if production else ":latest")
+    subprocess.run([docker_bin, "build", "-t", tag, project_root], check=True)
+
+
+def run_deploy(project_root: str, output_dir: str, provider: str, production: bool, dry_run: bool = False) -> None:
+    ensure_deploy_support_files(project_root)
+    checks = doctor_project(project_root)
+    blocking_failures = [check for check in checks if not check["ok"] and check["name"] in {"tw.config", "[home]", "Route discovery"}]
+    if blocking_failures:
+        raise RuntimeError("Project checks failed. Fix the config or route structure first.")
+    summary = build_hidden_site(project_root, output_dir, force=True, minify=production)
+    if summary.errors:
+        raise RuntimeError("Build failed with errors. Deployment was aborted.")
+    if dry_run:
+        log("✔ Deploy dry-run: checks + build OK (no upload performed).")
+        return
+
+    if provider == "local":
+        log(f"Local deploy package ready: {summary.output_dir}")
+        return
+
+    if provider == "vercel":
+        deploy_with_vercel(summary.output_dir, production)
+        return
+
+    if provider == "cloudflare":
+        project_name = os.path.basename(os.path.abspath(project_root)).lower().replace("_", "-")
+        deploy_with_cloudflare(summary.output_dir, project_name)
+        return
+
+    if provider == "netlify":
+        deploy_with_netlify(summary.output_dir)
+        return
+
+    if provider == "github-pages":
+        log("GitHub Pages workflow file is ready. Deployment will run after you push the repo.")
+        return
+
+    if provider == "docker":
+        deploy_with_docker(project_root, production)
+        return
+
+    raise RuntimeError(f"Unsupported provider: {provider}")
+
+
+def parse_args() -> Any:
+    parser = argparse.ArgumentParser(description="TW framework CLI")
+    parser.add_argument("--project-root", default=DEFAULT_PROJECT_ROOT, help="TW project root")
+
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    dev_parser = subparsers.add_parser("dev", help="Run the in-memory dev server")
+    dev_parser.add_argument("--host", default=DEFAULT_DEV_HOST)
+    dev_parser.add_argument("--port", type=int, default=DEFAULT_DEV_PORT)
+
+    build_parser = subparsers.add_parser("build", help="Generate a hidden production build")
+    build_parser.add_argument("--out-dir", default=DEFAULT_INTERNAL_OUTPUT)
+    build_parser.add_argument("--force", action="store_true")
+    build_parser.add_argument("--workers", type=int, default=compiler.DEFAULT_WORKERS)
+
+    deploy_parser = subparsers.add_parser("deploy", help="Build and deploy to a hosting provider")
+    deploy_parser.add_argument("--out-dir", default=DEFAULT_INTERNAL_OUTPUT)
+    deploy_parser.add_argument("--provider", default="local", choices=["local", "vercel", "cloudflare", "netlify", "github-pages", "docker"])
+    deploy_parser.add_argument("--prod", action="store_true")
+
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+
+    if args.command == "dev":
+        run_dev_server(args.project_root, args.host, args.port)
+        return
+
+    if args.command == "build":
+        summary = build_hidden_site(
+            project_root=args.project_root,
+            output_dir=args.out_dir,
+            force=args.force,
+            workers=args.workers,
+        )
+        log(
+            f"\nTW build complete — {summary.built} generated, "
+            f"{summary.skipped} skipped, {summary.removed} removed, {summary.errors} errors"
+        )
+        log(f"Internal output: {summary.output_dir}")
+        return
+
+    if args.command == "deploy":
+        run_deploy(
+            project_root=args.project_root,
+            output_dir=args.out_dir,
+            provider=args.provider,
+            production=args.prod,
+        )
+        log("Deploy complete.")
+        return
+
+
+if __name__ == "__main__":
+    main()
