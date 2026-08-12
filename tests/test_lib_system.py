@@ -32,8 +32,8 @@ class TestIsFunctionCall:
 class TestExecuteLibFunction:
     def test_object_return(self):
         src = 'fn greet(name) {\n  return { message: "Hello, " + name + "!", name: name }\n}\n'
-        result = execute_lib_function(src, "greet", '"Kanishk"', module_id="test")
-        assert result["message"] == "Hello, Kanishk!"
+        result = execute_lib_function(src, "greet", '"TestUser"', module_id="test")
+        assert result["message"] == "Hello, TestUser!"
     def test_array_return(self):
         src = 'fn getApps() {\n  return [{name: "WhatsApp"}, {name: "Telegram"}]\n}\n'
         result = execute_lib_function(src, "getApps", "", module_id="test")

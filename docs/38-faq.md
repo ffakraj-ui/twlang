@@ -2,7 +2,7 @@
 
 ## General
 
-### Is TW Framework production-ready?
+### Is TW Framework suitable for deployment?
 
 TW Framework v0.4.5+ is stable for static sites and landing pages. API routes and middleware are functional but still maturing. Use `tw doctor` to check project health before deploying.
 

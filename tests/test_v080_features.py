@@ -148,8 +148,8 @@ class TestVDOMStateInit:
         assert "[1, 2, 3]" in js
 
     def test_state_init_unicode(self):
-        js = build_state_init_script({"name": "Kanishk"})
-        assert "Kanishk" in js
+        js = build_state_init_script({"name": "TestUser"})
+        assert "TestUser" in js
 
 
 class TestVDOMAttrs:
@@ -327,8 +327,8 @@ class TestTypeAnnotationStripping:
 class TestLibBackwardCompat:
     def test_execute_object_return(self):
         src = 'fn greet(name) {\n  return { message: "Hello, " + name + "!", name: name }\n}\n'
-        result = execute_lib_function(src, "greet", '"Kanishk"', module_id="test")
-        assert result["message"] == "Hello, Kanishk!"
+        result = execute_lib_function(src, "greet", '"TestUser"', module_id="test")
+        assert result["message"] == "Hello, TestUser!"
 
     def test_execute_array_return(self):
         src = 'fn getApps() {\n  return [{name: "WhatsApp"}, {name: "Telegram"}]\n}\n'
@@ -435,6 +435,6 @@ class TestZeroJSPreservation:
         assert "<script" not in html, "Static page must have zero JS"
 
     def test_page_with_let_zero_js(self):
-        source = 'page { title "With Let" render static }\nlet name = "Kanishk"\nbody { h1 "Hello {name}" }'
+        source = 'page { title "With Let" render static }\nlet name = "TestUser"\nbody { h1 "Hello {name}" }'
         html = _compile_page(source)
         assert "<script" not in html, "Page with let but no state should be zero-JS"

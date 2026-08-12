@@ -64,9 +64,21 @@ class TerraformGenerator:
     def __init__(self, config: Optional[AWSConfig] = None):
         self.config = config or AWSConfig()
 
+    def _render(self, template: str, **kwargs: object) -> str:
+        """Render a Terraform template by replacing {key} placeholders.
+
+        Uses str.replace() instead of str.format() because Terraform HCL
+        syntax contains many { and } braces (e.g. ${count.index + 1})
+        that conflict with Python str.format().
+        """
+        result = template
+        for key, value in kwargs.items():
+            result = result.replace("{" + key + "}", str(value))
+        return result
+
     def generate_vpc(self) -> str:
         """Generate VPC Terraform configuration."""
-        return """# VPC Configuration
+        return self._render("""# VPC Configuration
 resource "aws_vpc" "main" {
   cidr_block           = "{vpc_cidr}"
   enable_dns_support   = true
@@ -113,7 +125,7 @@ resource "aws_nat_gateway" "main" {{
 resource "aws_eip" "nat" {{
   domain = "vpc"
 }}
-""".format(
+""",
             vpc_cidr=self.config.vpc_cidr,
             project=self.config.project_name,
             env=self.config.environment,
@@ -123,7 +135,7 @@ resource "aws_eip" "nat" {{
 
     def generate_ecs(self) -> str:
         """Generate ECS Fargate configuration."""
-        return """# ECS Cluster
+        return self._render("""# ECS Cluster
 resource "aws_ecs_cluster" "main" {{
   name = "{project}-cluster"
   setting {{
@@ -191,7 +203,7 @@ resource "aws_ecs_service" "app" {{
 
   depends_on = [aws_lb_listener.app]
 }}
-""".format(
+""",
             project=self.config.project_name,
             cpu=self.config.ecs_cpu,
             memory=self.config.ecs_memory,
@@ -204,7 +216,7 @@ resource "aws_ecs_service" "app" {{
 
     def generate_alb(self) -> str:
         """Generate Application Load Balancer configuration."""
-        return """# Application Load Balancer
+        return self._render("""# Application Load Balancer
 resource "aws_lb" "main" {{
   name               = "{project}-alb"
   internal           = false
@@ -264,7 +276,7 @@ resource "aws_lb_listener" "http" {{
     }}
   }}
 }}
-""".format(
+""",
             project=self.config.project_name,
             port=self.config.container_port,
             env="true" if self.config.environment == "production" else "false",
@@ -272,7 +284,7 @@ resource "aws_lb_listener" "http" {{
 
     def generate_s3_cloudfront(self) -> str:
         """Generate S3 + CloudFront for static assets."""
-        return """# S3 Bucket for Static Assets
+        return self._render("""# S3 Bucket for Static Assets
 resource "aws_s3_bucket" "assets" {{
   bucket = "{bucket}"
   tags   = {{ Name = "{project}-assets" }}
@@ -327,7 +339,7 @@ resource "aws_cloudfront_distribution" "assets" {{
 
   tags = {{ Name = "{project}-cdn" }}
 }}
-""".format(
+""",
             bucket=self.config.s3_bucket_name or self.config.project_name + "-assets",
             project=self.config.project_name,
             price_class=self.config.cloudfront_price_class,
@@ -335,7 +347,7 @@ resource "aws_cloudfront_distribution" "assets" {{
 
     def generate_redis(self) -> str:
         """Generate ElastiCache Redis configuration."""
-        return """# Redis Subnet Group
+        return self._render("""# Redis Subnet Group
 resource "aws_elasticache_subnet_group" "redis" {{
   name        = "{project}-redis-subnet"
   subnet_ids  = aws_subnet.private[*].id
@@ -356,7 +368,7 @@ resource "aws_elasticache_replication_group" "main" {{
 
   tags = {{ Name = "{project}-redis" }}
 }}
-""".format(
+""",
             project=self.config.project_name,
             node_type=self.config.redis_node_type,
             cluster_size=self.config.redis_cluster_size,
@@ -364,7 +376,7 @@ resource "aws_elasticache_replication_group" "main" {{
 
     def generate_waf(self) -> str:
         """Generate WAF Web ACL."""
-        return """# WAF Web ACL
+        return self._render("""# WAF Web ACL
 resource "aws_wafv2_web_acl" "main" {{
   name        = "{project}-waf"
   description = "WAF for {project}"
@@ -441,7 +453,7 @@ resource "aws_wafv2_web_acl_association" "alb" {{
   resource_arn = aws_lb.main.arn
   web_acl_arn  = aws_wafv2_web_acl.main.arn
 }}
-""".format(project=self.config.project_name)
+""",project=self.config.project_name)
 
     def generate_all(self) -> Dict[str, str]:
         """Generate all Terraform files."""

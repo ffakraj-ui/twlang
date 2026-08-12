@@ -383,7 +383,7 @@ def build_page_with_modular_pipeline(page_info: dict, css_url: str) -> Any:
             if is_app_router:
                 # App Router: rel_dir already contains the route name (e.g. "about"),
                 # so we must NOT append page_info["name"] again — that causes
-                # double-nesting: dist/about/about/index.html (bug fixed v0.8.1).
+                # double-nesting: dist/about/about/index.html (issues resolved v0.8.1).
                 out_path = os.path.join(out_dir, "index.html")
             else:
                 # Legacy mode: /about -> dist/about/index.html (clean URLs)

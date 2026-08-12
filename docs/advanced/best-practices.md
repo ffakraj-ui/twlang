@@ -187,4 +187,4 @@ if products {
 
 ---
 
-Following these practices ensures your TW projects are maintainable, fast, and production-ready.
+Following these practices ensures your TW projects are maintainable, fast, and suitable for deployment.

@@ -56,7 +56,7 @@ body {
 ''')
     assert "<img" in html
     assert 'src="/photo.jpg"' in html
-    # Should NOT have loading="lazy" auto-added by Image system
+    # Should NOT have loading="lazy" automatically added by Image system
     # (the Image component adds it, normal img does not unless explicitly set)
     print("✅ test_normal_img_unchanged")
 

@@ -207,6 +207,8 @@ class EdgeMiddleware:
         response = EdgeResponse(status=200)
         if self.config.security_headers:
             response.headers.update(self._security_headers())
+        if self.config.cors_origins:
+            response.headers.update(self._cors_headers(request))
         return response
 
     def _check_rate_limit(self, ip: str) -> bool:

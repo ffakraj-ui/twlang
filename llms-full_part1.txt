@@ -1,387 +1,117 @@
 ================================================================================
-TW Framework — Complete Technical Reference for AI Coding Assistants
+TW Framework — Technical Reference
 ================================================================================
 
 Source of truth: github.com/ffakraj-ui/twlang (default branch: main)
-Version: v0.9.26 (2026-08-12)
-
-Where the README and the source code/tests disagree, this document follows
-the source code and tests.
+Version: v0.9.27 (2026-08-12)
 
 ================================================================================
-0. WHAT TW IS (AND IS NOT)
+0. WHAT TW IS
 ================================================================================
 
-TW ("TW Framework", package name `tw-framework`, PyPI) is a custom language +
-framework in one package. It is NOT React, NOT Vue, NOT Svelte, and NOT
-TypeScript, although it borrows ideas from each. It CAN use React alongside
-its own VDOM via the React compatibility layer.
+TW ("TW Framework", package `tw-framework`, PyPI) is a custom language +
+compiler + dev server + CLI for building web applications.
 
-- Language: `.tw` files (markup + page logic) and `.tss` files (styles) compile
-  to plain HTML, CSS, and JS. TW has its own lexer, parser, and compiler
-  pipeline written in Python.
-- Framework: file-based App Router routing, `.twm` API routes, middleware,
-  dev server, NPM package manager, React compatibility, esbuild bundling.
-- Package: `pip install tw-framework` (Python). NPM packages via `tw install`.
-- Core dependencies: ZERO — pure Python stdlib. Optional extras available.
-- Project root marker: `tw.config` file.
-- Source folder: `[home]/` (literal brackets — App Router root).
+Key design decisions:
+- HTML-first: pages written in JSX-like syntax in `.tw` files
+- Zero-JS by default: pages without state/events ship no JavaScript
+- Multi-runtime: API routes run on Node.js, Edge V8, Python, or WASM
+- File-based routing: `app/` directory structure defines routes
 
 ================================================================================
-1. SYNTAX — .tw FILES
+1. LANGUAGE SYNTAX
 ================================================================================
 
-TW uses block-based syntax with curly braces. NOT JSX. NOT HTML angle brackets.
-
-### 1.1 Page Block
-```tw
-page {
-    title "My Page"
-    render static
-}
-```
-
-### 1.2 Render Modes
-- `render static` — SSG, build-time HTML (default)
-- `render server` — SSR, per-request server render
-- `render edge` — edge runtime via V8 sandbox
-- `render interactive` — TW native VDOM (~3KB), reactive on demand
-- `render dynamic` — auto-detect static vs server
-- `render csr` — full React CSR, client-side hydration
-
-### 1.3 Page Directives
-- title — string
-- render — static | server | edge | interactive | dynamic | csr
-- revalidate — number (seconds) for ISR
-- cache_by — cookie:name, header:name, query, or custom
-- cache_size — integer (default 512)
-- generateStaticParams — string path to JSON data file
-- redirect — string URL
-- rewrite — string URL
-
-### 1.4 Elements
-```tw
-body {
-    div { class "container"
-        h1 "Hello World"
-        p { class "subtitle", text "Welcome to TW" }
-        a { href "/about", text "About Us" }
+### Pages (.tw)
+    page <name> {
+      state <var> = <value>
+      render { <content> }
     }
-}
-```
 
-### 1.5 Components
-```tw
-component Button {
-    props {
-        href: string = ""
-        label: string = "Click"
-        variant: string = "primary"
+### Components (.tw)
+    component <Name> {
+      props { <name>: <type> = <default> }
+      render { <content> }
     }
-    style {
-        .btn { padding: 0.5rem 1rem; border-radius: 0.375rem; }
+
+### Layouts (.tw)
+    layout <name> {
+      render { <html>{children}</html> }
     }
-    body {
-        a { class: "btn btn-{{variant}}", href: "{{href}}", text: "{{label}}" }
-    }
-}
-```
 
-### 1.6 Conditionals
-```tw
-if condition {
-    p "Visible when true"
-}
-else {
-    p "Visible when false"
-}
-```
+### Stylesheets (.tss)
+    Standard CSS with variables, nesting, media queries.
 
-### 1.7 Loops
-```tw
-each items as item {
-    li "{{item.name}}"
-}
-```
-
-### 1.8 Let Bindings
-```tw
-let greeting = "Hello"
-let count = 42
-```
-
-### 1.9 Reactive State
-```tw
-state {
-    count 0
-    name "World"
-}
-```
-
-### 1.10 Event Handlers
-```tw
-Button { label "Increment", on:click "increment" }
-```
-
-### 1.11 Server Actions
-```tw
-actions {
-    fn increment(state) {
-        state.count = state.count + 1
-    }
-}
-```
-
-### 1.12 Head Block
-```tw
-head {
-    meta { charset "utf-8" }
-    meta { name "viewport", content "width=device-width, initial-scale=1" }
-    seo {
-        description "Page description"
-    }
-}
-```
-
-### 1.13 Layouts
-```tw
-page {
-    title "My Site"
-    render static
-}
-
-load "@./style.tss"
-
-head {
-    meta { charset "utf-8" }
-    meta { name "viewport", content "width=device-width, initial-scale=1" }
-}
-
-body {
-    Navbar {}
-    main { class "main-content"
-        children
-    }
-    Footer {}
-}
-```
+### API Routes (.twm)
+    function GET(request) { return Response.json({...}); }
+    runtime = "nodejs"  // optional
 
 ================================================================================
-2. TSS — TW STYLE SYSTEM (.tss files)
+2. BUILD PIPELINE
 ================================================================================
 
-```tss
-:root {
-    --bg: #ffffff;
-    --text: #1a1a1a;
-    --primary: #3b82f6;
-}
+1. `tw create my-site`
+2. Write `.tw` pages, `.tss` styles, `.twm` API routes
+3. `tw build`
+4. `tw deploy --provider vercel`
 
-body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: system-ui, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #0f172a;
-        --text: #e2e8f0;
-    }
-}
-```
-
-Components have scoped CSS via `style { }` blocks — styles do not leak.
-CSS Modules built in.
+Pipeline: Source -> Lexer -> Parser -> AST -> Semantic -> IR -> Lowering -> HTML/JS
 
 ================================================================================
-3. TWM — API ROUTES (.twm files)
+3. RUNTIMES
 ================================================================================
 
-### 3.1 Basic API Route
-```twm
-runtime = "nodejs"
-
-fn get(request) {
-    return {
-        status: 200,
-        body: { message: "Hello from API" }
-    }
-}
-
-fn post(request) {
-    const data = request.body
-    return {
-        status: 201,
-        body: { created: true }
-    }
-}
-```
-
-### 3.2 Runtime Directives
-- runtime = "nodejs" (default) — persistent Node.js worker
-- runtime = "edge" — V8 sandbox via py_mini_racer
-- runtime = "python" — Python in-process
-- runtime = "wasm" — wasmtime sandbox
-- runtime = "edge-py" — legacy Python edge fallback
-
-### 3.3 Common API Layer (tw.*)
-- tw.storage.read/write/delete/exists(path)
-- tw.http.fetch/get/post/put/delete(url, ...)
-- tw.crypto.hash/hmac/random/uuid/encrypt/decrypt(...)
-- tw.cache.get/set/delete/has/clear(key, ...)
-- tw.env.get/all/has(name)
-- tw.runtime.name/version/capabilities/supports()
+| Runtime | Directive | Engine | FS | Net | Crypto |
+|---------|-----------|--------|-----|-----|--------|
+| Node.js | nodejs | Node.js worker | Y | Y | Y |
+| Edge V8 | edge | V8 Isolate | N | Y | Y |
+| Python | python | Python in-process | Y | Y | Y |
+| WASM | wasm | wasmtime sandbox | N | N | Y |
 
 ================================================================================
-4. MIDDLEWARE (middleware.tw)
+4. CACHING
 ================================================================================
 
-### 4.1 Rule-based middleware
-```tw
-use {
-    match "/dashboard/**"
-    header "X-Content-Type-Options" "nosniff"
-}
-
-rule "api-rate-limit" {
-    match "/api/**"
-    rate_limit { requests 100, window 60 }
-}
-```
-
-### 4.2 Function-based middleware
-```tw
-fn before(ctx) {
-    if (ctx.path.startsWith("/admin") && !ctx.session) {
-        return { redirect: "/login" }
-    }
-}
-
-fn after(ctx) {
-    ctx.response.headers["X-Response-Time"] = ctx.duration + "ms"
-}
-```
-
-### 4.3 Middleware capabilities
-- Path matching: prefixes, contains, extensions, regex
-- deny_traversal, deny_null_bytes, single_segment_max
-- Headers, methods, auth (cookie, JWT)
-- Rate limiting (token bucket)
-- User agent, origin (CORS)
-- Redirect, rewrite, custom response
+Four-tier: Request Memo, Data Cache, Full Route Cache, Router Cache.
+`"use cache"` enables component-level caching with revalidation.
 
 ================================================================================
-5. APP ROUTER
+5. PARTIAL PRERENDERING
 ================================================================================
 
-### Route segment types:
-- Static: about/ → /about
-- Dynamic: [slug]/ → /:slug
-- Catch-all: [...slug]/ → /*
-- Optional catch-all: [[...slug]]/ → /*?
-- Route group: (group)/ — no URL segment
-
-### Special files:
-- page.tw, layout.tw, not-found.tw, error.tw, loading.tw, route.tw
+Static parts prerendered at build, dynamic parts streamed at request.
+Suspense boundaries separate regions.
 
 ================================================================================
-6. SECURITY
+6. STATE AND REACTIVITY
 ================================================================================
 
-- CSP nonce generation, CSP header builder with directive dedup
-- HTML/URL/attribute sanitization with double-escape protection
-- CSRF token generation and validation
-- Security headers: X-Frame-Options, X-Content-Type-Options
-- Request body size limit (10MB default)
-- Env var filtering for Edge runtime
-- V8 execution timeout (30s)
-- Authenticated encryption (scrypt + HMAC-SHA256)
-- Null byte removal
+- `state` keyword declares reactive variables
+- VDOM diff and patch on changes
+- Hooks: useOptimistic, useActionState, useFormStatus, useTransition
 
 ================================================================================
-7. PRODUCTION SERVER
+7. SECURITY
 ================================================================================
 
-- tw serve — 0.0.0.0:8000
-- SSR for render server/edge pages
-- Static file serving with ETag, Cache-Control, brotli/gzip
-- API route execution (Node.js, Edge V8, Python, WASM)
-- Middleware chain
-- WebSocket support
-- Health check at /__tw/health
-- Graceful shutdown (SIGTERM/SIGINT)
-- SSR cache (in-memory LRU or Redis)
-- AST cache with TTL
+CSP nonce, CSRF tokens, HTML/URL sanitization, password strength, SRI hashing,
+secure headers (HSTS, X-Frame-Options, etc.)
 
 ================================================================================
-8. BUILD PIPELINE
+8. DEPLOYMENT
 ================================================================================
 
-1. Lexing → 2. Parsing → 3. Semantic analysis → 4. IR lowering
-5. HTML rendering → 6. CSS rendering → 7. JS bundling
-8. Dead code detection → 9. Tree shaking → 10. Minification → 11. Output
-
-Build options: --workers, --watch, --analyze, --report, --strict, --adapter, --prod
+Vercel, Netlify, Cloudflare, Docker.
 
 ================================================================================
-9. MULTI-RUNTIME
+9. AUTHORS
 ================================================================================
 
-| Runtime | Key | Engine | Capabilities |
-|---------|-----|--------|-------------|
-| Node.js | nodejs/node | Persistent Node.js worker | fs:Y, net:Y, subprocess:Y |
-| Edge V8 | edge/edge-v8 | V8 isolate (py_mini_racer) | fs:N, net:Y, crypto:Y |
-| Python | python | Python in-process | fs:Y, net:Y, subprocess:Y |
-| WASM | wasm | wasmtime sandbox | fs:N, net:N, crypto:Y |
-| Edge (legacy) | edge-py | Python in-process | fs:N, net:Y, crypto:Y |
+- TW MRMK
+- TW MLKRAJ
+- TW ASLAM
+- TW BADAL
+- TW ROHIT
+- TW RISHU
 
-Thread-safe registration via register_runtimes() with double-check lock.
-
-================================================================================
-10. ENVIRONMENT VARIABLES
-================================================================================
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| TW_REDIS_URL | — | Redis URL for SSR cache |
-| TW_MAX_FETCH_PASSES | 10 | Max fetch calls per Edge V8 request |
-| TW_SSR_CACHE_MAX | 512 | Max SSR cache entries |
-| TW_AST_CACHE_MAX | 128 | Max AST cache entries |
-| TW_AST_CACHE_TTL | 300 | AST cache TTL seconds |
-| TW_MAX_BODY_SIZE | 10MB | Max request body size |
-
-================================================================================
-11. DEPLOYMENT
-================================================================================
-
-Providers: local, vercel, cloudflare, netlify, github-pages, docker
-Auto-generates: vercel.json, netlify.toml, _redirects, Dockerfile
-Command: tw deploy --provider vercel --prod --dry-run
-
-================================================================================
-12. PLUGIN SYSTEM
-================================================================================
-
-.twp files with 5 hooks: beforeBuild, afterBuild, beforeRoute, afterRoute, beforeRequest
-Commands: tw plugin add/list/search
-
-================================================================================
-13. TESTING
-================================================================================
-
-pip install tw-framework[dev]
-pytest tests/ --tb=short -q
-Current: 610 passed, 9 skipped, 0 failed
-
-================================================================================
-14. VERSION HISTORY
-================================================================================
-
-- v0.9.26 — Final Polish: security hardening, thread safety, missing files
-- v0.9.15 — PyPI release prep: optional dependencies, docs, llms.txt
-- v0.9.14 — Edge V8 + Module Boundaries + Runtime Init (bugs 601-700)
-- v0.9.13 — 6 core module fixes (bugs 401-540)
-- v0.9.12 — App Router + Server + Compiler (bugs 301-400)
-- v0.9.11 — Compiler + CLI (bugs 201-300)
-- v0.9.10 — React compat, prefetch, version fixes (bugs 1-3)
+License: MIT

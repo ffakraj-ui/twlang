@@ -2,76 +2,35 @@
 
 ## Overview
 
-TW Framework is a Python-based full-stack web framework with App Router, Zero-JS static sites, NPM package manager, and Multi-Runtime Architecture.
+TW Framework is a Python-based full-stack web framework with App Router, Zero-JS static sites, multi-runtime API routes, and a custom DSL.
 
 - **Package**: `tw-framework` on PyPI
-- **Version**: 0.9.16
+- **Version**: 0.9.27
 - **Python**: >=3.9
-- **Core Dependencies**: Zero (pure Python stdlib)
+- **Core Dependencies**: None (pure Python stdlib)
 - **License**: MIT
-- **Author**: KANISHK KUMAR (mlkraj290@gmail.com)
 
-## Installation
+## Documentation Files
 
-```bash
-pip install tw-framework
-```
+| File | Description |
+|------|-------------|
+| README.md | Quick start and overview |
+| CHANGELOG.md | Version history |
+| CONTRIBUTING.md | Development setup |
+| DEPLOYMENT.md | Deployment providers |
+| IMPLEMENTED_FEATURES.md | Feature list |
+| PLUGINS.md | Plugin system |
+| PROGRESS.md | Development progress |
+| RUNTIMES.md | Multi-runtime architecture |
+| SECURITY.md | Security features |
+| STABILITY_REPORT.md | Test results |
+| API_TESTING_GUIDE.md | API testing guide |
 
-Optional features:
-```bash
-pip install tw-framework[image]        # Pillow — image optimization
-pip install tw-framework[compression]  # brotli — pre-compression
-pip install tw-framework[edge-v8]       # py_mini_racer — V8 sandbox
-pip install tw-framework[redis]        # redis — SSR cache
-pip install tw-framework[wasm]         # wasmtime — WASM runtime
-pip install tw-framework[all]           # All combined
-```
+## Authors
 
-## File Types
-
-| Extension | Purpose |
-|-----------|---------|
-| `.tw` | Pages, components, layouts |
-| `.tss` | Stylesheets |
-| `.twm` | API routes, server modules |
-| `.twp` | Plugins |
-| `.js`/`.ts` | Client libraries |
-| `.json` | Data for dynamic routes |
-
-## CLI Commands
-
-See README.md for full command reference.
-
-## Key Concepts
-
-### App Router
-File-based routing with `[home]/` as root. Supports dynamic routes (`[slug]`), catch-all (`[...slug]`), optional catch-all (`[[...slug]]`), and route groups (`(group)`).
-
-### Render Modes
-`static` (SSG), `server` (SSR), `edge` (V8 sandbox), `interactive` (VDOM), `dynamic` (auto), `csr` (React).
-
-### Multi-Runtime
-5 runtimes: Node.js, Edge V8, Python, WASM, Edge (legacy). Common API via `tw.*`.
-
-### Middleware
-Rule-based (`use`/`rule` blocks) and function-based (`fn before`/`fn after`). Supports auth, rate limiting, CORS, path security, headers.
-
-### Plugin System
-`.twp` files with 5 lifecycle hooks: beforeBuild, afterBuild, beforeRoute, afterRoute, beforeRequest.
-
-### Security
-CSP nonces, HTML/URL sanitization, CSRF tokens, security headers, env var filtering, authenticated encryption.
-
-### Build Pipeline
-Lexing → Parsing → Semantic analysis → IR lowering → HTML/CSS rendering → JS bundling → Dead code detection → Tree shaking → Minification → Output.
-
-## References
-
-- [README.md](README.md) — Quick start, CLI, project structure
-- [RUNTIMES.md](RUNTIMES.md) — Multi-runtime details
-- [SECURITY.md](SECURITY.md) — Security features
-- [DEPLOYMENT.md](DEPLOYMENT.md) — Deployment guide
-- [PLUGINS.md](PLUGINS.md) — Plugin system
-- [CHANGELOG.md](CHANGELOG.md) — Version history
-- [llms.txt](llms.txt) — AI assistant reference
-- [llms-full.txt](llms-full.txt) — Full project metadata
+- TW MRMK
+- TW MLKRAJ
+- TW ASLAM
+- TW BADAL
+- TW ROHIT
+- TW RISHU

@@ -1,4 +1,4 @@
 """Version information for TW Framework."""
-__version__ = "0.9.26"
-__author__ = "KANISHK KUMAR"
-__email__ = "mlkraj290@gmail.com"
+__version__ = "0.9.27"
+__author__ = "TW MLKRAJ"
+__email__ = ""

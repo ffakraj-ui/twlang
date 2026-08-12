@@ -1,6 +1,6 @@
 """TW Framework package."""
 
-__version__ = "0.9.26"
+__version__ = "0.9.27"
 
 from .server import run_production_server, SSRCache  # noqa: F401
 from .reactivity import (  # noqa: F401
@@ -13,7 +13,7 @@ from .compiler import compile_file_pipeline, compile_text_pipeline  # noqa: F401
 from .interpreter import Interpreter  # noqa: F401
 
 
-# ── v0.9.26 New Architecture Modules ────────────────────────────────
+# ── Modules ──
 # These modules implement Next.js-level features:
 
 # RSC Payload System (React Server Components)
@@ -79,7 +79,7 @@ except ImportError:
     pass
 
 
-# ── v0.9.26 Next.js 16 Features ─────────────────────────────────────
+# ── Modules ──
 try:
     from .instant_navigation import InstantNavigationManager, InstantInsights
 except ImportError:
@@ -109,7 +109,7 @@ try:
 except ImportError:
     pass
 
-# ── v0.9.26 audit: auto-added module imports ──
+# ── Modules ──
 try:
     from . import adapters
 except ImportError:
