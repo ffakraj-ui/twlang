@@ -140,13 +140,17 @@ class BaseRuntime(ABC):
 
     # ── Execution ──────────────────────────────────────────────────────
 
-    @abstractmethod
     def execute(self, handler_path: str, method: str, url_path: str,
                 headers: dict, body: Any, request_data: dict) -> Optional[dict]:
         """Execute a .twm handler on this runtime.
 
         Returns a response dict {status, body, content_type, headers, cookies}
         or None if this runtime cannot handle the request.
+
+        v0.9.17 FIX: Was @abstractmethod — prevented instantiation of NodeRuntime,
+        PythonRuntime, EdgeRuntime, EdgeV8Runtime. Now has a default impl that
+        raises NotImplementedError. Runtimes that support direct execution
+        (EdgeV8, WASM) override this.
         """
         raise NotImplementedError(
             f"{self.runtime_name} runtime does not implement direct execution. "

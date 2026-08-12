@@ -681,6 +681,42 @@ class EdgeV8Executor:
 
 # --- Edge V8 Runtime class ---
 
+
+
+class EdgeV8Cache(CacheAPI):
+    """Cache adapter for Edge V8 runtime — uses _REQUEST_CACHE with TTL."""
+    def get(self, key: str, default: Any = None) -> Any:
+        import time as _time
+        ttl_key = "__ttl_" + key
+        if ttl_key in _REQUEST_CACHE and _time.time() > _REQUEST_CACHE[ttl_key]:
+            _REQUEST_CACHE.pop(key, None)
+            _REQUEST_CACHE.pop(ttl_key, None)
+            return default
+        return _REQUEST_CACHE.get(key, default)
+    def set(self, key: str, value: Any, ttl: int = 0) -> bool:
+        _REQUEST_CACHE[key] = value
+        if ttl and ttl > 0:
+            import time as _time
+            _REQUEST_CACHE["__ttl_" + key] = _time.time() + ttl
+        return True
+    def delete(self, key: str) -> bool:
+        existed = key in _REQUEST_CACHE
+        _REQUEST_CACHE.pop(key, None)
+        _REQUEST_CACHE.pop("__ttl_" + key, None)
+        return existed
+    def has(self, key: str) -> bool:
+        import time as _time
+        ttl_key = "__ttl_" + key
+        if ttl_key in _REQUEST_CACHE and _time.time() > _REQUEST_CACHE[ttl_key]:
+            _REQUEST_CACHE.pop(key, None)
+            _REQUEST_CACHE.pop(ttl_key, None)
+            return False
+        return key in _REQUEST_CACHE
+    def clear(self) -> bool:
+        _REQUEST_CACHE.clear()
+        return True
+
+
 class EdgeV8Runtime(BaseRuntime):
     # FIX #642/#643: Move to instance variables — class variables are shared across instances
     # These are now initialized in __init__
@@ -782,7 +818,7 @@ class EdgeV8Runtime(BaseRuntime):
         return EdgeV8Http()
 
     @property
-    def cache(self) -> "EdgeV8Cache":
+    def cache(self) -> EdgeV8Cache:
         # v0.9.08 FIX #81: Return EdgeV8Cache, not base CacheAPI
         if self._cache_inst is None:
             self._cache_inst = EdgeV8Cache()

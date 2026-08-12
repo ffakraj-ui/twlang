@@ -1,5 +1,5 @@
 """
-TW Framework — Multi-Runtime Abstraction Layer (v0.9.17)
+TW Framework — Multi-Runtime Abstraction Layer (v0.9.25)
 
 Supports 5 runtimes:
   - nodejs  : Full Node.js (npm ecosystem, fs, native modules)
@@ -19,7 +19,7 @@ Usage:
 """
 
 # FIX #699: Add module version
-__version__ = "0.9.17"
+__version__ = "0.9.25"
 
 from .base import BaseRuntime, RuntimeCapability, CAPABILITIES
 from .abstractions import tw

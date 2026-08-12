@@ -119,6 +119,9 @@ class WasmPermissions:
         return self._sandbox_dir
 
     def allow_env_var(self, name: str) -> bool:
+        # v0.9.17 FIX: TW_/PUBLIC_/EDGE_ prefixed vars are safe by default
+        if name.startswith(("TW_", "PUBLIC_", "EDGE_")) or name == "NODE_ENV":
+            return True
         return name in self._allowed_env
 
     def allowed_env_vars(self) -> set:
@@ -660,7 +663,7 @@ class WasmRuntime(BaseRuntime):
             RuntimeCapability.DATABASE.value: self._permissions.allow_db,
             RuntimeCapability.CRYPTO.value: True,               # always (host-provided)
             RuntimeCapability.CACHE.value: True,                 # in-memory
-            RuntimeCapability.ENV_VARS.value: len(self._permissions.allowed_env_vars()) > 0,
+            RuntimeCapability.ENV_VARS.value: True,  # v0.9.17: TW_ vars always available
             RuntimeCapability.PERSISTENT_STORAGE.value: self._permissions.allow_fs,
             RuntimeCapability.TIMERS.value: False,               # no timers (v0.9.08: time.sleep not in sandbox namespace)
             RuntimeCapability.STREAMING.value: False,             # no streaming

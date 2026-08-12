@@ -1,6 +1,6 @@
 # TW Framework — Complete Reference for AI Coding Assistants
 # Source: https://github.com/ffakraj-ui/twlang
-# Version: v0.9.17 (2026-08-12)
+# Version: v0.9.25 (2026-08-12)
 # Rule: If README and source code disagree, trust the source code and tests.
 
 ---
@@ -17,7 +17,7 @@ TW Framework (package: `tw-framework` on PyPI) is a Python-based full-stack web 
 - **Source folder**: `[home]/` (literal brackets — App Router root)
 - **Build output**: `dist/`
 - **Cache dir**: `.tw/cache/`
-- **Version**: 0.9.17
+- **Version**: 0.9.25
 - **Author**: KANISHK KUMAR (mlkraj290@gmail.com)
 - **License**: MIT
 

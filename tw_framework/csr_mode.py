@@ -114,3 +114,131 @@ def get_csr_info() -> dict:
             "window.__twCSRComponent": "React component to mount",
         },
     }
+
+
+# ── next/dynamic CSR Support (#5) ────────────────────────────────────
+
+
+class DynamicImport:
+    """Represents a dynamic import (next/dynamic equivalent).
+
+    Wraps a component import so it only loads on the client side,
+    skipping SSR entirely. Server sends a loading placeholder,
+    client replaces it after loading the component.
+    """
+
+    def __init__(self, loader_fn, loading=None, ssr=False):
+        self.loader = loader_fn
+        self.loading = loading or "Loading..."
+        self.ssr = ssr
+        self._component = None
+        self._loaded = False
+
+    def load(self):
+        if not self._loaded:
+            self._component = self.loader()
+            self._loaded = True
+        return self._component
+
+    def render_ssr(self):
+        if self.ssr:
+            comp = self.load()
+            return comp() if callable(comp) else str(comp)
+        return '<div class="tw-dynamic-loading">' + self.loading + '</div>'
+
+    def render_client_script(self, mount_id):
+        NL = chr(10)
+        lines = [
+            '<script>',
+            '(function() {',
+            '  var mount = document.getElementById("' + mount_id + '");',
+            '  if (!mount) return;',
+            '  mount.innerHTML = "' + self.loading + '";',
+            '  window.__tw_dynamic__ = window.__tw_dynamic__ || {};',
+            '  window.__tw_dynamic__["' + mount_id + '"] = function(comp) {',
+            '    mount.innerHTML = comp.render({});',
+            '    mount.setAttribute("data-tw-loaded", "true");',
+            '  };',
+            '})();',
+            '</script>',
+        ]
+        return NL.join(lines)
+
+
+def dynamic(loader, loading=None, ssr=False):
+    """Create a dynamic import (next/dynamic equivalent)."""
+    return DynamicImport(loader, loading=loading, ssr=ssr)
+
+
+def generate_csr_bootstrap(mount_id="#root", component_path=""):
+    """Generate the CSR bootstrap script."""
+    NL = chr(10)
+    lines = [
+        '<script>',
+        '(function() {',
+        '  var mountId = "' + mount_id + '";',
+        '  var componentPath = "' + component_path + '";',
+        '  function mount() {',
+        '    var mount = document.querySelector(mountId);',
+        '    if (!mount) { console.error("[CSR] Mount point not found"); return; }',
+        '    mount.innerHTML = "<div class=\\"tw-csr-loading\\">Loading...</div>";',
+        '    if (window.__tw_bundles__ && window.__tw_bundles__[componentPath]) {',
+        '      var Component = window.__tw_bundles__[componentPath];',
+        '      try {',
+        '        mount.innerHTML = Component.render({});',
+        '        mount.setAttribute("data-tw-mounted", "true");',
+        '      } catch(e) { console.error("[CSR] Render failed:", e); }',
+        '    } else {',
+        '      var script = document.createElement("script");',
+        '      script.src = "/_bundles/" + componentPath + ".js";',
+        '      script.onload = function() {',
+        '        if (window.__tw_bundles__ && window.__tw_bundles__[componentPath]) {',
+        '          mount.innerHTML = window.__tw_bundles__[componentPath].render({});',
+        '          mount.setAttribute("data-tw-mounted", "true");',
+        '        }',
+        '      };',
+        '      document.head.appendChild(script);',
+        '    }',
+        '  }',
+        '  if (document.readyState === "loading") {',
+        '    document.addEventListener("DOMContentLoaded", mount);',
+        '  } else { mount(); }',
+        '})();',
+        '</script>',
+    ]
+    return NL.join(lines)
+
+
+class CSRBoundary:
+    """Marks a component boundary for CSR-only rendering."""
+
+    def __init__(self, component_name, loading=None):
+        self.component_name = component_name
+        self.loading = loading or "Loading..."
+        self._mount_id = "tw-csr-" + component_name
+
+    def render_placeholder(self):
+        return (
+            '<div id="' + self._mount_id + '" class="tw-csr-boundary">'
+            '<div class="tw-csr-loading">' + self.loading + '</div>'
+            '</div>'
+        )
+
+    def render_hydration_script(self, bundle_url):
+        NL = chr(10)
+        lines = [
+            '<script>',
+            '(function() {',
+            '  var mount = document.getElementById("' + self._mount_id + '");',
+            '  if (!mount) return;',
+            '  var script = document.createElement("script");',
+            '  script.src = "' + bundle_url + '";',
+            '  script.onload = function() {',
+            '    var comp = window.__tw_bundles__ && window.__tw_bundles__["' + self.component_name + '"];',
+            '    if (comp) { mount.innerHTML = comp.render({}); mount.setAttribute("data-tw-loaded", "true"); }',
+            '  };',
+            '  document.head.appendChild(script);',
+            '})();',
+            '</script>',
+        ]
+        return NL.join(lines)

@@ -17,7 +17,7 @@ import socketserver
 import threading
 import time
 import urllib.parse
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Callable
 
 from . import compiler
 from .common import content_hash, log
@@ -742,3 +742,182 @@ def get_ssr_cache():
     if os.environ.get("TW_REDIS_URL"):
         return RedisSSRCache()
     return SSRCache()
+
+
+# ── TanStack Query + Server Components (#16) ─────────────────────────
+# Server-side prefetch + HydrationBoundary + useSuspenseQuery
+
+
+class TanStackQueryBridge:
+    """Bridge between TanStack Query (React Query) and TW Server Components.
+
+    Enables:
+    1. Server-side data prefetching via React Query
+    2. Serialization of query cache for client hydration
+    3. HydrationBoundary for seamless client-side pickup
+    4. useSuspenseQuery integration with Suspense boundaries
+    5. Automatic cache invalidation via server actions
+
+    Flow:
+    - Server: prefetch query -> serialize cache -> embed in HTML
+    - Client: HydrationBoundary picks up cache -> no refetch needed
+    - Updates: server action revalidates -> client refetches
+    """
+
+    def __init__(self):
+        self._query_cache: Dict[str, Any] = {}
+        self._query_keys: Dict[str, str] = {}
+        self._prefetched: Set[str] = set()
+
+    def prefetch_query(self, query_key: str, query_fn: Callable,
+                        args: Optional[dict] = None) -> Any:
+        """Prefetch a query on the server.
+
+        Args:
+            query_key: Unique query key (e.g. "users", "posts:123")
+            query_fn: Function that returns the data
+            args: Optional arguments for the query function
+
+        Returns:
+            The query result data
+        """
+        if query_key in self._query_cache:
+            return self._query_cache[query_key]["data"]
+
+        try:
+            data = query_fn(**args) if args else query_fn()
+            self._query_cache[query_key] = {
+                "data": data,
+                "status": "success",
+                "error": None,
+                "fetchedAt": __import__("time").time(),
+            }
+            self._prefetched.add(query_key)
+            return data
+        except Exception as e:
+            self._query_cache[query_key] = {
+                "data": None,
+                "status": "error",
+                "error": str(e),
+                "fetchedAt": __import__("time").time(),
+            }
+            raise
+
+    def get_cache_data(self) -> Dict[str, Any]:
+        """Get serialized cache for client hydration."""
+        return {
+            key: {
+                "data": value["data"],
+                "status": value["status"],
+                "error": value["error"],
+                "fetchedAt": value["fetchedAt"],
+            }
+            for key, value in self._query_cache.items()
+        }
+
+    def generate_hydration_boundary(self) -> str:
+        """Generate HydrationBoundary script for client.
+
+        This script injects the server-prefetched query cache into
+        the client-side TanStack Query cache, so the client doesn't
+        need to refetch the same data.
+        """
+        import json
+        cache_data = json.dumps(self.get_cache_data())
+        NL = chr(10)
+        lines = [
+            '<script>',
+            '(function() {',
+            '  var cacheData = ' + cache_data + ';',
+            '  window.__tw_query_cache__ = cacheData;',
+            '  // Hydrate TanStack Query if available',
+            '  if (window.__tw_react_query__ && window.__tw_react_query__.hydrate) {',
+            '    var qc = window.__tw_react_query__.getQueryClient();',
+            '    Object.keys(cacheData).forEach(function(key) {',
+            '      var entry = cacheData[key];',
+            '      qc.setQueryData(key, entry.data);',
+            '    });',
+            '    console.log("[TanStack] Hydrated " + Object.keys(cacheData).length + " queries");',
+            '  } else {',
+            '    console.log("[TanStack] Cache ready for hydration (" + Object.keys(cacheData).length + " queries)");',
+            '  }',
+            '})();',
+            '</script>',
+        ]
+        return NL.join(lines)
+
+    def invalidate_query(self, query_key: str) -> None:
+        """Invalidate a query in the cache."""
+        if query_key in self._query_cache:
+            del self._query_cache[query_key]
+        self._prefetched.discard(query_key)
+
+    def invalidate_queries(self, query_prefix: str) -> int:
+        """Invalidate all queries matching a prefix."""
+        keys_to_remove = [k for k in self._query_cache if k.startswith(query_prefix)]
+        for key in keys_to_remove:
+            del self._query_cache[key]
+            self._prefetched.discard(key)
+        return len(keys_to_remove)
+
+    def get_stats(self) -> Dict[str, Any]:
+        return {
+            "total_queries": len(self._query_cache),
+            "prefetched": len(self._prefetched),
+            "cache_keys": list(self._query_cache.keys()),
+        }
+
+
+# ── RSC Streaming Integration ──────────────────────────────────────
+
+class RSCStreamHandler:
+    """Handles RSC payload streaming via HTTP.
+
+    Integrates with the server to:
+    1. Detect RSC requests (Accept header)
+    2. Stream RSC payload chunks via chunked transfer encoding
+    3. Fall back to full HTML for non-RSC requests
+    4. Handle SSE-style streaming for suspense resolution
+    """
+
+    RSC_CONTENT_TYPE = "text/x-tw-rsc"
+
+    def __init__(self):
+        self._enabled = True
+        self._stream_timeout_ms = 30000
+
+    def is_stream_request(self, headers: Dict[str, str]) -> bool:
+        """Check if this is an RSC stream request."""
+        accept = headers.get("accept", "") or headers.get("Accept", "")
+        return self.RSC_CONTENT_TYPE in accept
+
+    def create_stream_headers(self) -> Dict[str, str]:
+        """Create headers for an RSC stream response."""
+        return {
+            "Content-Type": self.RSC_CONTENT_TYPE,
+            "Transfer-Encoding": "chunked",
+            "Cache-Control": "no-cache",
+            "X-TW-RSC": "1",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+
+    def format_chunk(self, data: bytes, is_final: bool = False) -> bytes:
+        """Format a chunk for chunked transfer encoding."""
+        if is_final:
+            return b"0\r\n\r\n"
+        chunk_size = hex(len(data))[2:]
+        return (chunk_size + "\r\n").encode() + data + b"\r\n"
+
+    def generate_sse_chunk(self, event: str, data: str) -> str:
+        """Format a chunk as Server-Sent Events."""
+        return "event: " + event + "\ndata: " + data + "\n\n"
+
+    def enable(self) -> None: self._enabled = True
+    def disable(self) -> None: self._enabled = False
+
+    def get_info(self) -> Dict[str, Any]:
+        return {
+            "enabled": self._enabled,
+            "content_type": self.RSC_CONTENT_TYPE,
+            "timeout_ms": self._stream_timeout_ms,
+        }

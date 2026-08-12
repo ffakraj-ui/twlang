@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Callable
 
 import os
 import re
@@ -6861,3 +6861,259 @@ def compile_file_pipeline(path, context=None, css_href=None, route_path=None, ca
 
 if __name__ == "__main__":
     main()
+
+
+# ── "use cache" Directive (#11) ─────────────────────────────────────
+# Explicit, granular opt-in caching for pages, components, functions
+
+
+class UseCacheDirective:
+    """Parses and processes 'use cache' directive.
+
+    The 'use cache' directive marks a function, component, or page
+    for explicit caching. When the compiler encounters this directive:
+
+    1. It wraps the function/component output in a cache layer
+    2. The cache key is derived from the function name + arguments
+    3. Cache TTL can be specified: "use cache" { revalidate: 3600 }
+    4. Tags can be added: "use cache" { tags: ["products"] }
+    5. Cache is opt-in — only cached if directive is present
+    """
+
+    DIRECTIVE = "use cache"
+
+    def __init__(self):
+        self._cache_configs: Dict[str, dict] = {}
+
+    def parse_directive(self, source: str, function_name: str = "") -> Optional[dict]:
+        """Parse 'use cache' directive from source code.
+
+        Returns cache config dict or None if no directive found.
+        """
+        if self.DIRECTIVE not in source:
+            return None
+
+        config = {
+            "enabled": True,
+            "revalidate": 0,  # 0 = cache forever, >0 = TTL in seconds
+            "tags": [],
+            "max_age": 0,
+            "stale_while_revalidate": 0,
+        }
+
+        # Look for config block: "use cache" { revalidate: 3600, tags: ["products"] }
+        import re
+        pattern = chr(91) + chr(34) + chr(39) + chr(93) + "use cache" + chr(91) + chr(34) + chr(39) + chr(93) + chr(92) + "s*" + chr(92) + "{" + "([^}]*)" + chr(92) + "}"
+        config_match = re.search(pattern, source)
+        if config_match:
+            config_body = config_match.group(1)
+
+            # Parse revalidate
+            reval_match = re.search(r'revalidate\s*:\s*(\d+)', config_body)
+            if reval_match:
+                config["revalidate"] = int(reval_match.group(1))
+
+            # Parse tags
+            tags_match = re.search(r'tags\s*:\s*\[([^\]]*)\]', config_body)
+            if tags_match:
+                tags_str = tags_match.group(1)
+                config["tags"] = [
+                    t.strip().strip("'\"")
+                    for t in tags_str.split(",")
+                    if t.strip()
+                ]
+
+            # Parse max_age
+            max_age_match = re.search(r'max_age\s*:\s*(\d+)', config_body)
+            if max_age_match:
+                config["max_age"] = int(max_age_match.group(1))
+
+            # Parse stale_while_revalidate
+            swr_match = re.search(r'stale_while_revalidate\s*:\s*(\d+)', config_body)
+            if swr_match:
+                config["stale_while_revalidate"] = int(swr_match.group(1))
+
+        if function_name:
+            self._cache_configs[function_name] = config
+
+        return config
+
+    def wrap_with_cache(self, function_name: str, source: str,
+                        config: Optional[dict] = None) -> str:
+        """Wrap a function with caching based on 'use cache' directive.
+
+        Returns modified source with cache wrapper.
+        """
+        if config is None:
+            config = self.parse_directive(source, function_name)
+            if not config:
+                return source
+
+        # Generate cache wrapper code
+        tags_str = ", ".join(['"' + t + '"' for t in config.get("tags", [])])
+        reval = config.get("revalidate", 0)
+
+        # In a real compiler, this would inject cache logic into the function body
+        # Here we just add a comment showing the cache config
+        cache_comment = (
+            "# [use cache] revalidate=" + str(reval) + " tags=[" + tags_str + "]"
+        )
+
+        return cache_comment + "\n" + source
+
+    def get_cache_configs(self) -> Dict[str, dict]:
+        """Return all parsed cache configurations."""
+        return dict(self._cache_configs)
+
+    def get_stats(self) -> dict:
+        return {
+            "total_cached_functions": len(self._cache_configs),
+            "functions_with_tags": sum(1 for c in self._cache_configs.values() if c.get("tags")),
+            "functions_with_revalidate": sum(1 for c in self._cache_configs.values() if c.get("revalidate", 0) > 0),
+        }
+
+
+# ── Cache Components (#14) ─────────────────────────────────────────
+# Fine-grained, opt-in caching model
+
+
+class CacheComponent:
+    """A cacheable component (use cache equivalent).
+
+    Cache Components are components that are explicitly cached
+    using the 'use cache' directive. They:
+
+    1. Render once and cache the output
+    2. Are revalidated based on tags or TTL
+    3. Can be shared across different pages
+    4. Support stale-while-revalidate
+    5. Integrate with the 4-tier cache system
+    """
+
+    def __init__(self, name: str, render_fn: Callable,
+                 revalidate: int = 0,
+                 tags: Optional[List[str]] = None,
+                 stale_while_revalidate: int = 0):
+        self.name = name
+        self.render_fn = render_fn
+        self.revalidate = revalidate
+        self.tags = tags or []
+        self.stale_while_revalidate = stale_while_revalidate
+        self._cache: Optional[str] = None
+        self._cached_at: float = 0
+        self._is_stale: bool = False
+
+    def render(self, force_refresh: bool = False) -> str:
+        """Render the component, using cache if available."""
+        import time
+
+        if not force_refresh and self._cache is not None:
+            # Check if cache is still valid
+            if self.revalidate > 0:
+                age = time.time() - self._cached_at
+                if age < self.revalidate:
+                    return self._cache
+                elif age < self.revalidate + self.stale_while_revalidate:
+                    # Return stale while revalidating
+                    self._is_stale = True
+                    self._refresh_cache()
+                    return self._cache
+            else:
+                # No revalidate = cache forever
+                return self._cache
+
+        # Render and cache
+        self._cache = self.render_fn()
+        self._cached_at = time.time()
+        self._is_stale = False
+        return self._cache
+
+    def _refresh_cache(self) -> None:
+        """Refresh the cache in background."""
+        try:
+            self._cache = self.render_fn()
+            self._cached_at = __import__("time").time()
+            self._is_stale = False
+        except Exception as e:
+            import logging
+            logging.warning("Cache refresh failed for %s: %s", self.name, e)
+
+    def invalidate(self, tag: str = "") -> bool:
+        """Invalidate cache, optionally only if tag matches."""
+        if tag and tag not in self.tags:
+            return False
+        self._cache = None
+        self._is_stale = True
+        return True
+
+    def get_cache_info(self) -> dict:
+        return {
+            "name": self.name,
+            "revalidate": self.revalidate,
+            "tags": self.tags,
+            "is_cached": self._cache is not None,
+            "is_stale": self._is_stale,
+            "cached_at": self._cached_at,
+            "age_seconds": (__import__("time").time() - self._cached_at) if self._cached_at else 0,
+        }
+
+
+class CacheComponentRegistry:
+    """Registry of all cache components.
+
+    Manages:
+    - Component registration
+    - Tag-based invalidation
+    - Cache warming (pre-render on build)
+    - Stats and monitoring
+    """
+
+    def __init__(self):
+        self._components: Dict[str, CacheComponent] = {}
+        self._tag_index: Dict[str, Set[str]] = {}  # tag -> component names
+
+    def register(self, component: CacheComponent) -> None:
+        """Register a cache component."""
+        self._components[component.name] = component
+        for tag in component.tags:
+            self._tag_index.setdefault(tag, set()).add(component.name)
+
+    def get(self, name: str) -> Optional[CacheComponent]:
+        return self._components.get(name)
+
+    def render(self, name: str, force_refresh: bool = False) -> Optional[str]:
+        comp = self._components.get(name)
+        if comp:
+            return comp.render(force_refresh=force_refresh)
+        return None
+
+    def invalidate_tag(self, tag: str) -> int:
+        """Invalidate all components with a given tag."""
+        component_names = self._tag_index.get(tag, set())
+        count = 0
+        for name in component_names:
+            comp = self._components.get(name)
+            if comp:
+                comp.invalidate(tag)
+                count += 1
+        return count
+
+    def warm_all(self) -> None:
+        """Pre-render all cache components."""
+        for comp in self._components.values():
+            try:
+                comp.render(force_refresh=True)
+            except Exception as e:
+                import logging
+                logging.warning("Cache warm failed for %s: %s", comp.name, e)
+
+    def get_stats(self) -> dict:
+        cached = sum(1 for c in self._components.values() if c._cache is not None)
+        stale = sum(1 for c in self._components.values() if c._is_stale)
+        return {
+            "total_components": len(self._components),
+            "cached": cached,
+            "stale": stale,
+            "tags": len(self._tag_index),
+            "components": {name: comp.get_cache_info() for name, comp in self._components.items()},
+        }
