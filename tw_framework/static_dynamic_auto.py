@@ -9,6 +9,7 @@ import logging
 from typing import Any, Optional
 
 from . import compiler
+import re
 
 logger = logging.getLogger(__name__)
 

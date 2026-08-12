@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from ..base import BaseRuntime, RuntimeCapability
 from ..abstractions import StorageAPI, HttpAPI, DatabaseAPI, CryptoAPI, EnvAPI, CacheAPI
+import urllib
 
 
 class PythonStorage(StorageAPI):

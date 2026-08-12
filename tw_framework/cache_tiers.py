@@ -39,6 +39,9 @@ import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple, Callable
+import gzip
+import urllib
+import urllib
 
 logger = logging.getLogger(__name__)
 

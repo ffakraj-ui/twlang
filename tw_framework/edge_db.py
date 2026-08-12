@@ -12,6 +12,7 @@ import json
 import urllib.request
 import urllib.error
 from typing import Any, Dict, List, Optional
+import urllib
 
 
 class EdgeDBProxy:

@@ -2,7 +2,7 @@
 
 A high-performance, HTML-first web framework with Virtual DOM, App Router, Zero-JS static sites, and **Multi-Runtime Architecture** (V8 Edge, Python, Node.js, WASM).
 
-**v0.9.25** — 700+ bugs fixed across 7 versions. Production-ready for small/medium sites.
+**v0.9.26** — 700+ bugs fixed across 7 versions. Production-ready for small/medium sites.
 
 ---
 

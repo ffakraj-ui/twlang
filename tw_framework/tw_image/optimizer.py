@@ -9,6 +9,7 @@ except ImportError:
     logger.info("Pillow not available; TW Image will skip pixel-level optimization")
 from .formats import get_format_priority, get_extension, is_optimizable
 from .cache import get_cached, set_cached, _OUTPUT_DIR
+import logging
 
 def _resolve_src_path(src, project_root=""):
     if not src: return ""

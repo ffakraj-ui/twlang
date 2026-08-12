@@ -1,11 +1,11 @@
-# TW Framework — Project Metadata (v0.9.25)
+# TW Framework — Project Metadata (v0.9.26)
 # Source: https://github.com/ffakraj-ui/twlang
 # Generated: 2026-08-12
 
 ## pyproject.toml
 
 - Name: tw-framework
-- Version: 0.9.25
+- Version: 0.9.26
 - Description: TW framework CLI with create, dev, build, and deploy commands
 - Requires-Python: >=3.9
 - Authors: KANISHK KUMAR (mlkraj290@gmail.com)
@@ -27,7 +27,7 @@
 
 - Name: twlang-main
 - Private: true
-- Version: 0.9.25
+- Version: 0.9.26
 - Engines: node >= 18
 - devDependencies: esbuild ^0.28.2
 - Scripts: dev, build, export, preview, clean, doctor, info, deploy (all call tw <cmd>)
@@ -359,7 +359,7 @@ tw deploy --provider vercel --prod --dry-run
 
 ## Version History
 
-- v0.9.25 — Final Polish: security hardening, thread safety, missing files
+- v0.9.26 — Final Polish: security hardening, thread safety, missing files
 - v0.9.15 — PyPI release prep: optional dependencies, docs, llms.txt
 - v0.9.14 — Edge V8 + Module Boundaries + Runtime Init (bugs 601-700)
 - v0.9.13 — 6 core module fixes (bugs 401-540)

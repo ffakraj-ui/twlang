@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from .ast_nodes import ComponentNode, ElementNode, ForNode, IfNode, LetNode, Program
 from .diagnostics import Diagnostic, DiagnosticBag
+import time
 
 logger = logging.getLogger(__name__)
 

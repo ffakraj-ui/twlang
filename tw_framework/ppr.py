@@ -35,7 +35,9 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Callable
+import re
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -1546,7 +1548,7 @@ class HydrationManifest:
         """Generate a <script> tag that injects the hydration manifest."""
         data = self.to_json()
         # Escape for HTML attribute
-        escaped = data.replace("</", "<\/")
+        escaped = data.replace("</", "<" + chr(92) + "/")
         return f'<script type="application/json" id="__tw_ppr_manifest__">{escaped}</script>'
 
 
@@ -1581,7 +1583,7 @@ class PPRHydrator:
         3. Replaces the placeholder with the result
         4. Handles errors and timeouts
         """
-        manifest_json = manifest.to_json().replace("</", "<\/")
+        manifest_json = manifest.to_json().replace("</", "<" + chr(92) + "/")
 
         # Build endpoint mapping
         endpoints_json = json.dumps(self._hydration_endpoints)
@@ -2165,13 +2167,13 @@ class PPRRouteMatcher:
             regex_pattern = _re.escape(pattern)
             # Replace escaped \[slug\] with a regex capture group
             regex_pattern = _re.sub(r'\\[([^\]]+)\\]', r'([^/]+)', regex_pattern)
-            regex_pattern = regex_pattern.replace("\*", "[^/]*")
+            regex_pattern = regex_pattern.replace(chr(92) + "*", "[^/]*")
             return bool(_re.match(f"^{regex_pattern}$", path))
 
         # Simple wildcard in middle
         if "*" in pattern:
             import re as _re
-            regex_pattern = _re.escape(pattern).replace("\*", ".*")
+            regex_pattern = _re.escape(pattern).replace(chr(92) + "*", ".*")
             return bool(_re.match(f"^{regex_pattern}$", path))
 
         return False

@@ -380,6 +380,8 @@ var tw = {
 # --- Storage/HTTP/Crypto/Env adapters (Python-side) ---
 
 import threading as _threading
+import re
+import urllib
 _KV_LOCK = _threading.Lock()
 
 

@@ -27,6 +27,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .base import BaseRuntime, RuntimeCapability, CAPABILITIES
 from .registry import get_runtime
+import os
 
 
 # API → required capability mapping

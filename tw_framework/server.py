@@ -17,7 +17,7 @@ import socketserver
 import threading
 import time
 import urllib.parse
-from typing import Any, Dict, List, Optional, Tuple, Callable
+from typing import Any, Dict, List, Optional, Tuple, Callable, Set
 
 from . import compiler
 from .common import content_hash, log
@@ -42,6 +42,8 @@ logger = logging.getLogger(__name__)
 
 # FIX #118: AST cache to avoid re-reading + parsing on every request
 from collections import OrderedDict as _OD
+import json
+import urllib
 _AST_CACHE: "_OD[str, tuple]" = _OD()
 # FIX #408: Allow AST cache size override via env var
 try:

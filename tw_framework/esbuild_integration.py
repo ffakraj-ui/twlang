@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import tempfile
 from typing import Any, Dict, List, Optional, Tuple
+import hashlib
 
 
 _ESBUILD_PATH_CACHE: Optional[str] = None

@@ -11,6 +11,7 @@ import os
 from typing import Dict, List, Optional
 
 from . import compiler
+import re
 
 logger = logging.getLogger(__name__)
 

@@ -10,6 +10,10 @@ from __future__ import annotations
 import json, time, logging, os, hashlib
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set
+import time
+import re
+import logging
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -317,7 +321,7 @@ class ConventionalCommitParser:
     fix(scope): fix bug in scope
     docs(api): update API docs
     """
-    PATTERN = "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(?:\(([^)]+)\))?!?:\s*(.+)$"
+    PATTERN = r'^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(?:\(([^)]+)\))?!?:\s*(.+)$'
 
     def __init__(self):
         import re

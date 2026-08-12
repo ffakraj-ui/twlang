@@ -12,6 +12,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlparse, parse_qs, urlencode
+import urllib
 
 logger = logging.getLogger(__name__)
 

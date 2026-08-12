@@ -20,6 +20,8 @@ import hashlib
 import re
 import threading
 from typing import Any, Dict, List, Optional, Callable
+import urllib
+import urllib
 
 
 HOOKS = ["beforeBuild", "afterBuild", "beforeRequest", "afterRequest", "onRouteMatch"]

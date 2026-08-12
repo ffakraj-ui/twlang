@@ -44,6 +44,9 @@ from typing import Any, Dict, List, Optional, Union
 
 from ..base import BaseRuntime, RuntimeCapability
 from ..abstractions import StorageAPI, HttpAPI, CryptoAPI, EnvAPI, CacheAPI
+import time
+import urllib
+import urllib
 
 
 # ─── wasmtime availability check ──────────────────────────────────────

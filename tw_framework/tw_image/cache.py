@@ -1,5 +1,8 @@
 """Image cache for TW Image system."""
 import os, hashlib, json, logging
+import json
+import logging
+import hashlib
 logger = logging.getLogger(__name__)
 _CACHE = {}
 _CACHE_DIR = ""

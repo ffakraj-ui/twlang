@@ -3,7 +3,7 @@ TW Framework — Complete Technical Reference for AI Coding Assistants
 ================================================================================
 
 Source of truth: github.com/ffakraj-ui/twlang (default branch: main)
-Version: v0.9.25 (2026-08-12)
+Version: v0.9.26 (2026-08-12)
 
 Where the README and the source code/tests disagree, this document follows
 the source code and tests.
@@ -378,7 +378,7 @@ Current: 610 passed, 9 skipped, 0 failed
 14. VERSION HISTORY
 ================================================================================
 
-- v0.9.25 — Final Polish: security hardening, thread safety, missing files
+- v0.9.26 — Final Polish: security hardening, thread safety, missing files
 - v0.9.15 — PyPI release prep: optional dependencies, docs, llms.txt
 - v0.9.14 — Edge V8 + Module Boundaries + Runtime Init (bugs 601-700)
 - v0.9.13 — 6 core module fixes (bugs 401-540)
