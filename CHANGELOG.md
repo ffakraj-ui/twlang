@@ -2,6 +2,22 @@
 
 All notable changes to TW Framework are documented here.
 
+## [0.9.33] - 2026-08-13
+
+### Fixed
+- **Critical**: Lib function calls in `{ }` interpolation now execute correctly. Previously `{greet('Suraj')}` would render as raw text instead of `Hello, Suraj!`.
+  - Added `ast.Call` handler to `_safe_eval()` in `compiler.py` — function calls were silently failing because `ast.Call` nodes raised `ValueError("Unsupported expression node: Call")`.
+  - Added lib function fallback in `evaluate_expression()` — when normal eval fails, checks `_LIB_MODULES` and calls `_try_execute_lib_function()`.
+  - Added `None` input guard to `evaluate_expression()` to prevent `AttributeError` on `None.strip()`.
+- **Critical**: Fixed `_scan_matching_brace()` in `twm_parser.py` — template literal `${...}` interpolation (e.g. `` `Hello, ${name}!` ``) caused "Unterminated `{ ... }` block" error because the parser didn't return to template mode after closing the `${...}` expression. Added `template_stack` to track interpolation depth and correctly resume template mode.
+
+### Tests
+- Added 32 new regression tests in `test_interpolation_fix.py` covering:
+  - `_safe_eval` ast.Call handler (callable in context, lib functions, nested calls, attribute methods)
+  - `interpolate()` with function calls in text (simple, multiple, mixed with variables)
+  - Lib module registration and execution
+  - `evaluate_expression()` integration (variables, attributes, arithmetic, booleans, comparisons)
+
 ## [0.9.32] - 2026-08-13
 
 ### Fixed

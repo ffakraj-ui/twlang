@@ -10,6 +10,7 @@ tests/test_deployment.py
 tests/test_error_boundaries.py
 tests/test_esbuild_integration.py
 tests/test_inline_json_and_tailwind.py
+tests/test_interpolation_fix.py
 tests/test_js_interop.py
 tests/test_lib_system.py
 tests/test_module_boundaries.py

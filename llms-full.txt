@@ -1,10 +1,10 @@
-# TW Framework — Project Metadata (v0.9.32)
+# TW Framework — Project Metadata (v0.9.33)
 # Source: https://github.com/ffakraj-ui/twlang
 
 ## pyproject.toml
 
 - Name: tw-framework
-- Version: 0.9.32
+- Version: 0.9.33
 - Requires-Python: >=3.9
 - Authors: TW MRMK, TW MLKRAJ, TW ASLAM, TW BADAL, TW ROHIT, TW RISHU
 - Dependencies: [] (core framework has no hard third-party dependencies)
@@ -61,4 +61,4 @@
 - v0.9.24 — PPR boundaries, cache directive, ESBuild
 - v0.9.25 — Instant navigation, DevTools, parallel routes, enterprise
 - v0.9.26 — Stability fixes, missing imports
-- v0.9.32 — Stability test suite, infrastructure and CORS fixes
+- v0.9.33 — Stability test suite, infrastructure and CORS fixes

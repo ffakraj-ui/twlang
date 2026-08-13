@@ -48,6 +48,7 @@ def _scan_matching_brace(source: str, open_brace_index: int) -> Any:
     i = open_brace_index + 1
     depth = 1
     mode = "code"  # code|string_d|string_s|template|line_comment|block_comment
+    template_stack = []  # depths at which we entered ${...} inside template literals
 
     while i < len(source):
         ch = source[i]
@@ -82,6 +83,9 @@ def _scan_matching_brace(source: str, open_brace_index: int) -> Any:
             if ch == "`":
                 mode = "code"
             elif ch == "$" and i + 1 < len(source) and source[i + 1] == "{":
+                # Enter ${...} interpolation: switch to code mode, but remember
+                # to return to template mode when the matching } is found.
+                template_stack.append(depth)
                 mode = "code"
                 depth += 1
                 i += 2
@@ -140,6 +144,12 @@ def _scan_matching_brace(source: str, open_brace_index: int) -> Any:
             continue
         if ch == "}":
             depth -= 1
+            if template_stack and depth == template_stack[-1]:
+                # Closing } of a ${...} interpolation — return to template mode
+                template_stack.pop()
+                mode = "template"
+                i += 1
+                continue
             if depth == 0:
                 return i
             i += 1

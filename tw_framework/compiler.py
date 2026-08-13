@@ -2027,11 +2027,43 @@ def _safe_eval(node, context) -> Any:
             left = right
         return True
 
+    if isinstance(node, ast.Call):
+        func = node.func
+        if isinstance(func, ast.Name):
+            func_name = func.id
+            args = [_safe_eval(arg, context) for arg in node.args]
+            if func_name in _LIB_MODULES:
+                mod_info = _LIB_MODULES[func_name]
+                raw_args = ", ".join(json.dumps(a) for a in args)
+                try:
+                    return _try_execute_lib_function(func_name, raw_args)
+                except Exception:
+                    return None
+            callable_val = context.get(func_name)
+            if callable(callable_val):
+                try:
+                    return callable_val(*args)
+                except Exception:
+                    return None
+            return None
+        if isinstance(func, ast.Attribute):
+            base = _safe_eval(func.value, context)
+            attr = getattr(base, func.attr, None)
+            if callable(attr):
+                args = [_safe_eval(arg, context) for arg in node.args]
+                try:
+                    return attr(*args)
+                except Exception:
+                    return None
+        return None
+
     raise ValueError(f"Unsupported expression node: {type(node).__name__}")
 
 
 def evaluate_expression(expr, context) -> Any:
-    expr = expr.strip()
+    if expr is None:
+        return None
+    expr = str(expr).strip() if not isinstance(expr, str) else expr.strip()
     if not expr:
         return ""
     try:
@@ -2042,6 +2074,12 @@ def evaluate_expression(expr, context) -> Any:
         value = resolve_path(expr, context)
         if value is not None:
             return value
+        call_info = is_function_call(expr)
+        if call_info and call_info["name"] in _LIB_MODULES:
+            try:
+                return _try_execute_lib_function(call_info["name"], call_info["raw_args"])
+            except Exception:
+                return None
         return None
     except Exception as err:
         # Do not silently swallow runtime errors (e.g. ZeroDivisionError) without any clue.
