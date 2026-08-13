@@ -1737,6 +1737,16 @@ def build_parser() -> Any:
     routes_parser = subparsers.add_parser("routes", help="List all routes in the project")
     routes_parser.set_defaults(func=command_routes)
 
+    # v0.9.35: Add --debug to ALL subparsers so `tw build --debug` works
+    # (previously --debug was only on the main parser, so `tw build --debug`
+    #  would error with "unrecognized arguments: --debug")
+    for sp in [create_parser, init_parser, doctor_parser, dev_parser, build_parser,
+               export_parser, preview_parser, clean_parser, info_parser, ast_parser,
+               ir_parser, run_parser, tokens_parser, check_parser, login_parser,
+               deploy_parser, plugin_parser, install_parser, add_parser_cmd,
+               remove_parser, list_parser, serve_parser, infra_parser,
+               health_parser, routes_parser]:
+        sp.add_argument("--debug", action="store_true", help="Show full error details and stack traces")
     return parser
 
 

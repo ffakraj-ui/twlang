@@ -3541,6 +3541,12 @@ def parse_child_statement(tokens, i, file_path, source) -> Any:
         return parse_script_placeholder(tokens, i, file_path=file_path)
     if token.type == "WORD" and TAG_NAME_RE.match(token.value):
         return parse_element_or_component(tokens, i, file_path, source)
+    # v0.9.35: Handle bare STRING tokens as text nodes (e.g. "Count: {count}" after })
+    if token.type == "STRING":
+        node = ElementNode("text", token=token, file_path=file_path)
+        node.text = token.value
+        i += 1
+        return node, i
     raise CompilerError(f"Unexpected token: `{token.value}`", token=token)
 
 
@@ -5917,8 +5923,8 @@ def load_dynamic_items(tw_path) -> Any:
     base, ext = os.path.splitext(tw_path)
     json_path = base + ".json" if ext.lower() == ".tw" else tw_path + ".json"
     if not os.path.exists(json_path):
-        # FIX #213: Warn instead of silently returning [] — user may think data is empty
-        log(f"⚠️ Dynamic route JSON not found: {json_path} — page will have 0 items", level="warning")
+        # v0.9.35: Dynamic route JSON is optional — demote to debug to avoid noisy warnings
+        log(f"Dynamic route JSON not found: {json_path} — page will have 0 items", level="debug")
         return []
     try:
         with open(json_path, "r", encoding="utf-8") as f:

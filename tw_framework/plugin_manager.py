@@ -26,7 +26,7 @@ import urllib
 
 HOOKS = ["beforeBuild", "afterBuild", "beforeRequest", "afterRequest", "onRouteMatch"]
 
-PLUGIN_REGISTRY_URL = "https://raw.githubusercontent.com/tw-origin/tw-plugins/main/registry.json"
+PLUGIN_REGISTRY_URL = "https://raw.githubusercontent.com/ffakraj-ui/tw-plugins/main/registry.json"
 
 
 class PluginContext:

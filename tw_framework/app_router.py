@@ -288,8 +288,8 @@ def discover_routes(home_dir: str) -> list:
         if has_index or has_page:
             # If both exist, index.tw wins — warn about page.tw being ignored
             if has_index and has_page:
-                logger.warning(
-                    "Both index.tw and page.tw found in %s — index.tw takes priority, page.tw will be ignored",
+                logger.debug(
+                    "Both index.tw and page.tw found in %s — using index.tw (page.tw ignored)",
                     root,
                 )
 

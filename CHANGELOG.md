@@ -2,6 +2,17 @@
 
 All notable changes to TW Framework are documented here.
 
+## [0.9.35] - 2026-08-13
+
+### Fixed
+- **VDOM parser**: Text after closing brace `}` now parsed as text node. `button { on:click "count++" } "Count: {count}"` no longer crashes with "Unexpected token". Added STRING token handler in `parse_child_statement()`.
+- **`tw --debug`**: `--debug` flag now works with ALL subcommands (`tw build --debug`, `tw serve --debug`, etc.). Previously `--debug` was only on the main parser, so `tw build --debug` silently failed. Added `--debug` to all 25 subparsers.
+- **Plugin registry**: Updated `PLUGIN_REGISTRY_URL` to point to `ffakraj-ui/tw-plugins` repo. Created sample plugin `tw-analytics` with `registry.json`, `manifest.json`, and `index.js`.
+
+### Changed
+- **index.tw warning**: Demoted "Both index.tw and page.tw found" from `warning` to `debug` level — less noisy, priority still works.
+- **Dynamic route JSON warning**: Demoted "page.json not found" from `warning` to `debug` level — JSON is optional, warning was noisy.
+
 ## [0.9.34] - 2026-08-13
 
 ### Fixed
