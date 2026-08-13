@@ -1798,6 +1798,35 @@ def main() -> None:
         return
 
     if not getattr(args, "command", None):
+        # v0.9.41: Check for plugin commands (tw <plugin> <command>)
+        import sys as _sys
+        _argv = _sys.argv[1:]
+        if len(_argv) >= 2:
+            _plugin_name = _argv[0]
+            _plugin_cmd = _argv[1]
+            _cmd_args = _argv[2:]
+            try:
+                from . import plugin_manager
+                plugin_manager.PluginManager(plugins_dir=".tw/plugins", project_root=os.getcwd()).load_all()
+                commands = plugin_manager.get_plugin_commands()
+                _key = _plugin_name + " " + _plugin_cmd
+                if _key in commands:
+                    cmd_info = commands[_key]
+                    handler = cmd_info["handler"]
+                    try:
+                        result = handler(_cmd_args)
+                        if isinstance(result, int):
+                            raise SystemExit(result)
+                        return
+                    except SystemExit:
+                        raise
+                    except Exception as err:
+                        log("Plugin command error: " + str(err), level="error")
+                        raise SystemExit(1)
+            except SystemExit:
+                raise
+            except Exception:
+                pass
         parser.print_help()
         raise SystemExit(1)
 

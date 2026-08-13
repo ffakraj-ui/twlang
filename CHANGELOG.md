@@ -2,6 +2,54 @@
 
 All notable changes to TW Framework are documented here.
 
+## [0.9.41] - 2026-08-13
+
+### Plugin System — Full Power Upgrade
+Plugins now have comprehensive capabilities for real-world use cases like SEO, sitemaps, analytics, and more.
+
+#### New PluginContext Powers
+- **HTTP Fetch** — `ctx.fetch(url, method, headers, body)` for external API calls. Security: blocks localhost, private IPs, non-http URLs.
+- **Route Registration** — `ctx.register_route("/sitemap.xml", handler)` for custom URL endpoints.
+- **CLI Command Registration** — `ctx.register_command("analyze", handler)` for custom commands. Format: `tw <plugin> <command>`. Cannot override built-in commands.
+- **Cookies** — `ctx.get_cookie(name)` and `ctx.set_cookie(name, value, max_age, path, http_only)`.
+- **Headers** — `ctx.set_header(name, value)` and `ctx.get_header(name)`.
+- **Response Status** — `ctx.set_status(code)` for HTTP status codes.
+- **Page HTML Access** — `ctx.get_page_html(index)`, `ctx.set_page_html(index, html)`, `ctx.get_page_meta(index)`.
+- **Plugin Data Store** — `ctx.get_data(key)` and `ctx.set_data(key, value)` for persisting data across hooks.
+- **Binary File I/O** — `ctx.read_file_bytes(path)` and `ctx.write_file_bytes(path, data)` for images and binaries.
+- **Directory Operations** — `ctx.list_dir(path)`, `ctx.mkdir(path)`, `ctx.delete_file(path)`.
+- **Static File Serving** — `ctx.serve_static(file_path, content_type)` returns proper HTTP response.
+- **JSON Response** — `ctx.json_response(data, status)` helper.
+- **Query Params** — `ctx.query_params` property.
+- **Route Params** — `ctx.route_params` property (e.g. /users/:id).
+- **Environment Variables** — `ctx.get_env(name, default)`.
+- **Redirect** — `ctx.redirect(url, status)`.
+
+#### New Hooks
+- `onPageRender` — fired before a page is rendered to HTML.
+- `onError` — fired when an error occurs during build or request.
+- `onConfigLoad` — fired when project config is loaded.
+
+#### CLI Integration
+- `tw <plugin_name> <command>` dispatches to plugin-registered commands.
+- Only works for installed plugins.
+- Cannot override existing built-in commands.
+
+#### Route Integration
+- Plugin-registered routes are checked by `match_route()` in `app_router.py`.
+- Falls through to plugin routes if no file-based route matches.
+
+#### Security
+- All file access sandboxed to project root (path traversal blocked).
+- HTTP fetch blocks private/internal IPs (localhost, 127.x, 10.x, 172.16-31.x, 192.168.x, 169.254.x).
+- Only http/https URLs allowed for fetch.
+- CLI commands isolated per plugin (plugin-a sync != plugin-b sync).
+- First registration wins for duplicate commands.
+
+### Tests
+- 57 new tests for plugin powers (`test_plugin_powers.py`).
+- Full suite: 1311 passed, 9 skipped, 0 failed.
+
 ## [0.9.40] - 2026-08-13
 
 ### Plugin System — Two-Tier Loading

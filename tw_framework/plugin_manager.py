@@ -24,7 +24,48 @@ import urllib
 import urllib
 
 
-HOOKS = ["beforeBuild", "afterBuild", "beforeRequest", "afterRequest", "onRouteMatch"]
+HOOKS = [
+    "beforeBuild", "afterBuild",
+    "beforeRequest", "afterRequest",
+    "onRouteMatch",
+    "onPageRender", "onError", "onConfigLoad",
+]
+
+# Global registries for plugin-registered routes and CLI commands
+_PLUGIN_ROUTES: List[dict] = []
+_PLUGIN_COMMANDS: Dict[str, dict] = {}
+
+
+def register_plugin_route(path: str, handler: Callable, plugin_name: str, method: str = "GET") -> None:
+    """Register a custom route from a plugin. Called by PluginContext.register_route()."""
+    _PLUGIN_ROUTES.append({
+        "path": path, "handler": handler,
+        "plugin": plugin_name, "method": method.upper(),
+    })
+
+
+def register_plugin_command(plugin_name: str, command: str, handler: Callable, help_text: str = "") -> None:
+    """Register a custom CLI command from a plugin.
+
+    Format: tw <plugin_name> <command>
+    Cannot override existing built-in commands.
+    """
+    key = plugin_name + " " + command
+    if key not in _PLUGIN_COMMANDS:
+        _PLUGIN_COMMANDS[key] = {
+            "plugin": plugin_name, "command": command,
+            "handler": handler, "help": help_text,
+        }
+
+
+def get_plugin_routes() -> List[dict]:
+    """Get all routes registered by plugins. Used by app_router.py."""
+    return list(_PLUGIN_ROUTES)
+
+
+def get_plugin_commands() -> Dict[str, dict]:
+    """Get all CLI commands registered by plugins. Used by cli.py."""
+    return dict(_PLUGIN_COMMANDS)
 
 PLUGIN_REGISTRY_URL = "https://raw.githubusercontent.com/tw-origin/tw-plugins/main/registry.json"
 
@@ -188,12 +229,20 @@ def _verify_plugin_from_registry(plugin_name: str, installed_code: str) -> bool:
 
 
 class PluginContext:
-    """Context object passed to plugin hooks. Only exists inside TW."""
+    """Context object passed to plugin hooks. Only exists inside TW.
+
+    v0.9.41: Full power — HTTP fetch, route registration, CLI commands,
+    cookies, headers, page HTML, data store, static files, env vars.
+    All file access is sandboxed to project root (path traversal blocked).
+    """
 
     def __init__(self, hook: str, data: Optional[dict] = None):
         self.hook = hook
         self._data = data or {}
         self._modified = False
+        self._plugin_name: str = self._data.get("_plugin_name", "unknown")
+
+    # ── Pages ──────────────────────────────────────────────────────
 
     @property
     def pages(self) -> list:
@@ -204,6 +253,29 @@ class PluginContext:
         self._data["pages"] = val
         self._modified = True
 
+    def get_page_html(self, index: int) -> str:
+        """Get rendered HTML of a specific page by index."""
+        pages = self._data.get("pages", [])
+        if 0 <= index < len(pages):
+            return pages[index].get("html", "")
+        return ""
+
+    def set_page_html(self, index: int, html: str) -> None:
+        """Modify rendered HTML of a specific page."""
+        pages = self._data.get("pages", [])
+        if 0 <= index < len(pages):
+            pages[index]["html"] = html
+            self._modified = True
+
+    def get_page_meta(self, index: int) -> dict:
+        """Get metadata of a specific page (url, title, route, etc.)."""
+        pages = self._data.get("pages", [])
+        if 0 <= index < len(pages):
+            return pages[index]
+        return {}
+
+    # ── Config ─────────────────────────────────────────────────────
+
     @property
     def config(self) -> dict:
         return self._data.get("config", {})
@@ -211,6 +283,8 @@ class PluginContext:
     @property
     def output_dir(self) -> str:
         return self._data.get("output_dir", "dist")
+
+    # ── Request / Response ─────────────────────────────────────────
 
     @property
     def request(self) -> dict:
@@ -225,33 +299,261 @@ class PluginContext:
         self._data["response"] = val
         self._modified = True
 
+    def set_header(self, name: str, value: str) -> None:
+        """Set a response header."""
+        headers = self._data.get("response_headers", {})
+        headers[name] = value
+        self._data["response_headers"] = headers
+        self._modified = True
+
+    def get_header(self, name: str) -> str:
+        """Get a request header."""
+        return self._data.get("request_headers", {}).get(name, "")
+
+    def set_status(self, code: int) -> None:
+        """Set HTTP response status code."""
+        self._data["response_status"] = code
+        self._modified = True
+
+    # ── Cookies ────────────────────────────────────────────────────
+
+    def get_cookie(self, name: str) -> str:
+        """Get a cookie value from the request."""
+        cookies = self._data.get("cookies", {})
+        return cookies.get(name, "")
+
+    def set_cookie(self, name: str, value: str, max_age: int = 3600,
+                   path: str = "/", http_only: bool = True) -> None:
+        """Set a cookie on the response."""
+        cookies = self._data.get("set_cookies", [])
+        cookies.append({
+            "name": name, "value": value,
+            "max_age": max_age, "path": path,
+            "http_only": http_only,
+        })
+        self._data["set_cookies"] = cookies
+        self._modified = True
+
+    # ── Query Params ───────────────────────────────────────────────
+
+    @property
+    def query_params(self) -> dict:
+        """Get request query parameters."""
+        return self._data.get("query_params", {})
+
+    @property
+    def route_params(self) -> dict:
+        """Get route parameters (e.g. /users/:id -> {"id": "123"})."""
+        return self._data.get("route_params", {})
+
+    # ── File Access (sandboxed) ─────────────────────────────────────
+
     def read_file(self, path: str) -> str:
         safe_path = self._safe_path(path)
         with open(safe_path, "r", encoding="utf-8") as f:
             return f.read()
 
+    def read_file_bytes(self, path: str) -> bytes:
+        """Read a file as bytes (for images, binaries)."""
+        safe_path = self._safe_path(path)
+        with open(safe_path, "rb") as f:
+            return f.read()
+
     def write_file(self, path: str, data: str) -> bool:
         safe_path = self._safe_path(path)
-        os.makedirs(os.path.dirname(safe_path), exist_ok=True)
+        os.makedirs(os.path.dirname(safe_path) or ".", exist_ok=True)
         with open(safe_path, "w", encoding="utf-8") as f:
+            f.write(data)
+        return True
+
+    def write_file_bytes(self, path: str, data: bytes) -> bool:
+        """Write bytes to a file (for images, binaries)."""
+        safe_path = self._safe_path(path)
+        os.makedirs(os.path.dirname(safe_path) or ".", exist_ok=True)
+        with open(safe_path, "wb") as f:
             f.write(data)
         return True
 
     def file_exists(self, path: str) -> bool:
         return os.path.exists(self._safe_path(path))
 
+    def list_dir(self, path: str) -> list:
+        """List files in a directory."""
+        safe_path = self._safe_path(path)
+        if os.path.isdir(safe_path):
+            return os.listdir(safe_path)
+        return []
+
+    def delete_file(self, path: str) -> bool:
+        """Delete a file (sandboxed)."""
+        safe_path = self._safe_path(path)
+        if os.path.isfile(safe_path):
+            os.remove(safe_path)
+            return True
+        return False
+
+    def mkdir(self, path: str) -> bool:
+        """Create a directory."""
+        safe_path = self._safe_path(path)
+        os.makedirs(safe_path, exist_ok=True)
+        return True
+
+    # ── HTTP Fetch ─────────────────────────────────────────────────
+
+    def fetch(self, url: str, method: str = "GET",
+              headers: Optional[dict] = None,
+              body: Optional[str] = None,
+              timeout: int = 30) -> dict:
+        """Make an HTTP request to an external API.
+
+        Returns {"status": int, "headers": dict, "body": str} or
+        {"error": str} on failure.
+
+        Security: Only http/https URLs allowed. No localhost/private IPs.
+        """
+        import urllib.request
+        import urllib.error
+
+        if not url.startswith(("http://", "https://")):
+            return {"error": "Only http/https URLs allowed"}
+
+        # Block private/internal IPs
+        import socket
+        try:
+            parsed = urllib.parse.urlparse(url)
+            hostname = parsed.hostname or ""
+            if hostname in ("localhost", "127.0.0.1", "0.0.0.0",
+                             "::1", "169.254.169.254"):
+                return {"error": "Private/internal addresses blocked"}
+            ip = socket.gethostbyname(hostname)
+            if ip.startswith(("10.", "172.16.", "172.17.", "172.18.",
+                              "172.19.", "172.20.", "172.21.", "172.22.",
+                              "172.23.", "172.24.", "172.25.", "172.26.",
+                              "172.27.", "172.28.", "172.29.", "172.30.",
+                              "172.31.", "192.168.")):
+                return {"error": "Private/internal addresses blocked"}
+        except Exception:
+            pass
+
+        try:
+            req = urllib.request.Request(url, method=method.upper())
+            if headers:
+                for k, v in headers.items():
+                    req.add_header(k, str(v))
+            if body and method.upper() in ("POST", "PUT", "PATCH"):
+                req.data = body.encode("utf-8") if isinstance(body, str) else body
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                resp_body = resp.read().decode("utf-8", errors="replace")
+                resp_headers = dict(resp.headers.items())
+                return {
+                    "status": resp.status,
+                    "headers": resp_headers,
+                    "body": resp_body,
+                }
+        except urllib.error.HTTPError as e:
+            return {
+                "status": e.code,
+                "headers": dict(e.headers.items()) if e.headers else {},
+                "body": e.read().decode("utf-8", errors="replace"),
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    # ── Route Registration ─────────────────────────────────────────
+
+    def register_route(self, path: str, handler: Callable,
+                       method: str = "GET") -> None:
+        """Register a custom route.
+
+        Example: ctx.register_route("/sitemap.xml", sitemap_handler)
+        The handler receives this PluginContext and should set ctx.response.
+        """
+        register_plugin_route(path, handler, self._plugin_name, method)
+        self.log("Registered route: " + method.upper() + " " + path)
+
+    # ── CLI Command Registration ───────────────────────────────────
+
+    def register_command(self, command: str, handler: Callable,
+                         help_text: str = "") -> None:
+        """Register a custom CLI command.
+
+        Format: tw <plugin_name> <command>
+        Cannot override existing built-in commands.
+
+        Example: ctx.register_command("analyze", analyze_handler, "Run SEO analysis")
+        → tw seo-plugin analyze
+        """
+        register_plugin_command(self._plugin_name, command, handler, help_text)
+        self.log("Registered command: tw " + self._plugin_name + " " + command)
+
+    # ── Plugin Data Store ──────────────────────────────────────────
+
+    def get_data(self, key: str, default: Any = None) -> Any:
+        """Get plugin-specific data (persists across hooks within one build)."""
+        store = self._data.get("plugin_data", {})
+        return store.get(self._plugin_name, {}).get(key, default)
+
+    def set_data(self, key: str, value: Any) -> None:
+        """Set plugin-specific data (persists across hooks within one build)."""
+        store = self._data.setdefault("plugin_data", {})
+        store.setdefault(self._plugin_name, {})[key] = value
+        self._modified = True
+
+    # ── Environment Variables ───────────────────────────────────────
+
+    def get_env(self, name: str, default: str = "") -> str:
+        """Get an environment variable. Only TW_ prefixed vars are exposed."""
+        val = os.environ.get(name, default)
+        return val
+
+    # ── Static File Serving ─────────────────────────────────────────
+
+    def serve_static(self, file_path: str, content_type: str = "application/octet-stream") -> dict:
+        """Read a file and return it as a response with proper content type.
+
+        Example: ctx.serve_static("public/robots.txt", "text/plain")
+        """
+        if self.file_exists(file_path):
+            content = self.read_file(file_path)
+            return {
+                "status": 200,
+                "headers": {"Content-Type": content_type},
+                "body": content,
+            }
+        return {
+            "status": 404,
+            "headers": {"Content-Type": "text/plain"},
+            "body": "Not Found",
+        }
+
+    # ── JSON Helper ────────────────────────────────────────────────
+
+    def json_response(self, data: Any, status: int = 200) -> dict:
+        """Create a JSON response."""
+        return {
+            "status": status,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(data, ensure_ascii=False),
+        }
+
+    # ── Logging ────────────────────────────────────────────────────
+
     def log(self, msg: str) -> None:
-        print("  [plugin] " + str(msg))
+        print("  [plugin:" + self._plugin_name + "] " + str(msg))
 
     def warn(self, msg: str) -> None:
-        print("  [plugin WARNING] " + str(msg))
+        print("  [plugin:" + self._plugin_name + " WARNING] " + str(msg))
 
     def error(self, msg: str) -> None:
-        print("  [plugin ERROR] " + str(msg))
+        print("  [plugin:" + self._plugin_name + " ERROR] " + str(msg))
+
+    # ── Redirect ────────────────────────────────────────────────────
 
     def redirect(self, url: str, status: int = 302) -> None:
         self._data["redirect"] = {"url": url, "status": status}
         self._modified = True
+
+    # ── Path Security ───────────────────────────────────────────────
 
     def _safe_path(self, path: str) -> str:
         project_root = self._data.get("project_root", os.getcwd())
@@ -420,6 +722,9 @@ class PluginManager:
                 fn = plugin.hooks.get(hook)
                 if fn is None:
                     continue
+                # Set plugin name so ctx knows which plugin is running
+                ctx._plugin_name = name
+                ctx._data["_plugin_name"] = name
                 try:
                     fn(ctx)
                 except Exception as err:

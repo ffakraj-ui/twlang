@@ -443,6 +443,18 @@ def match_route(routes: list, url_path: str) -> tuple:
 
     if best_match:
         return best_match, best_params
+
+    # v0.9.41: Check plugin-registered routes
+    try:
+        from .plugin_manager import get_plugin_routes
+        plugin_routes = get_plugin_routes()
+        for proute in plugin_routes:
+            proute_path = proute["path"].strip("/")
+            if proute_path == url_path.strip("/"):
+                return ("__plugin__:" + proute["plugin"] + ":" + proute_path, {})
+    except Exception:
+        pass
+
     return None, None
 
 
