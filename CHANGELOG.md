@@ -2,6 +2,21 @@
 
 All notable changes to TW Framework are documented here.
 
+## [0.9.34] - 2026-08-13
+
+### Fixed
+- **Critical**: Lib function calls in `{ }` interpolation now actually execute. Previously `{greet('Suraj')}` rendered as raw text because of THREE separate bugs:
+  1. **`_safe_eval()` missing `ast.Call` handler** (v0.9.33 partial fix) — function call AST nodes raised `ValueError("Unsupported expression node: Call")`. Added `ast.Call` handler that checks `_LIB_MODULES` and context callables.
+  2. **ES6 imports never triggered `register_lib_module()`** — `import { greet } from "@/lib/helpers"` stored entries in `_ES6_IMPORTS` list but nobody consumed it. Added post-processing loop in `build_tw_ast()` that resolves `@/`-prefixed paths to `HOME_DIR` and calls `register_lib_module()`.
+  3. **`@/` path resolution treated `/lib/helpers` as absolute** — after stripping `@` from `@/lib/helpers`, the leading `/` made `os.path.isabs()` return True, discarding `PROJECT_ROOT`. Fixed in `resolve_source_path()` by stripping leading `/` for project-relative paths. Also changed ES6 import resolution to use `HOME_DIR` directly (Next.js convention).
+
+### Tests
+- Added 17 integration tests in `test_es6_import_integration.py` covering:
+  - ES6 import → `register_lib_module()` → `_LIB_MODULES` registration
+  - Full pipeline: import → register → `evaluate_expression()` → `interpolate()`
+  - `@/` path resolution to `HOME_DIR`
+  - Multiple imported functions, missing files, `is_function_call()` detection
+
 ## [0.9.33] - 2026-08-13
 
 ### Fixed

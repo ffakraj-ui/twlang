@@ -532,6 +532,11 @@ def resolve_source_path(path, base_dir) -> Any:
     project_relative = value.startswith("@")
     if value.startswith("@"):
         value = value[1:]
+    # v0.9.34: Strip leading slash after @ removal so "@/lib/helpers" becomes
+    # "lib/helpers" (relative), not "/lib/helpers" (absolute filesystem root).
+    # Without this, os.path.isabs() returns True and PROJECT_ROOT is discarded.
+    if project_relative and value.startswith("/"):
+        value = value.lstrip("/")
     if os.path.isabs(value) or re.match(r"^[A-Za-z]:[\\/]", value):
         return normalize_path(value)
     if project_relative:
@@ -3909,6 +3914,9 @@ def parse_page_block(tokens, i, page) -> Any:
 
 
 def build_tw_ast(tokens, base_dir, file_path, source) -> Any:
+    # v0.9.34: Clear per-page ES6 imports so stale entries from
+    # previous page builds don't leak into the current page.
+    _ES6_IMPORTS.clear()
     page = PageNode()
     i = 0
     while i < len(tokens):
@@ -4106,6 +4114,29 @@ def build_tw_ast(tokens, base_dir, file_path, source) -> Any:
         raise CompilerError(f"Unexpected top-level token: `{token.value}`", token=token)
 
     _attach_component_stylesheets(page, source)
+
+    # v0.9.34: Process ES6 imports — resolve .twm lib modules and register
+    # their functions so {fn(args)} interpolation can execute them at render time.
+    # @/ prefix resolves relative to HOME_DIR (source root), matching Next.js
+    # convention where @/ = src/. This lets users write import { greet } from "@/lib/helpers".
+    for imp in _ES6_IMPORTS:
+        imp_path = imp.get("path", "")
+        if not imp_path:
+            continue
+        try:
+            if imp_path.startswith("@"):
+                clean = imp_path[1:].lstrip("/")
+                resolved = os.path.join(HOME_DIR, clean)
+            else:
+                resolved = os.path.join(base_dir, imp_path)
+            if not os.path.splitext(resolved)[1]:
+                resolved = resolved + ".twm"
+            if os.path.isfile(resolved):
+                mod_source = read_text_file(resolved)
+                register_lib_module(mod_source, module_id=resolved)
+        except Exception:
+            pass
+
     return page
 
 
