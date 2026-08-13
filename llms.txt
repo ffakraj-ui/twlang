@@ -1,6 +1,6 @@
 # TW Framework — Reference for Coding Assistants
 # Source: https://github.com/ffakraj-ui/twlang
-# Version: v0.9.35 (2026-08-12)
+# Version: v0.9.38 (2026-08-12)
 # Rule: If README and source code disagree, trust the source code and tests.
 
 ## 1. PROJECT OVERVIEW

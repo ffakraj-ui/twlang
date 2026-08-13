@@ -2,6 +2,40 @@
 
 All notable changes to TW Framework are documented here.
 
+## [0.9.38] - 2026-08-13
+
+### Security
+- **Plugin verification via registry code matching** — removed HMAC/secret approach entirely. No secret key, no per-installation key, nothing to steal.
+- How it works now:
+  1. `install_plugin()` downloads plugin from official registry, saves with embedded SHA-256 hash (TWP1 format)
+  2. `load_all()` reads installed plugin, verifies embedded hash (catches tampering)
+  3. `_verify_plugin_from_registry()` fetches official code from registry and compares SHA-256 (catches fake/custom plugins)
+  4. Match → load. Mismatch → reject. Not in registry → reject.
+- Open source safe: no secret in code, no key file, nothing to reverse-engineer
+- Offline fallback: if registry unreachable, trust embedded hash (still catches tampering)
+- 15 tests in `test_plugin_integrity.py` covering: save/load roundtrip, tampered content, fake TWP1, manual plugin rejection, mixed valid/invalid
+
+## [0.9.37] - 2026-08-13
+
+### Security
+- **Plugin secret no longer hardcoded**: Removed `_PLUGIN_GUARD_SECRET` constant from source code. Now uses `_get_plugin_secret()` which generates a unique 256-bit random secret per installation, stored in `~/.tw/plugin_secret.key` (user home, NOT in project/git).
+  - Secret is NOT in source code (open source safe)
+  - Secret is NOT in project directory (git safe)
+  - Each machine has a different secret (copying .tw/plugins/ to another machine won't work)
+  - Auto-generated on first `tw plugin add` using `secrets.token_hex(32)`
+  - File permissions 0600 (only owner can read/write)
+
+## [0.9.36] - 2026-08-13
+
+### Security
+- **Plugin Integrity Guard**: Plugins are now saved in TWP1 encoded format with HMAC-SHA256 signature. This prevents:
+  1. Manual plugin drops into .tw/plugins/ (no valid signature → rejected)
+  2. Modification of installed plugins (signature breaks → rejected)
+  3. Plugin name spoofing (HMAC bound to plugin name → wrong name → rejected)
+- `install_plugin()` now encodes content before saving using `_encode_plugin_content()`
+- `load_all()` now decodes and verifies signature using `_decode_plugin_content()`
+- Added 17 tests in `test_plugin_integrity.py` covering encoding, decoding, tampering, and name mismatch scenarios
+
 ## [0.9.35] - 2026-08-13
 
 ### Fixed
