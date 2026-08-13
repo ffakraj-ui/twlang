@@ -169,15 +169,16 @@ class TestPluginManagerIntegrity:
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
-    def test_manual_plugin_rejected(self):
-        """Plugin manually created (plain text, no TWP1) is rejected."""
+    def test_custom_plugin_loaded_with_warning(self):
+        """Custom plugin (plain text, no TWP1) is loaded with warning, not rejected."""
         tmpdir = tempfile.mkdtemp()
         try:
             self._make_plugin_files(tmpdir, "tw-hack", valid=False)
             pm = PluginManager(plugins_dir=tmpdir, project_root=tmpdir)
             pm.load_all()
-            assert "tw-hack" not in pm.plugins
-            assert not pm.has_plugins()
+            # v0.9.40: Custom plugins are allowed (with warning)
+            assert "tw-hack" in pm.plugins
+            assert pm.has_plugins()
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
@@ -202,15 +203,17 @@ class TestPluginManagerIntegrity:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_mixed_valid_and_invalid(self):
-        """Valid TWP1 plugin loads, invalid manual plugin rejected."""
+        """Valid TWP1 plugin loads silently, custom plugin loads with warning."""
         tmpdir = tempfile.mkdtemp()
         try:
             self._make_plugin_files(tmpdir, "tw-valid", valid=True)
-            self._make_plugin_files(tmpdir, "tw-invalid", valid=False)
+            self._make_plugin_files(tmpdir, "tw-custom", valid=False)
 
             pm = PluginManager(plugins_dir=tmpdir, project_root=tmpdir)
             pm.load_all()
-            assert "tw-invalid" not in pm.plugins
+            # v0.9.40: Both load — valid silently, custom with warning
+            assert "tw-valid" in pm.plugins
+            assert "tw-custom" in pm.plugins
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 

@@ -1350,6 +1350,42 @@ def command_plugin(args) -> int:
             log("  " + p["name"] + " v" + p["version"] + " [" + status + "] hooks: " + hooks)
         return 0
 
+    elif action == "update" and name:
+        log("Checking updates for plugin: " + name + "...")
+        result = plugin_manager.update_plugin(name)
+        if result.get("success"):
+            if result.get("updated"):
+                log("  Updated: " + name + " v" + result.get("old_version", "?") + " -> v" + result.get("new_version", "?"))
+            else:
+                log("  " + result.get("message", "Already up to date"))
+            return 0
+        else:
+            log("  Error: " + str(result.get("error")), level="error")
+            return 1
+
+    elif action == "update" and not name:
+        # Update all installed plugins
+        pm = plugin_manager.PluginManager()
+        pm.load_all()
+        if not pm.has_plugins():
+            log("No plugins installed")
+            return 0
+        updated_count = 0
+        for pname in list(pm.plugins.keys()):
+            result = plugin_manager.update_plugin(pname)
+            if result.get("success") and result.get("updated"):
+                log("  Updated: " + pname + " v" + result.get("old_version", "?") + " -> v" + result.get("new_version", "?"))
+                updated_count += 1
+            elif result.get("success"):
+                log("  " + pname + " is up to date (v" + result.get("version", "?") + ")")
+            else:
+                log("  Error updating " + pname + ": " + str(result.get("error")), level="error")
+        if updated_count == 0:
+            log("All plugins are up to date")
+        else:
+            log(str(updated_count) + " plugin(s) updated")
+        return 0
+
     elif action == "search":
         registry = plugin_manager.fetch_registry()
         if "error" in registry:
@@ -1365,7 +1401,7 @@ def command_plugin(args) -> int:
         return 0
 
     else:
-        log("Usage: tw plugin <add|remove|list|search> [name]")
+        log("Usage: tw plugin <add|remove|update|list|search> [name]")
         return 1
 
 
@@ -1685,6 +1721,8 @@ def build_parser() -> Any:
     add_p.add_argument("plugin_name", help="Plugin name to install")
     rm_p = plugin_sub.add_parser("remove", aliases=["rm"])
     rm_p.add_argument("plugin_name", help="Plugin name to remove")
+    update_p = plugin_sub.add_parser("update", help="Check and install plugin updates")
+    update_p.add_argument("plugin_name", nargs="?", default=None, help="Plugin name to update (omit for all)")
     plugin_sub.add_parser("list", aliases=["ls"])
     _search_p = plugin_sub.add_parser("search")
     _search_p.add_argument("query", nargs="?", default="", help="Search query")  # FIX #299

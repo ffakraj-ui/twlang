@@ -2,6 +2,39 @@
 
 All notable changes to TW Framework are documented here.
 
+## [0.9.40] - 2026-08-13
+
+### Plugin System — Two-Tier Loading
+- **Tier 1 (Registry plugins):** Installed via `tw plugin add` — saved in TWP1 format with embedded SHA-256 hash. At build time, hash is verified locally (0 network requests). If code is modified after install, hash mismatch = reject.
+- **Tier 2 (Custom plugins):** Manually placed plugin.twp + plugin.json files — loaded with a warning message. No hash, no verification. Developer takes responsibility.
+- **Tampered TWP1 rejected:** If a TWP1 file's hash doesn't match its content (someone edited the code), the plugin is rejected — not loaded as custom.
+
+### Plugin Management
+- `tw plugin update <name>` — check and install updates for a specific plugin
+- `tw plugin update` (no name) — update all installed plugins
+- Version comparison: same version = skip, different = reinstall
+
+### Performance
+- Build time: 0 network requests (local hash verification only)
+- Registry fetch only on explicit `tw plugin update` command
+
+## [0.9.39] - 2026-08-13
+
+### Performance
+- **Zero network requests during build** — `load_all()` no longer fetches from registry. Only verifies embedded SHA-256 hash locally. 1 lakh developers x 10 plugins x 10 builds = 0 requests to GitHub.
+- Registry fetch happens ONLY on explicit `tw plugin update` command.
+
+### Features
+- **`tw plugin update <name>`** — check and install updates for a specific plugin. Fetches registry, compares version, reinstalls if newer.
+- **`tw plugin update`** (no name) — update ALL installed plugins in one command. Shows which are up-to-date and which got updated.
+- Version comparison: if installed version matches registry version, skips re-download. If different, reinstalls and shows old -> new version.
+
+### Security
+- Build-time security unchanged: embedded hash catches tampering (modified content = hash mismatch = reject).
+- Manual plugins (no TWP1 format) still rejected.
+- Fake TWP1 with wrong hash still rejected.
+- Registry verification moved to install/update time only — no rate limit risk.
+
 ## [0.9.38] - 2026-08-13
 
 ### Security

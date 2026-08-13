@@ -100,6 +100,49 @@ def _load_plugin_with_hash(filepath: str) -> Optional[str]:
     return content
 
 
+def _load_plain(filepath: str) -> Optional[str]:
+    """Load a plain plugin file (no TWP1 format, no hash).
+
+    Used for custom plugins that are manually placed by developers.
+    Returns the raw content, or None if the file can't be read.
+    """
+    try:
+        with open(filepath, "r") as f:
+            raw = f.read()
+    except Exception:
+        return None
+    # If it's TWP1 format, extract the content part (but don't verify hash)
+    if raw.startswith("TWP1\n"):
+        parts = raw.split("\n", 2)
+        if len(parts) == 3:
+            return parts[2]
+        return None
+    return raw
+
+
+def _is_twp1_tampered(filepath: str) -> bool:
+    """Check if a file is TWP1 format but has been tampered (hash mismatch).
+
+    Returns True if the file is TWP1 format but the embedded hash
+    doesn't match the content hash (i.e. someone modified the code
+    after installation).
+    """
+    try:
+        with open(filepath, "r") as f:
+            raw = f.read()
+    except Exception:
+        return False
+    if not raw.startswith("TWP1\n"):
+        return False  # Not TWP1, so can't be "tampered" — it's a plain plugin
+    parts = raw.split("\n", 2)
+    if len(parts) != 3:
+        return True  # Malformed TWP1 — treat as tampered
+    stored_hash = parts[1]
+    content = parts[2]
+    actual_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return actual_hash != stored_hash
+
+
 def _verify_plugin_from_registry(plugin_name: str, installed_code: str) -> bool:
     """Verify installed plugin code against official registry.
 
@@ -304,26 +347,38 @@ class PluginManager:
             if not os.path.exists(pj) or not os.path.exists(pt):
                 continue
             try:
-                # v0.9.38: Registry code matching — no secret, no HMAC
-                # Step 1: Load and verify embedded hash (catches tampering)
+                # v0.9.40: Two-tier plugin loading — 0 network requests.
+                # Tier 1: TWP1 format (installed via `tw plugin add`) — hash verified.
+                # Tier 2: Plain files (custom plugins) — loaded with warning.
+                # Tampered TWP1 (hash mismatch) → rejected.
                 meta_json = _load_plugin_with_hash(pj)
                 code = _load_plugin_with_hash(pt)
-                if meta_json is None:
-                    print("  [plugin] Rejected " + entry + ": plugin.json not installed via tw plugin add or tampered")
-                    continue
-                if code is None:
-                    print("  [plugin] Rejected " + entry + ": plugin.twp not installed via tw plugin add or tampered")
-                    continue
-                meta = json.loads(meta_json)
-                plugin_name = meta.get("name", entry)
-                # Step 2: Verify code matches official registry
-                if not _verify_plugin_from_registry(plugin_name, code):
-                    print("  [plugin] Rejected " + entry + ": code does not match official registry (custom or fake plugin)")
-                    continue
-                plugin = Plugin(plugin_name, meta.get("version", "0.0.0"), meta, code)
-                self._parse_twp(plugin)
-                plugin.enabled = True
-                self.plugins[plugin.name] = plugin
+
+                if meta_json is not None and code is not None:
+                    # Tier 1: Official registry plugin — hash verified
+                    meta = json.loads(meta_json)
+                    plugin = Plugin(meta.get("name", entry), meta.get("version", "0.0.0"), meta, code)
+                    self._parse_twp(plugin)
+                    plugin.enabled = True
+                    self.plugins[plugin.name] = plugin
+                else:
+                    # Tier 2: Try loading as plain custom plugin
+                    meta_json_plain = _load_plain(pj)
+                    code_plain = _load_plain(pt)
+                    if meta_json_plain is not None and code_plain is not None:
+                        # Check if it was TWP1 but tampered (hash mismatch)
+                        if _is_twp1_tampered(pj) or _is_twp1_tampered(pt):
+                            print("  [plugin] Rejected " + entry + ": hash mismatch (tampered)")
+                            continue
+                        # Plain custom plugin — load with warning
+                        meta = json.loads(meta_json_plain)
+                        plugin = Plugin(meta.get("name", entry), meta.get("version", "0.0.0"), meta, code_plain)
+                        self._parse_twp(plugin)
+                        plugin.enabled = True
+                        self.plugins[plugin.name] = plugin
+                        print("  [plugin] Loaded custom plugin '" + entry + "' (not verified — install via 'tw plugin add' for verified plugins)")
+                    else:
+                        print("  [plugin] Rejected " + entry + ": invalid or corrupted files")
             except Exception as err:
                 print("  [plugin] Failed to load " + entry + ": " + str(err))
 
@@ -435,6 +490,54 @@ def remove_plugin(name: str, plugins_dir: str = ".tw/plugins") -> dict:
         shutil.rmtree(p)
         return {"success": True, "plugin": name}
     return {"success": False, "error": "Plugin '" + name + "' not installed"}
+
+
+def update_plugin(name: str, plugins_dir: str = ".tw/plugins") -> dict:
+    """Check for plugin updates and install if newer version available.
+
+    Fetches registry, compares installed version with registry version.
+    If registry version is newer, re-downloads and installs the update.
+
+    Returns:
+      - {"success": True, "updated": True, "version": "x"}  — updated
+      - {"success": True, "updated": False, "version": "x"} — already latest
+      - {"success": False, "error": "..."}                  — failed
+    """
+    # Read installed version
+    pj_path = os.path.join(plugins_dir, name, "plugin.json")
+    installed_version = "0.0.0"
+    if os.path.isfile(pj_path):
+        meta_json = _load_plugin_with_hash(pj_path)
+        if meta_json:
+            try:
+                installed_version = json.loads(meta_json).get("version", "0.0.0")
+            except Exception:
+                pass
+
+    # Fetch registry
+    registry = fetch_registry()
+    if "error" in registry:
+        return {"success": False, "error": registry["error"]}
+
+    plugins = registry.get("plugins", [])
+    info = next((p for p in plugins if p["name"] == name), None)
+    if not info:
+        return {"success": False, "error": "Plugin '" + name + "' not found in registry"}
+
+    registry_version = info.get("version", "0.0.0")
+
+    # Compare versions
+    if installed_version == registry_version:
+        return {"success": True, "updated": False, "version": installed_version,
+                "message": "Plugin '" + name + "' is already up to date (v" + installed_version + ")"}
+
+    # Update available — reinstall
+    result = install_plugin(name, plugins_dir)
+    if result.get("success"):
+        result["updated"] = True
+        result["old_version"] = installed_version
+        result["new_version"] = registry_version
+    return result
 
 
 # v0.9.08 FIX: Real Node.js plugin execution via vm sandbox
